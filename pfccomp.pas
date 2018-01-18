@@ -22,6 +22,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //program pfccomp(progfile,listfile,objfile,input,output); 
 program pfccomp(input,output); 
 
+Uses SysUtils;
+
+Type FatalError = Class(Exception);
 
 (* Pascal-FC "universal" compiler system *)
 (* compiler "shell " *)
@@ -279,7 +282,8 @@ var
 
 (* implementation-dependent variable declarations for 1 *)
 
-	objfile: file of objcoderec;
+	objrec: objcoderec;
+        objfile: file of objcoderec;
 
 
 (* @(#)pfcfront.i	5.2 12/1/92 *)
@@ -297,7 +301,7 @@ const
 type
 
    symbol =
-     (intcon,realcon,charcon,string, 
+     (intcon,realcon,charcon,stringsy, 
       notsy,plus,minus,times,idiv,rdiv,imod,andsy,orsy, 
       eql,neq,gtr,geq,lss,leq, 
       lparent,rparent,lbrack,rbrack,comma,semicolon, 
@@ -681,6 +685,8 @@ var
    end;  (* endskip *)
 
 
+
+
    procedure fatal(n : integer); 
 
    var
@@ -699,8 +705,9 @@ var
 		writeln(listfile);
 		write(listfile,'FATAL ERROR - ');
       writeln(listfile,'compiler table for ',msg[n],' is too small'); 
-		success := false;
-      goto 99  (* terminate compilation *)
+
+      success := false;
+      raise FatalError.Create('compiler table is too small')
    end;  (* fatal *)
 
 
@@ -733,10 +740,15 @@ var
 			writeln(listfile); errormsg;
 			write(listfile,'FATAL ERROR - ');
 			if n = 1 then
-				writeln(listfile,'program incomplete')
-			else
+                           begin
+				writeln(listfile,'program incomplete');
+                                raise FatalError.Create('program incomplete')
+                           end
+                        else
+                        begin
 				writeln(listfile,'input line too long');
-			goto 99
+                                raise FatalError.Create('input line too long')
+                                end
 		end;  (* fail *)
 
 
@@ -767,9 +779,11 @@ var
             end;   (* now eoln or line buffer overflowed *)
 			if not eoln(progfile) then
 				fail(2);
-         writeln(listfile);  ll := ll + 1; read(progfile,line[ll]) 
+         writeln(listfile);  ll := ll + 1;
+         read(progfile,line[ll]);
          end;   (* if cc = ll *)
       cc := cc + 1;  ch := line[cc];
+                          writeln(ll, ' ', cc, ' ', ord(ch));
    end; (*nextch*)
 
    procedure error(n : er);
@@ -959,7 +973,7 @@ var
 		lineold := linenew;
 		linenew := linenum;
       1:  
-      while ch=' ' do nextch; 
+      while ch in [' ', LineEnding] do nextch;
       if ch in legalchars then
       case ch of
 				'A','B','C','D','E','F','G','H','I',
@@ -1188,7 +1202,7 @@ var
                   end 
                else 
                   begin 
-                     sy := string; inum := sx; sleng := k; sx := sx+k 
+                     sy := stringsy; inum := sx; sleng := k; sx := sx+k 
                   end 
             end;
 
@@ -1234,7 +1248,6 @@ var
             begin 
                sy := sps[ch]; nextch
             end;
-
       end   (* case *)
 	else
             begin   (* not legal character *)
@@ -2969,7 +2982,7 @@ var
 						end  (* case *)
          end;  (* resulttype *)
 
-         procedure expression; 
+                     procedure expression(fsys: symset; var x: item);
 
          var
             y:item; op:symbol;
@@ -4496,7 +4509,7 @@ var
                   begin 
                   repeat 
                      insymbol; 
-                     if sy=string then
+                     if sy=stringsy then
                         begin
 								sptr := inum;
                         emit1typed(ldcon,sleng,ints);
@@ -5814,7 +5827,7 @@ procedure ict(var success: boolean);
 
 
 			begin
-				with objfile^ do
+				with objrec do
 					with gencode[cindex] do
 						begin
 						f := fobj;
@@ -6028,7 +6041,7 @@ procedure ict(var success: boolean);
 							prtex:	gen(132,x,0);
 							prtcnd:	gen(133,0,y)
 						end;  (* case *);
-			objfile^.ngencode := lc - 1
+			objrec.ngencode := lc - 1
       end;  (* putcode *)
 
 
@@ -6037,18 +6050,18 @@ procedure ict(var success: boolean);
 		(* output tables, etc, to objfile *)
 
 		begin
-			objfile^.fname := filename;
-			objfile^.prgname := progname;
-			objfile^.gentab := tab;
-			objfile^.ngentab := t;
-			objfile^.genatab := atab;
-			objfile^.ngenatab := a;
-			objfile^.genbtab := btab;
-			objfile^.ngenbtab := b;
-			objfile^.genstab := stab;
-			objfile^.genrconst := rconst;
-			objfile^.ngenstab := sx;
-			objfile^.useridstart := useridstart
+			objrec.fname := filename;
+			objrec.prgname := progname;
+			objrec.gentab := tab;
+			objrec.ngentab := t;
+			objrec.genatab := atab;
+			objrec.ngenatab := a;
+			objrec.genbtab := btab;
+			objrec.ngenbtab := b;
+			objrec.genstab := stab;
+			objrec.genrconst := rconst;
+			objrec.ngenstab := sx;
+			objrec.useridstart := useridstart
 		end;  (* puttabs *)
 
 
@@ -6060,7 +6073,7 @@ begin  (* Ict *)
 		rewrite(objfile);
 		putcode;
 		puttabs;
-		put(objfile)
+		write(objfile, objrec)
 		end
 end;  (* ict *)
 
@@ -6085,7 +6098,12 @@ begin
                 assign(objfile,paramstr(3))
                 end;
 
-	pfcfront(success);
+    try
+	pfcfront(success)
+    except
+          on FatalError do
+          ;
+        end;
 	impcheck(success);
 	if success then
 		ict(success);
