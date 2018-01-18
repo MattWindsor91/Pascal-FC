@@ -19,8 +19,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *)
 {$Mode OBJFPC}
 
-
-//program pfccomp(progfile,listfile,objfile,input,output); 
 program pfccomp;
 
 uses
@@ -115,7 +113,6 @@ type
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
   index = -xmax .. xmax;
-  alfa = packed array[1..alng] of char;
   objekt = (konstant, variable, type1, prozedure, funktion, monproc, address,
     grdproc, xgrdproc);
 
@@ -149,7 +146,7 @@ type
 
   tabrec =
     packed record
-    Name: alfa;
+    Name: ShortString;
     link: index;
     obj: objekt;
     typ: types;
@@ -200,7 +197,7 @@ type
   objcoderec =
     packed record
     fname: fnametype;
-    prgname: alfa;
+    prgname: ShortString;
     gencode: objorderarray;
     ngencode: 0..cmax;
 
@@ -228,7 +225,7 @@ var
 
   filename: fnametype;
   progfile, listfile: Text;
-  progname: alfa;
+  progname: ShortString;
   lc, t, a, b, sx: integer;
   stantyps: typset;
   display: array[0..lmax] of integer;
@@ -310,7 +307,7 @@ var
     end;
 
     keytabrec = record
-      key: alfa;
+      key: ShortString;
       ksy: symbol
     end;
 
@@ -319,7 +316,7 @@ var
     linenum: integer;
     lineold, linenew: integer;
     sy: symbol;
-    id: alfa;
+    id: ShortString;
     inum: integer;
     sleng: integer;
     ch: char;
@@ -340,7 +337,7 @@ var
     chan: 0..chanmax;              (* index to chantab  *)
 
     capsproctab: array [1..maxcapsprocs] of record
-      Name: alfa;
+      Name: ShortString;
       foundec: boolean
     end;
 
@@ -419,7 +416,7 @@ var
       end;  (*procedure sort*)
 
 
-      procedure install(Name: alfa; sym: symbol);
+      procedure install(Name: ShortString; sym: symbol);
 
       begin
         with keywords[i] do
@@ -653,7 +650,7 @@ var
     procedure fatal(n: integer);
 
     var
-      msg: array[1..20] of alfa;
+      msg: array[1..20] of string;
 
     begin
       writeln(listfile);
@@ -758,25 +755,6 @@ var
         errs := errs + [n];
       end;
     end;  (* error *)
-
-
-
-
-    procedure tolower(var alfavar: alfa);
-
-    (* convert to lower case *)
-
-    var
-      index: 1..alng;
-
-    begin
-      for index := 1 to alng do
-        if alfavar[index] in ['A'..'Z'] then
-          alfavar[index] := chr(Ord(alfavar[index]) + (Ord('a') - Ord('A')));
-    end;  (* tolower *)
-
-
-
 
     (*-----------------------------------------------------insymbol-*)
 
@@ -954,7 +932,7 @@ var
               end;
               nextch
             until not (ch in ['A'..'Z', 'a'..'z', '0'..'9']);
-            tolower(id);
+            LowerCase(id);
             i := 1;
             j := nkw; (*binary search*)
             repeat
@@ -1245,7 +1223,7 @@ var
 
     (*-----------------------------------------------------------------------enter---*)
 
-    procedure enter(x0: alfa; x1: objekt; x2: types; x3: integer);
+    procedure enter(x0: ShortString; x1: objekt; x2: types; x3: integer);
 
     begin
       t := t + 1; (*enter standard identifiers*)
@@ -1459,7 +1437,7 @@ var
 
 
 
-      function searchblock(k: integer; id: alfa): integer;
+      function searchblock(k: integer; id: ShortString): integer;
 
         (* search a single static level for an identifier *)
         (* search symbol table backwards from k *)
@@ -1474,7 +1452,7 @@ var
 
 
 
-      procedure enter(id: alfa; k: objekt);
+      procedure enter(id: ShortString; k: objekt);
 
       (* enter new identifier into symbol table *)
 
@@ -1515,7 +1493,7 @@ var
 
 
 
-      function find(id: alfa): integer;
+      function find(id: ShortString): integer;
 
         (* find id in table or return 0 if not present *)
 
@@ -1533,7 +1511,7 @@ var
 
 
 
-      function loc(id: alfa): integer;
+      function loc(id: ShortString): integer;
 
         (* find with an error message *)
 
@@ -1770,7 +1748,7 @@ var
 
 
       procedure internalname(var internalnum: integer;
-      var namestring: alfa);
+      var namestring: ShortString);
       var
         temp: integer;
         index: integer;
@@ -5030,7 +5008,7 @@ var
           lc1, lc2, lc3, lc4: integer;
           i: integer;
           x: item;
-          qname: alfa;
+          qname: ShortString;
           localdx: integer;
           qref: integer;
           nestedgrd: boolean;

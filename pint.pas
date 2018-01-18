@@ -147,7 +147,6 @@ type
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
   index = -xmax .. xmax;
-  alfa = packed array[1..alng] of char;
   myobject = (konstant, variable, type1, prozedure, funktion, monproc, address,
     grdproc, xgrdproc);
 
@@ -181,7 +180,7 @@ type
 
   tabrec =
     packed record
-    Name: alfa;
+    Name: ShortString;
     link: index;
     obj: myobject;
     typ: types;
@@ -231,7 +230,7 @@ type
   objcoderec =
     packed record
     fname: fnametype;
-    prgname: alfa;
+    prgname: ShortString;
     gencode: objorderarray;
     ngencode: 0..cmax;
 
@@ -355,7 +354,7 @@ var
   end;
 
 
-  procedure printname(Name: alfa; var tofile: Text);
+  procedure printname(Name: ShortString; var tofile: Text);
 
   var
     index: integer;
