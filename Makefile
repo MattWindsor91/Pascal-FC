@@ -1,11 +1,12 @@
+all: pfccomp pint
 
 all: pfccomp pint
 
 pfccomp: pfccomp.pas
-	fpc -Miso -g $<
+	fpc -Mobjfpc -g $<
 
 pint: pint.pas
-	fpc -Miso -g $<
+	fpc -Mobjfpc -g $<
 
 install: pfccomp pint
 	install pint /usr/bin/
