@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
 //program pfccomp(progfile,listfile,objfile,input,output); 
-program pfccomp(input, output);
+program pfccomp;
 
 uses
   SysUtils;
@@ -6288,16 +6288,24 @@ var
     writeln('*********************************');
   end;
 
-
+  procedure Usage;
+  begin
+    Writeln('Usage: pfccomp progfile listfile objfile')
+  end;
 
 begin
   (* dgm *)
   if paramcount = 3 then
-  begin
-    Assign(progfile, ParamStr(1));
-    Assign(listfile, ParamStr(2));
-    Assign(objfile, ParamStr(3));
-  end;
+    begin
+      Assign(progfile, ParamStr(1));
+      Assign(listfile, ParamStr(2));
+      Assign(objfile, ParamStr(3));
+    end
+  else
+    begin
+      Usage;
+      Exit;
+    end;
 
   try
     pfcfront(success)
