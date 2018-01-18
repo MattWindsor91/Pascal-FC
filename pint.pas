@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //program pint(objfile,pmdfile,input,output);
 program pint(input,output);
 
-
+  uses SysUtils;
 
 (* Pascal-FC interpreter *)
 
@@ -128,6 +128,11 @@ const
 type 
 
 	(* @(#)globtypes.i	4.7 11/8/91 *)
+
+    { These replace GOTOs in the original. }
+    StkChkException = Class(Exception);
+    ProcNchkException = Class(Exception);
+    DeadlockException = Class(Exception);
 
    opcode=(ldadr,ldval,ldind,updis,cobeg,coend,wait,signal,stfun,ixrec,
       jmp,jmpiz,for1up,for2up,mrkstk,callsub,ixary,ldblk,cpblk,
@@ -279,6 +284,7 @@ type
 
 var
 	objfile: file of objcoderec;
+        objrec: objcoderec;
 
 	pmdfile: text;
 	stantyps: typset;
@@ -402,7 +408,7 @@ var
 
 				begin
 					write(tofile,'[');
-					with  objfile^.genatab[rf] do
+					with  objrec.genatab[rf] do
 						begin
 						sub := (offset div elsize) + low;
 						offset := offset mod elsize;
@@ -427,7 +433,7 @@ var
 
 				begin
 					write(tofile,'.');
-					with objfile^ do
+					with objrec do
 						begin
 						tptr := genbtab[rf].last;
 						while gentab[tptr].taddr > offset do
@@ -458,7 +464,7 @@ var
 				dx: integer;
 
 			begin
-				with objfile^ do
+				with objrec do
 					begin
 					while gentab[tptr].obj <> variable do
 						tptr := gentab[tptr].link;
@@ -479,7 +485,7 @@ var
             or any variable declared in a monitor *)
 
 			begin
-				with objfile^ do
+				with objrec do
 					begin
 					printname(gentab[tptr].name,tofile);
 					if offset = 0 then
@@ -518,7 +524,7 @@ var
 			begin
 				write(tofile,'.');
 				target := ((target - ptab[1].stackbase) mod stkincr);
-				with objfile^ do
+				with objrec do
 					begin
 					tptr := genbtab[bref].last;
 					followlinks(target,tptr,offset);
@@ -536,7 +542,7 @@ var
 				end
 			else
 				prtarget := target;
-			with objfile^ do
+			with objrec do
 				begin
 				tptr := genbtab[2].last;
 				followlinks(prtarget,tptr,offset);
@@ -563,7 +569,8 @@ var
 
 	begin
 
-		reset(objfile)
+		reset(objfile);
+                read(objfile, objrec)
 
 	end;  (* getcode *)
 
@@ -791,7 +798,7 @@ var
 			writeln(pmdfile,'Global variables');
 			writeln(pmdfile);
 
-			with objfile^ do
+			with objrec do
 				begin
          	h1 := genbtab[2].last;
          	while gentab[h1].link <> 0 do
@@ -822,7 +829,7 @@ var
 							end;  (* if *)
                		h1 := link
                	end  (* with gentab *)
-					end;  (* with objfile^ *)
+					end;  (* with objrec *)
 			if noglobals then
 
 				writeln(pmdfile,'(None)')
@@ -849,7 +856,7 @@ var
    begin  (* Expmd *)
 		rewrite(pmdfile);
 		write(pmdfile,'Pascal-FC post-mortem report on ');
-		printname(objfile^.prgname,pmdfile);
+		printname(objrec.prgname,pmdfile);
 		writeln(pmdfile);
 		putversion(pmdfile);
 		writeln(pmdfile);
@@ -916,6 +923,7 @@ end;
 
 
 	procedure runprog;
+        var inchar: char; { Replaces inchar }
 
 	(* execute program once *)
 
@@ -1064,7 +1072,7 @@ end;
 							end
                   else
                      begin 
-                     ps:=deadlock;goto 98 
+                     ps:=deadlock; raise DeadlockException.Create('deadlock');
                      end 
                else
                   ptab[0].active := true
@@ -1296,10 +1304,9 @@ end;
 
 
 	procedure skipblanks;
-
 	begin
-		while  not eof and (input^ = ' ') do
-			get(input)
+		while  not eof and (inchar = ' ') do
+			read(input, inchar)
 	end;  (* skipblanks *)
 
 
@@ -1318,14 +1325,14 @@ end;
          else
             begin
             inum := inum*10;
-            digit := ord(input^) - ord('0');
+            digit := ord(inchar) - ord('0');
             if digit > (intmax - inum) then
                numerror := true
             else
                inum := inum + digit
             end;
-         get(input)
-      until not (input^ in['0'..'9']); 
+         read(input, inchar)
+      until not (inchar in['0'..'9']);
       if numerror then
       	inum := 0
 	end;  (* readunsignedint *)
@@ -1339,9 +1346,9 @@ end;
 	var
 		digit, base: integer;
 		negative: boolean;
-
+                inchar: char;
 	begin
-         get(input);
+         read(input, inchar);
          if (inum in [2, 8, 16]) then
 				base := inum
 			else
@@ -1364,14 +1371,14 @@ end;
                   inum := inum mod (intmax div base + 1)
                   end;
                inum := inum*base;
-               if input^ in ['0'..'9'] then
-                  digit := ord(input^) - ord('0')
+               if inchar in ['0'..'9'] then
+                  digit := ord(inchar) - ord('0')
                else
-						if input^ in ['A'..'Z'] then
-							digit := ord(input^) - ord('A') + 10
+						if inchar in ['A'..'Z'] then
+							digit := ord(inchar) - ord('A') + 10
 						else
-							if input^ in ['a'..'z'] then
-                        		digit := ord(input^) - ord('a') + 10
+							if inchar in ['a'..'z'] then
+                        		digit := ord(inchar) - ord('a') + 10
 							else
 								numerror := true;
                if digit >= base then
@@ -1379,8 +1386,8 @@ end;
                else
                   inum := inum + digit
                end;
-            get(input)
-         until not (input^ in ['0'..'9','A'..'Z','a'..'z']);
+            read(input, inchar)
+         until not (inchar in ['0'..'9','A'..'Z','a'..'z']);
          if negative then
 				if inum = 0 then
 					numerror := true
@@ -1402,12 +1409,12 @@ end;
 		else
 			begin
 			sign := 1;
-			if input^ = '+' then
-				get(input)
+			if inchar = '+' then
+				read(input, inchar)
 			else
-				if input^ = '-' then
+				if inchar = '-' then
 					begin
-					get(input);
+					read(input, inchar);
 					sign := -1
 					end
 			end
@@ -1426,11 +1433,11 @@ end;
 		findstart(sign);
 		if not eof then
 			begin
-			if input^ in ['0'..'9'] then
+			if inchar in ['0'..'9'] then
 				begin
 				readunsignedint(inum,numerror);
 				inum := inum * sign;
-				if input^ = '#' then
+				if inchar = '#' then
 					readbasedint(inum,numerror)
 				end
 			else
@@ -1448,17 +1455,17 @@ end;
 		s, sign, digit: integer;
 
 	begin
-		get(input);
+		read(input, inchar);
 		sign := 1; s := 0;
-		if input^ = '+' then
-			get(input)
+		if inchar = '+' then
+			read(input, inchar)
 		else
-			if input^ = '-' then
+			if inchar = '-' then
 				begin
-				get(input); 
+				read(input, inchar); 
 				sign := -1
 				end;
-		if not (input^ in ['0'..'9']) then
+		if not (inchar in ['0'..'9']) then
 			numerror := true
 		else
 			repeat
@@ -1467,14 +1474,14 @@ end;
 				else
 					begin
 					s := 10*s;
-					digit :=  ord(input^) - ord('0');
+					digit :=  ord(inchar) - ord('0');
 					if digit > (intmax - s) then
 						numerror := true
 					else
 						s := s + digit
 					end;
-				get(input)
-			until not (input^ in ['0'..'9']);
+				read(input, inchar)
+			until not (inchar in ['0'..'9']);
 		if numerror then
 			e := 0
 		else
@@ -1527,12 +1534,12 @@ end;
 		numerror := false;
 		findstart(sign);
 		if not eof then
-			if input^ in ['0'..'9'] then
+			if inchar in ['0'..'9'] then
 				begin
-				while input^ = '0' do
-					get(input);
+				while inchar = '0' do
+					read(input, inchar);
 				rnum := 0.0; k := 0; e := 0;
-				while input^ in ['0'..'9'] do
+				while inchar in ['0'..'9'] do
 					begin
 					if rnum > (realmax/10.0) then
 						e := e + 1
@@ -1540,36 +1547,36 @@ end;
 						begin
 						k := k + 1;
 						rnum := rnum * 10.0;
-						digit := ord(input^) - ord('0');
+						digit := ord(inchar) - ord('0');
 						if digit <= (realmax - rnum) then
 							rnum := rnum + digit
 						end;
-					get(input)
+					read(input, inchar)
 					end;
-				if input^ = '.' then
+				if inchar = '.' then
 					begin  (* fractional part *)
-					get(input);
+					read(input, inchar);
 					repeat
-						if input^ in ['0'..'9'] then
+						if inchar in ['0'..'9'] then
 							begin
 							if rnum <= (realmax/10.0) then
 								begin
 								e := e - 1;
 								rnum := 10.0*rnum;
-								digit := ord(input^) - ord('0');
+								digit := ord(inchar) - ord('0');
 								if digit <= (realmax - rnum) then
 									rnum := rnum + digit
 								end;
-							get(input)
+							read(input, inchar)
 							end
 						else
 							numerror := true
-					until not (input^ in ['0'..'9']);
-					if input^ in ['e','E'] then readscale(e,numerror);
+					until not (inchar in ['0'..'9']);
+					if inchar in ['e','E'] then readscale(e,numerror);
 					if e <> 0 then adjustscale(rnum,k,e,numerror)
 					end  (* fractional part *)
 				else
-					if input^ in ['e','E'] then
+					if inchar in ['e','E'] then
 						begin
 						readscale(e,numerror);
 						if e <> 0 then adjustscale(rnum,k,e,numerror)
@@ -1594,22 +1601,25 @@ end;
 begin (* Runprog *) 
 	stantyps := [ints,reals,chars,bools];
       writeln;
-      writeln('Program ',objfile^.prgname,'...  execution begins ...');
+      writeln('Program ',objrec.prgname,'...  execution begins ...');
       writeln; writeln;
       initqueue;
-      s[1].i:=0;s[2].i:=0;s[3].i:=-1;s[4].i:=objfile^.genbtab[1].last;
+      s[1].i:=0;s[2].i:=0;s[3].i:=-1;s[4].i:=objrec.genbtab[1].last;
+
+            try { Exception trampoline for Deadlock }
+
       with ptab[0] do 
       begin 
          stackbase := 0; b:=0;suspend:=0;display[1]:=0; 
-			pc:=objfile^.gentab[s[4].i].taddr;
+			pc:=objrec.gentab[s[4].i].taddr;
          active:=true; termstate:=false;stacksize:=stmax-pmax*stkincr;
          curmon := 0; wakeup := 0; wakestart := 0;
 			onselect := false;
-         t:=objfile^.genbtab[2].vsize-1;
+         t:=objrec.genbtab[2].vsize-1;
 			if t > stacksize then
 				begin
 				ps := stkchk;
-				goto 98
+				raise StkChkException.Create('stack overflow')
 				end;
          for h1:=5 to t do s[h1].i:=0
       end;
@@ -1638,7 +1648,6 @@ begin (* Runprog *)
          time := -1
          end;
 
-
       repeat
          if (ptab[0].active) and (ptab[0].suspend = 0) and (ptab[0].wakeup=0) then
             curpr := 0
@@ -1650,7 +1659,7 @@ begin (* Runprog *)
          with ptab[curpr] do
             begin
 
-            ir := objfile^.gencode[pc];
+            ir := objrec.gencode[pc];
 
             pc:=pc+1
 
@@ -1933,7 +1942,7 @@ begin (* Runprog *)
                   if npr = pmax then 
                      begin
                      ps := procnchk;
-                     goto 98
+                     raise ProcNchkException.Create('process overflow');
                      end 
                   else 
                      begin
@@ -1942,7 +1951,7 @@ begin (* Runprog *)
                      curpr := npr;
                      end
                   end;
-                  h1 := objfile^.genbtab[objfile^.gentab[ir.y].ref].vsize;
+                  h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
                   with ptab[curpr] do
                      begin
                      if t+h1 > stacksize  then
@@ -1958,7 +1967,7 @@ begin (* Runprog *)
                begin
                   h1 := t-ir.y; 
                   h2 := s[h1+4].i; (*h2 points to tab*) 
-                  h3 := objfile^.gentab[h2].lev; display[h3+1] := h1; 
+                  h3 := objrec.gentab[h2].lev; display[h3+1] := h1;
                   h4 := s[h1+3].i+h1; 
                   s[h1+1].i := pc; s[h1+2].i := display[h3];
                   if ir.x=1 then
@@ -1970,11 +1979,11 @@ begin (* Runprog *)
                   else
                      s[h1+3].i := b;
                   for h3 := t+1 to h4 do s[h3].i := 0;
-                  b := h1; t := h4; pc := objfile^.gentab[h2].taddr 
+                  b := h1; t := h4; pc := objrec.gentab[h2].taddr
                end; 
 
             21: 
-					with objfile^ do
+					with objrec do
                	begin
                   (*index*) h1 := ir.y; (*h1 points to genatab*) 
                   h2 := genatab[h1].low; h3 := s[t].i; 
@@ -2027,7 +2036,7 @@ begin (* Runprog *)
 					if t > stacksize then
 						ps := stkchk
 					else
-						s[t].r := objfile^.genrconst[ir.y]
+						s[t].r := objrec.genrconst[ir.y]
 					end;
 
 				26:
@@ -2081,7 +2090,7 @@ begin (* Runprog *)
 							h3 := h3 - 1
 							end;
                   repeat
-                     write(objfile^.genstab[h2]);h1 := h1-1; h2 := h2+1 
+                     write(objrec.genstab[h2]);h1 := h1-1; h2 := h2+1 
                   until h1=0
                end; 
 
@@ -2917,6 +2926,12 @@ begin (* Runprog *)
          if statcounter >= statmax then
             ps := statchk
       until ps <> run;
+
+      except
+      on E: ProcNchkException do;
+      on E: StkChkException do;
+      on E: DeadlockException do;
+      end;
 
       98: writeln;
       if ps <> fin then
