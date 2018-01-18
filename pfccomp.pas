@@ -40,7 +40,6 @@ const
   alng = 10;     (* length of identifiers *)
   xmax = maxint;
   omax = 200;            (* largest op-code for p-machine *)
-  funmax = omax;  (* highest function number *)
 
 
   (* impcons.i *)
@@ -73,27 +72,16 @@ const
   charh = 127;     (* last legal ascii character *)
 
   intmax = 32767;  (* maximum integer on target *)
-  intmsb = 16;    (* most sig. bit in target integer *)
 
   realmax = 1e38;  (* maximum real number on target
                        or host, whichever is smaller *)
-  minreal = 1e-37;  (* smallest real (for division) *)
   emax = 38;    (* maximum real exponent on target *)
   emin = -emax;
-
-  bsmsb = 7;    (* most sig. bit in target bitset *)
-
-  impfiles = False;
-  impmapping = False;
-  imptiming = False;
-  impreals = True;
 
   monvarsize = 2;
   protvarsize = 3;
   chansize = 3;
   entrysize = 3;       (* space for a process entry point *)
-  sfsize = 6;            (* size of "frame" in a select statement *)
-
 
   bitsetsize = 1;
   intsize = 1;
@@ -103,23 +91,9 @@ const
   condvarsize = 1;
   synchrosize = 0;
   procsize = 1;
-  enumsize = 1;
   realsize = 1;
 
   objalign = 1;
-  pushdown = False;
-
-  (* interpreter-specific constants *)
-
-  stepmax = 8;
-  statmax = 200000;      (* maximum statements before "livelock *)
-
-  (* NOTE - make (stmax - (stkincr * pmax)) >= stkincr *)
-
-  stmax = 5000;
-  stkincr = 200;
-  pmax = 20;
-  msb = 7;
 
 
   actrecsize = 5;  (* size of subprogram "housekeeping" block *)
@@ -267,13 +241,12 @@ var
   r, realindex: integer;
   e: integer;
   code: orderarray;
-  ttt: 0..cmax;
   useridstart: 0..tmax;
 
   intab: intabarray;
 
   int: integer;
-  simpletyps, bittyps, ipctyps: typset;
+  simpletyps, ipctyps: typset;
 
   success: boolean;
 
@@ -386,7 +359,6 @@ var
     incobegin, wascobegin: boolean;
     inprocessdec, inaloop: boolean;
     et: integer;
-    labelnum: integer;
     internalnum: integer;
 
     bounds: array[1..etmax] of record
@@ -1315,12 +1287,6 @@ var
     begin
       if l > h then
         error(ersub);
-      if (abs(l) > xmax) or (abs(h) > xmax) then
-      begin
-        error(ersub);
-        l := 0;
-        h := 0;
-      end;
       if a = amax then
         fatal(4)
       else
@@ -1479,7 +1445,6 @@ var
 
     var
       dx, prb, ttt, x: integer;            (* data allocation index *)
-      entoffset: integer;
       codelevel: integer;
       debug: integer;
 
@@ -1719,18 +1684,9 @@ var
       (* allocate space for variable *)
 
       begin
-        if pushdown then
-        begin
-          dx := dx + sz;
-          align(dx);
-          taddr := dx;
-        end
-        else
-        begin
-          align(dx);
-          taddr := dx;
-          dx := dx + sz;
-        end;
+        align(dx);
+        taddr := dx;
+        dx := dx + sz;
       end;  (* alloc *)
 
 
@@ -1761,8 +1717,6 @@ var
             alloc(sz, dx, debug);
             taddr := debug;
           end;
-          if pushdown then
-            off := dx;
         end;  (* with *)
       end;  (* enterint *)
 
@@ -2137,7 +2091,6 @@ var
         debug: integer;
 
       begin
-        entoffset := entrysize;
         insymbol;
         tp := notyp;
         rf := 0;
@@ -2656,14 +2609,13 @@ var
 
       var
         i, prt: integer;
-        anon, notforward, nestedproc: boolean;
+        anon, nestedproc: boolean;
         debug: integer;
 
       begin
         nestedproc := inprocessdec;
         inprocessdec := True;
         anon := False;
-        notforward := True;
         if nestedproc then
           error(ernotinproc)
         else
@@ -2688,7 +2640,6 @@ var
             error(erdup)
           else
           begin  (* id seen before *)
-            notforward := False;
             if tab[i].obj = type1 then
               prt := i
             else
@@ -5694,7 +5645,6 @@ var
     wascobegin := False;
     inprocessdec := False;
     inaloop := False;
-    labelnum := 0;
     internalnum := 0;
 
     if sy <> programsy then
@@ -6051,22 +6001,10 @@ var
       with tab[index] do
         if obj = address then
         begin
-          if not impmapping then
-          begin
-            writeln(listfile, 'e - ', Name, ' address mapping', ni);
-            success := False;
-          end;
-        end
-        else
-        if typ = reals then
-          if not impreals then
-          begin
-            writeln(listfile, 'e - ', Name, ' reals', ni);
-            success := False;
-          end;
-    if r <> 0 then
-      if not impreals then
-        writeln(listfile, 'e - real literals used in program');
+          { Address mapping not implemented ? }
+          writeln(listfile, 'e - ', Name, ' address mapping', ni);
+          success := False;
+        end;
   end;  (* impchecK *)
 
 
