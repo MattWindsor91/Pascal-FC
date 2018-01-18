@@ -705,29 +705,11 @@ var
         end;
       end;  (* tabtospace *)
 
-      procedure fail(n: integer);
-
-      begin
-        writeln(listfile);
-        errormsg;
-        Write(listfile, 'FATAL ERROR - ');
-        if n = 1 then
-        begin
-          writeln(listfile, 'program incomplete');
-          raise FatalError.Create('program incomplete');
-        end
-        else
-        begin
-          writeln(listfile, 'input line too long');
-          raise FatalError.Create('input line too long');
-        end;
-      end;  (* fail *)
-
     begin  (* nextch *)
       if cc = ll then
       begin
         if EOF(progfile) then
-          fail(1);
+          raise FatalError.Create('program incomplete');
         if errpos <> 0 then
         begin
           if skipflag then
@@ -752,7 +734,7 @@ var
           end;  (* else *)
         end;   (* now eoln or line buffer overflowed *)
         if not eoln(progfile) then
-          fail(2);
+          raise FatalError.Create('input line too long');
         writeln(listfile);
         ll := ll + 1;
         Read(progfile, line[ll]);
@@ -6307,15 +6289,18 @@ begin
     end;
 
   try
-    pfcfront(success)
+    pfcfront(success);
+    impcheck(success);
+    if success then
+       ict(success);
+    puttab;
+    if not success then
+      errorbanner;
   except
-    on FatalError do
-      ;
+    on e: FatalError do
+      begin
+        Writeln('A fatal error occurred:');
+        Writeln(e.Message);
+      end;
   end;
-  impcheck(success);
-  if success then
-    ict(success);
-  puttab;
-  if not success then
-    errorbanner;
 end.
