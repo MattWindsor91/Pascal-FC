@@ -759,7 +759,6 @@ var
       end;   (* if cc = ll *)
       cc := cc + 1;
       ch := line[cc];
-      writeln(ll, ' ', cc, ' ', Ord(ch));
     end; (*nextch*)
 
     procedure error(n: er);
