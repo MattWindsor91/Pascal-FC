@@ -48,8 +48,6 @@ type
 
   typset = set of types;
 
-  fnametype = packed array[1..30] of char;
-
   order =
     packed record
     f: opcode;
@@ -63,7 +61,7 @@ var
 
   (* @(#)globvars.i  4.4 6/16/92 *)
 
-  filename: fnametype;
+  filename: ShortString;
   progfile, listfile: Text;
   progname: ShortString;
   lc, t, a, b, sx: integer;
@@ -6096,6 +6094,7 @@ begin
   (* dgm *)
   if paramcount = 3 then
     begin
+      filename := ParamStr(1);
       Assign(progfile, ParamStr(1));
       Assign(listfile, ParamStr(2));
       Assign(objfile, ParamStr(3));
