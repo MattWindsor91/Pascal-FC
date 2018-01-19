@@ -30,86 +30,88 @@ uses
   GConsts;
 
 type
-  ObjOrder =
+  TObjOrder =
     packed record
     f: 0..omax;
     x: -lmax..lmax;
     y: integer;
     l: integer
   end;
-  ObjOrderArray = array[0..cmax] of ObjOrder;
+  TObjOrderArray = array[0..cmax] of TObjOrder;
 
-  Index = -xmax .. xmax;
-  MyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
+  TIndex = -xmax .. xmax;
+  TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
     grdproc, xgrdproc);
 
-  Types = (notyp, ints, reals, bools, chars, arrays, records,
+  TType = (notyp, ints, reals, bools, chars, arrays, records,
     semafors, channels, monvars, condvars, synchros, adrs,
     procs, entrys, enums, bitsets,
     protvars, protq);
 
-  TabRec =
+  TTypeSet = set of TType;
+
+  TTabRec =
     packed record
     Name: ShortString;
-    link: Index;
-    obj: MyObject;
-    typ: types;
-    ref: index;
-    normal: boolean;
+    link: TIndex;
+    obj: TMyObject;
+    typ: TType;
+    ref: TIndex;
+    normal: Boolean;
     lev: 0..lmax;
-    taddr: integer;
-    auxref: index
+    taddr: Integer;
+    auxref: TIndex
   end;
-  TabArray = array[0..tmax] of TabRec;
+  TTabArray = array[0..tmax] of TTabRec;
 
-  ATabRec =
+  TATabRec =
     packed record
-    inxtyp, eltyp: types;
-    inxref, elref, low, high, elsize, size: index;
+    inxtyp, eltyp: TType;
+    inxref, elref, low, high, elsize, size: TIndex;
   end;
-  ATabArray = array[1..amax] of ATabRec;
+  TATabArray = array[1..amax] of TATabRec;
 
-  BTabRec =
+  TBTabRec =
     packed record
-    last, lastpar, psize, vsize: index;
+    last, lastpar, psize, vsize: TIndex;
     tabptr: 0..tmax
   end;
-  BTabArray = array[1..bmax] of BTabRec;
+  TBTabArray = array[1..bmax] of TBTabRec;
 
-  STabArray = packed array[0..smax] of char;
-  RealArray = array[1..rmax] of real;
+  TSTabArray = packed array[0..smax] of Char;
+  TRealArray = array[1..rmax] of Real;
 
-  InTabRec =
+  TInTabRec =
     packed record
-    tp: types;
+    tp: TType;
     lv: 0..lmax;
     rf: integer;
     vector: integer;
     off: integer;
     tabref: integer
   end;
-  InTabArray = array[1..intermax] of InTabRec;
+  TInTabArray = array[1..intermax] of TInTabRec;
 
   { Type of object code records. }
-  ObjCodeRec =
+  TObjCodeRec =
     packed record
     fname: ShortString;
     prgname: ShortString;
-    gencode: ObjOrderArray;
+    gencode: TObjOrderArray;
     ngencode: 0..cmax;
 
-    gentab: TabArray;
+    gentab: TTabArray;
     ngentab: 0..tmax;
 
-    genatab: ATabArray;
+    genatab: TATabArray;
     ngenatab: 0..amax;
 
-    genbtab: BTabArray;
+    genbtab: TBTabArray;
     ngenbtab: 0..bmax;
 
-    genstab: STabArray;
+    genstab: TSTabArray;
     ngenstab: 0..smax;
-    genrconst: RealArray;
+    genrconst: TRealArray;
 
     useridstart: 0..tmax;
 

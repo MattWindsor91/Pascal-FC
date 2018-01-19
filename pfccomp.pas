@@ -35,7 +35,7 @@ type
 
   (* @(#)globtypes.i  4.7 11/8/91 *)
 
-  opcode = (ldadr, ldval, ldind, updis, cobeg, coend, wait, signal, stfun, ixrec,
+  TOpcode = (ldadr, ldval, ldind, updis, cobeg, coend, wait, signal, stfun, ixrec,
     jmp, jmpiz, for1up, for2up, mrkstk, callsub, ixary, ldblk, cpblk,
     ldcon, ifloat, readip, wrstr, wrval, stop, retproc, retfun, repadr, notop,
     negate, store, relequ, relneq, rellt, relle, relgt, relge, orop,
@@ -46,17 +46,15 @@ type
     wrsfm, wrbas, power2, slabl, blokk, param, case1, case2, selec1,
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
-  typset = set of types;
-
-  order =
+  TOrder =
     packed record
-    f: opcode;
+    f: TOpcode;
     x: -lmax.. +lmax;
     y: integer;
-    instyp: types;
-    line: integer
+    instyp: TType;
+    line: Integer
   end;
-  orderarray = array[0..cmax] of order;
+  TOrderArray = array[0..cmax] of TOrder;
 var
 
   (* @(#)globvars.i  4.4 6/16/92 *)
@@ -64,26 +62,26 @@ var
   filename: ShortString;
   progfile, listfile: Text;
   progname: ShortString;
-  lc, t, a, b, sx: integer;
-  stantyps: typset;
-  display: array[0..lmax] of integer;
-  tab: tabarray;
-  atab: atabarray;
-  btab: btabarray;
-  stab: stabarray;
-  rconst: realarray;
-  rnum: real;
-  r, realindex: integer;
-  e: integer;
-  code: orderarray;
+  lc, t, a, b, sx: Integer;
+  stantyps: TTypeSet;
+  display: array[0..lmax] of Integer;
+  tab: TTabArray;
+  atab: TATabArray;
+  btab: TBTabArray;
+  stab: TSTabArray;
+  rconst: TRealArray;
+  rnum: Real;
+  r, realindex: Integer;
+  e: Integer;
+  code: TOrderArray;
   useridstart: 0..tmax;
 
-  intab: intabarray;
+  intab: TInTabarray;
 
-  int: integer;
-  simpletyps, ipctyps: typset;
+  int: Integer;
+  simpletyps, ipctyps: TTypeSet;
 
-  success: boolean;
+  success: Boolean;
 
 
 
@@ -92,8 +90,8 @@ var
 
   (* implementation-dependent variable declarations for 1 *)
 
-  objrec: objcoderec;
-  objfile: file of objcoderec;
+  objrec: TObjCodeRec;
+  objfile: file of TObjCodeRec;
 
 
   (* @(#)pfcfront.i  5.2 12/1/92 *)
@@ -137,8 +135,8 @@ var
       eronlyinres, ergrdcall);
 
     item = record
-      typ: types;
-      ref: index;
+      typ: TType;
+      ref: TIndex;
     end;
 
     keytabrec = record
@@ -166,8 +164,8 @@ var
     sps: array[char] of symbol;
 
     chantab: array[1..chanmax] of packed  record
-      eltyp: types;
-      elref, elsize: index
+      eltyp: TType;
+      elref, elsize: TIndex
     end;  (* chantab *)
     chan: 0..chanmax;              (* index to chantab  *)
 
@@ -1058,7 +1056,7 @@ var
 
     (*-----------------------------------------------------------------------enter---*)
 
-    procedure enter(x0: ShortString; x1: MyObject; x2: types; x3: integer);
+    procedure enter(x0: ShortString; x1: TMyObject; x2: TType; x3: integer);
 
     begin
       t := t + 1; (*enter standard identifiers*)
@@ -1076,7 +1074,7 @@ var
       end;
     end; (* enter *)
 
-    procedure enterarray(tp: types; l, h: integer);
+    procedure enterarray(tp: TType; l, h: integer);
 
     begin
       if l > h then
@@ -1131,7 +1129,7 @@ var
 
 
 
-    procedure emit0typed(fop: opcode; tp: types);
+    procedure emit0typed(fop: TOpcode; tp: TType);
 
     begin
       if lc = cmax then
@@ -1146,14 +1144,14 @@ var
     end;  (* emit0typed *)
 
 
-    procedure emit0(fop: opcode);
+    procedure emit0(fop: TOpcode);
 
     begin
       emit0typed(fop, notyp);
     end;  (* emit0 *)
 
 
-    procedure emit1typed(fop: opcode; b: integer; tp: types);
+    procedure emit1typed(fop: TOpcode; b: integer; tp: TType);
 
     begin
       if lc = cmax then
@@ -1170,14 +1168,14 @@ var
 
 
 
-    procedure emit1(fop: opcode; b: integer);
+    procedure emit1(fop: TOpcode; b: integer);
 
     begin
       emit1typed(fop, b, notyp);
     end;  (* emit1 *)
 
 
-    procedure emit2typed(fop: opcode; a, b: integer; tp: types);
+    procedure emit2typed(fop: TOpcode; a, b: integer; tp: TType);
 
     begin
       if lc = cmax then
@@ -1195,7 +1193,7 @@ var
 
 
 
-    procedure emit2(fop: opcode; a, b: integer);
+    procedure emit2(fop: TOpcode; a, b: integer);
 
     begin
       emit2typed(fop, a, b, notyp);
@@ -1224,16 +1222,16 @@ var
 
 
 
-    procedure block(fsys: symset; lobj: MyObject; prt: integer; level: integer);
+    procedure block(fsys: symset; lobj: TMyObject; prt: integer; level: integer);
 
     type
       conrec = record
-        case tp: types of
+        case tp: TType of
           ints,
           bools,
           chars: (i: integer);
           enums: (ordval: integer;
-            ref: index);
+            ref: TIndex);
           reals: (r: real)
       end;
 
@@ -1287,7 +1285,7 @@ var
 
 
 
-      procedure enter(id: ShortString; k: MyObject);
+      procedure enter(id: ShortString; k: TMyObject);
 
       (* enter new identifier into symbol table *)
 
@@ -1515,7 +1513,7 @@ var
       end;  (* enterint *)
 
 
-      function contains(targetset: typset; tp: types; rf: index): boolean;
+      function contains(targetset: TTypeSet; tp: TType; rf: TIndex): boolean;
 
         (* returns true if any component of objekt is in target set *)
 
@@ -1605,17 +1603,17 @@ var
 
 
 
-      procedure typ(fsys: symset; var tp: types; var rf, sz: integer);
+      procedure typ(fsys: symset; var tp: TType; var rf, sz: integer);
 
       var
-        eltp: types;
+        eltp: TType;
         elrf, x: integer;
         elsz, offset, t0, t1: integer;
 
         procedure arraytyp(var aref, arsz: integer);
 
         var
-          eltp: types;
+          eltp: TType;
           low, high: conrec;
           irf, elrf, elsz: integer;
 
@@ -1879,7 +1877,7 @@ var
       (* formal parameter list *)
 
       var
-        tp: types;
+        tp: TType;
         rf, sz, x, t0: integer;
         valpar: boolean;
         debug: integer;
@@ -1992,7 +1990,7 @@ var
       var
         valpar, perror: boolean;
         lastp, cp, k, t0, rf: integer;
-        tp: types;
+        tp: TType;
 
 
         procedure checkident;
@@ -2181,7 +2179,7 @@ var
         end;
       end;  (* constantdeclaration *)
 
-      procedure testlevel(tp: types; rf: index);
+      procedure testlevel(tp: TType; rf: TIndex);
 
       (* test for level error in type *)
 
@@ -2205,7 +2203,7 @@ var
       procedure typedeclaration;
 
       var
-        tp: types;
+        tp: TType;
         rf, sz, t1: integer;
 
       begin
@@ -2250,7 +2248,7 @@ var
 
       var
         t0, t1, rf, sz: integer;
-        tp: types;
+        tp: TType;
         debug: integer;
 
       begin
@@ -2348,7 +2346,7 @@ var
       procedure procdeclaration;
 
       var
-        lobj: MyObject;
+        lobj: TMyObject;
         i, prt: integer;
 
       begin
@@ -2719,7 +2717,7 @@ var
           emit2(updis, tab[i].lev, codelevel);
       end;  (* call *)
 
-      procedure capscall(i: index);
+      procedure capscall(i: TIndex);
 
       (* call exported capsule procedure *)
       (* i points to tab entry of capsule *)
@@ -2801,7 +2799,7 @@ var
 
 
 
-      function resulttype(a, b: types): types;
+      function resulttype(a, b: TType): TType;
 
         (* entered with op in [plus,minus,times] *)
 
@@ -2886,7 +2884,7 @@ var
               var
                 n: integer;
                 v: item;
-                ts: typset;
+                ts: TTypeSet;
 
               begin  (* Standfun *)
                 n := tab[i].taddr;
@@ -2983,7 +2981,7 @@ var
 
               var
                 e: item;
-                basetyp: types;
+                basetyp: TType;
 
               begin  (* Setlit *)
                 insymbol;
@@ -3354,8 +3352,8 @@ var
         (* entered from assignment or channelop with x a channel *)
 
         var
-          basetype: types;
-          baseref, basesize: index;
+          basetype: TType;
+          baseref, basesize: TIndex;
           k, extra: integer;
           y: item;
 
@@ -3609,7 +3607,7 @@ var
           x: item;
           i, j, k, lc1: integer;
           casetab: array[1..casemax] of packed record
-            val, lc: index
+            val, lc: TIndex
           end;
           exittab: array[1..casemax] of integer;
 
@@ -3775,7 +3773,7 @@ var
         procedure forstatement;
 
         var
-          cvt: types;
+          cvt: TType;
           x: item;
           i, lc1, lc2, rf: integer;
           nestedloops: boolean;
@@ -3920,13 +3918,13 @@ var
         end;  (* acceptstatement *)
 
 
-        procedure acceptinselect(var k: index);
+        procedure acceptinselect(var k: TIndex);
 
         (* Ada-like accept statement in select statement *)
 
         var
           i, extra: integer;
-          h, j: index;
+          h, j: TIndex;
 
           err: boolean;
 
@@ -4023,7 +4021,7 @@ var
         (* parser for select statement *)
 
         var
-          ends: array[1..casemax] of index;
+          ends: array[1..casemax] of TIndex;
           c: 0..casemax;
           f, loop: integer;
 
@@ -4038,11 +4036,11 @@ var
             x: item;
             guard, rep: boolean;
             i: integer;
-            g, h, k: index;
+            g, h, k: TIndex;
             replc, repcj: 0..cmax;
-            cvt: types;
+            cvt: TType;
 
-            procedure repstart(var i: integer; var cvt: types);
+            procedure repstart(var i: integer; var cvt: TType);
 
             (* leading code for replicate alternative *)
 
@@ -4122,7 +4120,7 @@ var
                 error(erreplicate);
             end;  (* repstart *)
 
-            procedure repend(i: integer; cvt: types);
+            procedure repend(i: integer; cvt: TType);
 
             (* trailing code for replicate alternative *)
 
@@ -4764,7 +4762,7 @@ var
 
 
 
-      procedure capsuledeclaration(form: types);
+      procedure capsuledeclaration(form: TType);
 
     (* process declaration of encapsulating objekts:
        monitors or resources *)
@@ -5534,7 +5532,7 @@ var
 
   (* @(#)listings.i  4.4 11/8/91 *)
 
-  procedure putsuff(anytype: types);
+  procedure putsuff(anytype: TType);
 
   (* write suffix in "assembly" listing *)
 
@@ -5556,7 +5554,7 @@ var
   end;  (* procedure putsuff *)
 
 
-  procedure putop(fop: opcode; var tofile: Text);
+  procedure putop(fop: TOpcode; var tofile: Text);
 
   (* write op-code to standard output *)
 
@@ -5651,7 +5649,7 @@ var
   end;  (* putop *)
 
 
-  procedure writetype(anytype: types);
+  procedure writetype(anytype: TType);
 
   begin
     case anytype of
@@ -5681,7 +5679,7 @@ var
 
 
 
-  procedure writeobj(anyobj: MyObject);
+  procedure writeobj(anyobj: TMyObject);
 
   begin
     case anyobj of

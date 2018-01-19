@@ -38,8 +38,6 @@ type
   ProcNchkException = class(Exception);
   DeadlockException = class(Exception);
 
-  typset = set of types;
-
   (* unixtypes.i *)
 
   (* Pascal-FC "universal" compiler system *)
@@ -59,7 +57,7 @@ type
   end;
 
   stackrec = record
-    case tp: types of
+    case tp: TType of
       ints: (i: integer);
       bitsets: (bs: powerset);
       reals: (r: real)
@@ -73,15 +71,15 @@ type
 
 
 var
-  objfile: file of objcoderec;
-  objrec: objcoderec;
+  objfile: file of TObjCodeRec;
+  objrec: TObjCodeRec;
 
   pmdfile: Text;
-  stantyps: typset;
+  stantyps: TTypeSet;
   ch: char;
 
 
-  ir: objorder;
+  ir: TObjOrder;
   ps: (run, fin, divchk, inxchk, charchk, stkchk, redchk, deadlock,
     channerror, guardchk, queuechk, procnchk, statchk, nexistchk,
     namechk, casechk, bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
@@ -171,21 +169,21 @@ var
   end;  (* printname *)
 
 
-  procedure nameobj(target: integer; var tp: types; var tofile: Text);
+  procedure nameobj(target: integer; var tp: TType; var tofile: Text);
 
   var
     tptr, procptr, offset, prtarget: integer;
-    rf: index;
+    rf: TIndex;
 
 
 
 
-    procedure unselector(var rf: index; var tp: types);
+    procedure unselector(var rf: TIndex; var tp: TType);
 
     (* output array subscripts or record fields *)
 
 
-      procedure arraysub(var rf: index; var tp: types);
+      procedure arraysub(var rf: TIndex; var tp: TType);
 
       var
         sub: integer;
@@ -209,7 +207,7 @@ var
       end;  (* arraysub *)
 
 
-      procedure recfield(var rf: index; var tp: types);
+      procedure recfield(var rf: TIndex; var tp: TType);
 
       var
         tptr: integer;
@@ -364,7 +362,7 @@ var
 
 
 
-  procedure headermsg(tp: types; var tofile: Text);
+  procedure headermsg(tp: TType; var tofile: Text);
 
   begin
     with ptab[curpr] do
@@ -441,7 +439,7 @@ var
   end;  (* headermsg *)
 
 
-  procedure printyp(tp: types; var tofile: Text);
+  procedure printyp(tp: TType; var tofile: Text);
 
   begin
     case tp of
@@ -464,7 +462,7 @@ var
   (* give pmd report on one process *)
 
   var
-    tp: types;
+    tp: TType;
     loop, frameptr, chanptr: integer;
 
   begin
@@ -617,7 +615,7 @@ var
 
   var
     h1: integer;
-    tp: types;
+    tp: TType;
 
   begin  (* Expmd *)
     rewrite(pmdfile);
