@@ -28,8 +28,6 @@ interface
 
 const
 
-  target = 'IBM PC compatibles';
-
   maxmons = 10;          { maximum monitor in a program }
   maxcapsprocs = 10;     { maximum exported procedures from a monitor }
   casemax = 20;          { max number of case labels or selects }

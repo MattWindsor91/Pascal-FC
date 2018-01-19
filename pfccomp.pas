@@ -202,7 +202,7 @@ var
     procedure headermsg(var tofile: Text);
 
     begin
-      writeln(tofile, '- Pascal-FC for ', target, ' - ');
+      writeln(tofile, '- Pascal-FC');
       writeln(tofile, '- GNU Compiler Version P5.2');
       writeln(tofile);
       writeln(tofile, 'G L Davies  &  A Burns, University of York');
