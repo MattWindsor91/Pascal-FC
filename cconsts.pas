@@ -28,27 +28,16 @@ interface
 
 const
 
-  (* @(#)globcons.i  4.1 10/24/89 *)
-
-  alng = 10;     (* length of identifiers *)
-  xmax = maxint;
-  omax = 200;            (* largest op-code for p-machine *)
-
-
-  (* impcons.i *)
-  (* BM 1 version *)
-
-
   target = 'IBM PC compatibles';
 
-  maxmons = 10;          (* maximum monitor in a program *)
-  maxcapsprocs = 10;     (* maximum exported procedures from a monitor *)
-  casemax = 20;          (* max number of case labels or selects *)
-  chanmax = 20;          (* maximum size of channel table - gld *)
-  etmax = 20;    (* enumeration type upper bounds table *)
+  maxmons = 10;          { maximum monitor in a program }
+  maxcapsprocs = 10;     { maximum exported procedures from a monitor }
+  casemax = 20;          { max number of case labels or selects }
+  chanmax = 20;          { maximum size of channel table - gld }
+  etmax = 20;            { enumeration type upper bounds table }
 
-  llng = 121;    (* max source input line length *)
-  tabstop = 3;           (* for 1 implementation - gld *)
+  llng = 121;            { max source input line length }
+  tabstop = 3;           { for 1 implementation - gld }
   tabchar = 9;
 
   monvarsize = 2;
@@ -67,8 +56,7 @@ const
 
   objalign = 1;
 
-
-  actrecsize = 5;  (* size of subprogram "housekeeping" block *)
+  actrecsize = 5;        { size of subprogram "housekeeping" block }
 
 implementation
 

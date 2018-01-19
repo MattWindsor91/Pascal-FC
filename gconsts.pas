@@ -27,37 +27,31 @@ unit GConsts;
 interface
 
 const
-  alng = 10;     (* length of identifiers *)
+  alng = 10;             { length of identifiers }
   xmax = maxint;
-  omax = 200;            (* largest op-code for p-machine *)
-  intermax = 10;         (* max no. of mapped ipc primitives *)
-  tmax = 150;            (* max size of symbol table *)
-  bmax = 50;             (* max size of block table *)
-  amax = 20;             (* max size of array table *)
-  cmax = 2000;           (* max size of p-code array *)
-  lmax = 7;              (* max depth of block nesting *)
-  smax = 1500;           (* max size of string table *)
-  rmax = 50;    (* real constant table limit *)
+  omax = 200;            { largest op-code for p-machine }
+  intermax = 10;         { max no. of mapped ipc primitives }
+  tmax = 150;            { max size of symbol table }
+  bmax = 50;             { max size of block table }
+  amax = 20;             { max size of array table }
+  cmax = 2000;           { max size of p-code array }
+  lmax = 7;              { max depth of block nesting }
+  smax = 1500;           { max size of string table }
+  rmax = 50;             { real constant table limit }
 
   fals = 0;
   tru = 1;
-  charl = 0;        (* first legal ascii character *)
-  charh = 127;     (* last legal ascii character *)
+  charl = 0;             { first legal ascii character }
+  charh = 127;           { last legal ascii character }
 
-  intmax = 32767;  (* maximum integer on target *)
-  intmsb = 16;    (* most sig. bit in target integer *)
+  intmax = 32767;        { maximum integer on target }
+  intmsb = 16;           { most sig. bit in target integer }
 
-  realmax = 1e38;  (* maximum real number on target
-                       or host, whichever is smaller *)
-  emax = 38;    (* maximum real exponent on target *)
+  realmax = 1e38;        { maximum real number on target or host, whichever is smaller }
+  emax = 38;             { maximum real exponent on target }
   emin = -emax;
 
-  entrysize = 3;       (* space for a process entry point *)
-
-
-(* interpreter-specific constants *)
-
-
+  entrysize = 3;         { space for a process entry point }
 
 implementation
 

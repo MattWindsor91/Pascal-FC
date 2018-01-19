@@ -28,17 +28,17 @@ interface
 
 const
   stepmax = 8;
-  statmax = 200000;      (* maximum statements before "livelock *)
+  statmax = 200000;      { maximum statements before "livelock" }
 
-  (* NOTE - make (stmax - (stkincr * pmax)) >= stkincr *)
+  { NOTE - make (stmax - (stkincr * pmax)) >= stkincr }
 
   stmax = 5000;
   stkincr = 200;
   pmax = 20;
 
-  minreal = 1e-37;  (* smallest real (for division) *)
-  bsmsb = 7;    (* most sig. bit in target bitset *)
-  sfsize = 6;            (* size of "frame" in a select statement *)
+  minreal = 1e-37;       { smallest real (for division) }
+  bsmsb = 7;             { most sig. bit in target bitset }
+  sfsize = 6;            { size of "frame" in a select statement }
 
 implementation
 
