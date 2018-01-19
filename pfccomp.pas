@@ -102,9 +102,6 @@ var
 
   (* "Universal" Pascal-FC compiler front end *)
 
-  label
-    99;
-
   const
 
     nkw = 51;             (* number of reserved words recognised *)
@@ -5532,8 +5529,7 @@ var
       success := False;
       errormsg;
     end;
-    99:
-      writeln;
+    writeln;
   end;  (* pfcfront *)
 
   (* @(#)listings.i  4.4 11/8/91 *)
