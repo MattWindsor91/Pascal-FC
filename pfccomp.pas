@@ -22,79 +22,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
-  SysUtils;
+  SysUtils, GConsts, Objcode, CConsts;
 
 type
   FatalError = class(Exception);
 
   (* Pascal-FC "universal" compiler system *)
   (* compiler "shell " *)
-
-
-const
-
-  (* @(#)globcons.i  4.1 10/24/89 *)
-
-  alng = 10;     (* length of identifiers *)
-  xmax = maxint;
-  omax = 200;            (* largest op-code for p-machine *)
-
-
-  (* impcons.i *)
-  (* BM 1 version *)
-
-
-  target = 'IBM PC compatibles';
-
-  maxmons = 10;          (* maximum monitor in a program *)
-  maxcapsprocs = 10;     (* maximum exported procedures from a monitor *)
-  intermax = 10;         (* max no. of mapped ipc primitives *)
-  tmax = 150;            (* max size of symbol table *)
-  bmax = 50;             (* max size of block table *)
-  amax = 20;             (* max size of array table *)
-  casemax = 20;          (* max number of case labels or selects *)
-  chanmax = 20;          (* maximum size of channel table - gld *)
-  cmax = 2000;           (* max size of p-code array *)
-  lmax = 7;              (* max depth of block nesting *)
-  smax = 1500;           (* max size of string table *)
-  rmax = 50;    (* real constant table limit *)
-  etmax = 20;    (* enumeration type upper bounds table *)
-
-  llng = 121;    (* max source input line length *)
-  tabstop = 3;           (* for 1 implementation - gld *)
-  tabchar = 9;
-
-  fals = 0;
-  tru = 1;
-  charl = 0;        (* first legal ascii character *)
-  charh = 127;     (* last legal ascii character *)
-
-  intmax = 32767;  (* maximum integer on target *)
-
-  realmax = 1e38;  (* maximum real number on target
-                       or host, whichever is smaller *)
-  emax = 38;    (* maximum real exponent on target *)
-  emin = -emax;
-
-  monvarsize = 2;
-  protvarsize = 3;
-  chansize = 3;
-  entrysize = 3;       (* space for a process entry point *)
-
-  bitsetsize = 1;
-  intsize = 1;
-  boolsize = 1;
-  charsize = 1;
-  semasize = 1;
-  condvarsize = 1;
-  synchrosize = 0;
-  procsize = 1;
-  realsize = 1;
-
-  objalign = 1;
-
-
-  actrecsize = 5;  (* size of subprogram "housekeeping" block *)
 
 
 type
@@ -112,15 +46,6 @@ type
     wrsfm, wrbas, power2, slabl, blokk, param, case1, case2, selec1,
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
-  index = -xmax .. xmax;
-  objekt = (konstant, variable, type1, prozedure, funktion, monproc, address,
-    grdproc, xgrdproc);
-
-  types = (notyp, ints, reals, bools, chars, arrays, records,
-    semafors, channels, monvars, condvars, synchros, adrs,
-    procs, entrys, enums, bitsets,
-    protvars, protq);
-
   typset = set of types;
 
   fnametype = packed array[1..30] of char;
@@ -134,91 +59,6 @@ type
     line: integer
   end;
   orderarray = array[0..cmax] of order;
-
-  objorder =
-    packed record
-    f: 0..omax;
-    x: -lmax..lmax;
-    y: integer;
-    l: integer
-  end;
-  objorderarray = array[0..cmax] of objorder;
-
-  tabrec =
-    packed record
-    Name: ShortString;
-    link: index;
-    obj: objekt;
-    typ: types;
-    ref: index;
-    normal: boolean;
-    lev: 0..lmax;
-    taddr: integer;
-    auxref: index
-  end;
-  tabarray = array[0..tmax] of tabrec;
-
-  atabrec =
-    packed record
-    inxtyp, eltyp: types;
-    inxref, elref, low, high, elsize, size: index;
-  end;
-  atabarray = array[1..amax] of atabrec;
-
-  btabrec =
-    packed record
-    last, lastpar, psize, vsize: index;
-    tabptr: 0..tmax
-  end;
-  btabarray = array[1..bmax] of btabrec;
-
-  stabarray = packed array[0..smax] of char;
-  realarray = array[1..rmax] of real;
-
-  intabrec =
-    packed record
-    tp: types;
-    lv: 0..lmax;
-    rf: integer;
-    vector: integer;
-    off: integer;
-    tabref: integer
-  end;
-  intabarray = array[1..intermax] of intabrec;
-
-
-
-  (* unixtypes.i *)
-
-  (* Pascal-FC "universal" compiler system *)
-  (* implementation-dependent type declaration for Unix *)
-
-
-  objcoderec =
-    packed record
-    fname: fnametype;
-    prgname: ShortString;
-    gencode: objorderarray;
-    ngencode: 0..cmax;
-
-    gentab: tabarray;
-    ngentab: 0..tmax;
-
-    genatab: atabarray;
-    ngenatab: 0..amax;
-
-    genbtab: btabarray;
-    ngenbtab: 0..bmax;
-
-    genstab: stabarray;
-    ngenstab: 0..smax;
-    genrconst: realarray;
-
-    useridstart: 0..tmax;
-
-  end;
-
-
 var
 
   (* @(#)globvars.i  4.4 6/16/92 *)
@@ -1223,7 +1063,7 @@ var
 
     (*-----------------------------------------------------------------------enter---*)
 
-    procedure enter(x0: ShortString; x1: objekt; x2: types; x3: integer);
+    procedure enter(x0: ShortString; x1: MyObject; x2: types; x3: integer);
 
     begin
       t := t + 1; (*enter standard identifiers*)
@@ -1389,7 +1229,7 @@ var
 
 
 
-    procedure block(fsys: symset; lobj: objekt; prt: integer; level: integer);
+    procedure block(fsys: symset; lobj: MyObject; prt: integer; level: integer);
 
     type
       conrec = record
@@ -1452,7 +1292,7 @@ var
 
 
 
-      procedure enter(id: ShortString; k: objekt);
+      procedure enter(id: ShortString; k: MyObject);
 
       (* enter new identifier into symbol table *)
 
@@ -2513,7 +2353,7 @@ var
       procedure procdeclaration;
 
       var
-        lobj: objekt;
+        lobj: MyObject;
         i, prt: integer;
 
       begin
@@ -5847,7 +5687,7 @@ var
 
 
 
-  procedure writeobj(anyobj: objekt);
+  procedure writeobj(anyobj: MyObject);
 
   begin
     case anyobj of

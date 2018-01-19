@@ -19,112 +19,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 *)
 {$Mode OBJFPC}
 
-
-(* @(#)pint.p  5.3 12/3/92 *)
-
-
-//program pint(objfile,pmdfile,input,output);
-program pint(input, output);
+program pint;
 
 uses
-  SysUtils;
+  SysUtils,
+  Objcode,
+  GConsts,
+  IConsts;
 
 (* Pascal-FC interpreter *)
-
-
-const
-
-
-  (* implementation-independent constants *)
-  (* @(#)globcons.i  4.1 10/24/89 *)
-
-  alng = 10;     (* length of identifiers *)
-  xmax = maxint;
-  omax = 200;            (* largest op-code for p-machine *)
-  funmax = omax;  (* highest function number *)
-
-
-  (* implementation-dependent constants *)
-  (* impcons.i *)
-  (* BM 1 version *)
-
-
-  target = 'IBM PC compatibles';
-
-  maxmons = 10;          (* maximum monitor in a program *)
-  maxcapsprocs = 10;     (* maximum exported procedures from a monitor *)
-  intermax = 10;         (* max no. of mapped ipc primitives *)
-  tmax = 150;            (* max size of symbol table *)
-  bmax = 50;             (* max size of block table *)
-  amax = 20;             (* max size of array table *)
-  casemax = 20;          (* max number of case labels or selects *)
-  chanmax = 20;          (* maximum size of channel table - gld *)
-  cmax = 2000;           (* max size of p-code array *)
-  lmax = 7;              (* max depth of block nesting *)
-  smax = 1500;           (* max size of string table *)
-  rmax = 50;    (* real constant table limit *)
-  etmax = 20;    (* enumeration type upper bounds table *)
-
-  llng = 121;    (* max source input line length *)
-  tabstop = 3;           (* for 1 implementation - gld *)
-  tabchar = 9;
-
-  fals = 0;
-  tru = 1;
-  charl = 0;        (* first legal ascii character *)
-  charh = 127;     (* last legal ascii character *)
-
-  intmax = 32767;  (* maximum integer on target *)
-  intmsb = 16;    (* most sig. bit in target integer *)
-
-  realmax = 1e38;  (* maximum real number on target
-                       or host, whichever is smaller *)
-  minreal = 1e-37;  (* smallest real (for division) *)
-  emax = 38;    (* maximum real exponent on target *)
-  emin = -emax;
-
-  bsmsb = 7;    (* most sig. bit in target bitset *)
-
-  impfiles = False;
-  impmapping = False;
-  imptiming = False;
-  impreals = True;
-
-  monvarsize = 2;
-  protvarsize = 3;
-  chansize = 3;
-  entrysize = 3;       (* space for a process entry point *)
-  sfsize = 6;            (* size of "frame" in a select statement *)
-
-  bitsetsize = 1;
-  intsize = 1;
-  boolsize = 1;
-  charsize = 1;
-  semasize = 1;
-  condvarsize = 1;
-  synchrosize = 0;
-  procsize = 1;
-  enumsize = 1;
-  realsize = 1;
-
-  objalign = 1;
-  pushdown = False;
-
-  (* interpreter-specific constants *)
-
-  stepmax = 8;
-  statmax = 200000;      (* maximum statements before "livelock *)
-
-  (* NOTE - make (stmax - (stkincr * pmax)) >= stkincr *)
-
-  stmax = 5000;
-  stkincr = 200;
-  pmax = 20;
-  msb = 7;
-
-
-  actrecsize = 5;  (* size of subprogram "housekeeping" block *)
-
 
 type
 
@@ -135,91 +38,7 @@ type
   ProcNchkException = class(Exception);
   DeadlockException = class(Exception);
 
-  opcode = (ldadr, ldval, ldind, updis, cobeg, coend, wait, signal, stfun, ixrec,
-    jmp, jmpiz, for1up, for2up, mrkstk, callsub, ixary, ldblk, cpblk,
-    ldcon, ifloat, readip, wrstr, wrval, stop, retproc, retfun, repadr, notop,
-    negate, store, relequ, relneq, rellt, relle, relgt, relge, orop,
-    add, sub, andop, mul, divop, modop, rdlin, wrlin, selec0, chanwr,
-    chanrd, delay, resum, enmon, exmon, mexec, mretn,
-    lobnd, hibnd, pref, sleap,
-    procv, ecall, acpt1, acpt2, rep1c, rep2c, btest, enmap, wrfrm, w2frm,
-    wrsfm, wrbas, power2, slabl, blokk, param, case1, case2, selec1,
-    sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
-
-  index = -xmax .. xmax;
-  myobject = (konstant, variable, type1, prozedure, funktion, monproc, address,
-    grdproc, xgrdproc);
-
-  types = (notyp, ints, reals, bools, chars, arrays, records,
-    semafors, channels, monvars, condvars, synchros, adrs,
-    procs, entrys, enums, bitsets,
-    protvars, protq);
-
   typset = set of types;
-
-  fnametype = packed array[1..30] of char;
-
-  order =
-    packed record
-    f: opcode;
-    x: -lmax.. +lmax;
-    y: integer;
-    instyp: types;
-    line: integer
-  end;
-  orderarray = array[0..cmax] of order;
-
-  objorder =
-    packed record
-    f: 0..omax;
-    x: -lmax..lmax;
-    y: integer;
-    l: integer
-  end;
-  objorderarray = array[0..cmax] of objorder;
-
-  tabrec =
-    packed record
-    Name: ShortString;
-    link: index;
-    obj: myobject;
-    typ: types;
-    ref: index;
-    normal: boolean;
-    lev: 0..lmax;
-    taddr: integer;
-    auxref: index
-  end;
-  tabarray = array[0..tmax] of tabrec;
-
-  atabrec =
-    packed record
-    inxtyp, eltyp: types;
-    inxref, elref, low, high, elsize, size: index;
-  end;
-  atabarray = array[1..amax] of atabrec;
-
-  btabrec =
-    packed record
-    last, lastpar, psize, vsize: index;
-    tabptr: 0..tmax
-  end;
-  btabarray = array[1..bmax] of btabrec;
-
-  stabarray = packed array[0..smax] of char;
-  realarray = array[1..rmax] of real;
-
-  intabrec =
-    packed record
-    tp: types;
-    lv: 0..lmax;
-    rf: integer;
-    vector: integer;
-    off: integer;
-    tabref: integer
-  end;
-  intabarray = array[1..intermax] of intabrec;
-
 
   (* unixtypes.i *)
 
@@ -227,29 +46,6 @@ type
   (* implementation-dependent type declaration for Unix *)
 
 
-  objcoderec =
-    packed record
-    fname: fnametype;
-    prgname: ShortString;
-    gencode: objorderarray;
-    ngencode: 0..cmax;
-
-    gentab: tabarray;
-    ngentab: 0..tmax;
-
-    genatab: atabarray;
-    ngenatab: 0..amax;
-
-    genbtab: btabarray;
-    ngenbtab: 0..bmax;
-
-    genstab: stabarray;
-    ngenstab: 0..smax;
-    genrconst: realarray;
-
-    useridstart: 0..tmax;
-
-  end;
 
 
   ptype = 0..pmax;
@@ -286,8 +82,8 @@ var
 
 
   ir: objorder;
-  ps: (run, fin, divchk, inxchk, charchk, stkchk,
-    redchk, deadlock, channerror, guardchk, queuechk, procnchk, statchk, nexistchk,
+  ps: (run, fin, divchk, inxchk, charchk, stkchk, redchk, deadlock,
+    channerror, guardchk, queuechk, procnchk, statchk, nexistchk,
     namechk, casechk, bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
 
   lncnt, chrcnt: integer;
@@ -2327,7 +2123,8 @@ var
             52:
             begin
               t := t - 1;
-              if ((s[t].i > 0) and (s[t + 1].i > 0)) or ((s[t].i < 0) and (s[t + 1].i < 0)) then
+              if ((s[t].i > 0) and (s[t + 1].i > 0)) or
+                ((s[t].i < 0) and (s[t + 1].i < 0)) then
                 if (maxint - abs(s[t].i)) < abs(s[t + 1].i) then
                   ps := ovchk;
               if ps <> ovchk then
@@ -2337,7 +2134,8 @@ var
             53:
             begin
               t := t - 1;
-              if ((s[t].i < 0) and (s[t + 1].i > 0)) or ((s[t].i > 0) and (s[t + 1].i < 0)) then
+              if ((s[t].i < 0) and (s[t + 1].i > 0)) or
+                ((s[t].i > 0) and (s[t + 1].i < 0)) then
                 if (maxint - abs(s[t].i)) < abs(s[t + 1].i) then
                   ps := ovchk;
               if ps <> ovchk then
@@ -2455,7 +2253,8 @@ var
                   h3 := trunc(random * h2)  (* arbitrary choice *)
                 else
                   h3 := h2 - 1;  (* priority select *)
-                h4 := t - (sfsize - 1) - (h3 * sfsize);  (* h4 points to bottom of "frame" *)
+                h4 := t - (sfsize - 1) - (h3 * sfsize);
+                (* h4 points to bottom of "frame" *)
                 h1 := 1;
                 foundcall := False;
                 while not foundcall and (h1 <= h2) do
