@@ -80,7 +80,7 @@ var
 
 
   ir: TObjOrder;
-  ps: (run, fin, divchk, inxchk, charchk, stkchk, redchk, deadlock,
+  ps: (run, fin, divchk, inxchk, charchk, redchk, deadlock,
     channerror, guardchk, queuechk, procnchk, statchk, nexistchk,
     namechk, casechk, bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
 
@@ -397,8 +397,6 @@ var
         writeln(tofile, 'invalid index ');
       charchk:
         writeln(tofile, 'illegal or uninitialised character');
-      stkchk:
-        writeln(tofile, 'storage overflow');
       redchk:
         writeln(tofile, 'reading past end of file');
       channerror:
@@ -631,7 +629,8 @@ var
     for h1 := 0 to procmax do
 
       oneproc(h1);
-    if (curpr <> 0) or (ps <> stkchk) then
+    { TODO: we should emit 'globals' on stack overflow }
+    if (curpr <> 0) then
       globals;
 
   end; (* expmd *)
@@ -1371,6 +1370,21 @@ var
         ps := inpchk;
     end;  (* readreal *)
 
+    { Checks to see if process 'processID' will overflow its stack if we push
+      'nItems' items onto it. }
+    procedure CheckStackOverflowAfter(nItems: integer; processID: ptype);
+    begin
+      with ptab[processID] do
+        if (t + nItems) > stacksize then
+           raise StkChkException.Create('stack overflow');
+    end;
+
+    { Checks to see if process 'processID' has an overflowing stack. }
+    procedure CheckStackOverflow(processID: ptype);
+    begin
+      CheckStackOverflowAfter(0, processID);
+    end;
+
   begin (* Runprog *)
     stantyps := [ints, reals, chars, bools];
     writeln;
@@ -1400,11 +1414,7 @@ var
         wakestart := 0;
         onselect := False;
         t := objrec.genbtab[2].vsize - 1;
-        if t > stacksize then
-        begin
-          ps := stkchk;
-          raise StkChkException.Create('stack overflow');
-        end;
+        CheckStackOverflow(0);
         for h1 := 5 to t do
           s[h1].i := 0;
       end;
@@ -1468,30 +1478,22 @@ var
             0:
             begin
               (*load address*) t := t + 1;
-              if t > stacksize then
-                ps := stkchk
-              else
-                s[t].i := display[ir.x] + ir.y;
+              CheckStackOverflow(curpr);
+              s[t].i := display[ir.x] + ir.y;
             end;
 
             1:
             begin
               (*load value*) t := t + 1;
-              if t > stacksize then
-                ps := stkchk
-
-              else
-                s[t] := s[display[ir.x] + ir.y];
-
+              CheckStackOverflow(curpr);
+              s[t] := s[display[ir.x] + ir.y];
             end;
 
             2:
             begin
               (*load indirect*) t := t + 1;
-              if t > stacksize then
-                ps := stkchk
-              else
-                s[t] := s[s[display[ir.x] + ir.y].i];
+              CheckStackOverflow(curpr);
+              s[t] := s[s[display[ir.x] + ir.y].i];
             end;
 
             3:
@@ -1613,19 +1615,15 @@ var
                 17:
                 begin
                   t := t + 1;
-                  if t > stacksize then
-                    ps := stkchk
-                  else
-                    s[t].i := btoi(EOF(input));
+                  CheckStackOverflow(curpr);
+                  s[t].i := btoi(EOF(input));
                 end;
 
                 18:
                 begin
                   t := t + 1;
-                  if t > stacksize then
-                    ps := stkchk
-                  else
-                    s[t].i := btoi(eoln(input));
+                  CheckStackOverflow(curpr);
+                  s[t].i := btoi(eoln(input));
                 end;
                 19:
                 begin
@@ -1690,10 +1688,8 @@ var
                 25:  (* clock *)
                 begin
                   t := t + 1;
-                  if t > stacksize then
-                    ps := stkchk
-                  else
-                    s[t].i := sysclock;
+                  CheckStackOverflow(curpr);
+                  s[t].i := sysclock;
                 end;  (* f25 *)
 
               end;
@@ -1750,6 +1746,10 @@ var
                 t := t - 3;
             end;
 
+            { Mark stack
+
+              x: 1 if process; 0 otherwise
+              y: 0 if process; ID of subroutine to call otherwise }
             18:
             begin
               if ir.x = 1 then
@@ -1769,14 +1769,13 @@ var
               h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
               with ptab[curpr] do
               begin
-                if t + h1 > stacksize then
-                  ps := stkchk
-                else
-                begin
-                  t := t + 5;
-                  s[t - 1].i := h1 - 1;
-                  s[t].i := ir.y;
-                end;
+                { TODO: is this correct?
+                  Hard to tell if it's an intentional overstatement of what the
+                  stack space will grow to. }
+                CheckStackOverflowAfter(h1, curpr);
+                t := t + 5;
+                s[t - 1].i := h1 - 1;
+                s[t].i := ir.y;
               end;  (* with *)
             end;
 
@@ -1826,16 +1825,14 @@ var
             begin
               (*load block*) h1 := s[t].i;
               t := t - 1;
+              CheckStackOverflowAfter(ir.y, curpr);
               h2 := ir.y + t;
-              if h2 > stacksize then
-                ps := stkchk
-              else
-                while t < h2 do
-                begin
-                  t := t + 1;
-                  s[t] := s[h1];
-                  h1 := h1 + 1;
-                end;
+              while t < h2 do
+              begin
+                t := t + 1;
+                s[t] := s[h1];
+                h1 := h1 + 1;
+              end;
             end;
 
             23:
@@ -1855,19 +1852,15 @@ var
             24:
             begin
               (*literal*) t := t + 1;
-              if t > stacksize then
-                ps := stkchk
-              else
-                s[t].i := ir.y;
+              CheckStackOverflow(curpr);
+              s[t].i := ir.y;
             end;
 
             25:
             begin
               t := t + 1;
-              if t > stacksize then
-                ps := stkchk
-              else
-                s[t].r := objrec.genrconst[ir.y];
+              CheckStackOverflow(curpr);
+              s[t].r := objrec.genrconst[ir.y];
             end;
 
             26:
