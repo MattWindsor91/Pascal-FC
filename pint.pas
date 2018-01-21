@@ -46,13 +46,13 @@ type
 
 
 
-  ptype = 0..pmax;
+  TProcessID = 0..pmax;
   powerset = set of 0..bsmsb;
 
   qpointer = ^qnode;
 
   qnode = record
-    proc: ptype;
+    proc: TProcessID;
     Next: qpointer
   end;
 
@@ -61,6 +61,29 @@ type
       ints: (i: integer);
       bitsets: (bs: powerset);
       reals: (r: real)
+  end;
+
+  { Record for a single Pascal-FC process. }
+  TProcessRecord = record
+    { Stack pointers }
+
+    t: integer;         { The current stack pointer. }
+    stackbase: integer; { The start of this process's segment on the stack. }
+    stacksize: integer; { The end of this process's segment on the stack. }
+    b: integer;
+
+    pc: integer;        { Program counter }
+    display: array[1..lmax] of integer;
+    suspend: integer;
+    chans: integer;
+    repindex: integer;
+    onselect: boolean;
+    active, termstate: boolean;
+    curmon: integer;
+    wakeup, wakestart: integer;
+    clearresource: boolean;
+
+    varptr: 0..tmax
   end;
 
 
@@ -90,24 +113,9 @@ var
   foundcall: boolean;    (* used in select (code 64) *)
 
   stack: array[1..stmax] of TStackRecord;
-  ptab: array[ptype] of record
-    t: integer;         { Stack pointer }
-    stackbase: integer; { The start of this process's segment on the stack. }
-    stacksize: integer; { The end of this process's segment on the stack. }
-    b, pc: integer;
-    display: array[1..lmax] of integer;
-    suspend: integer;
-    chans: integer;
-    repindex: integer;
-    onselect: boolean;
-    active, termstate: boolean;
-    curmon: integer;
-    wakeup, wakestart: integer;
-    clearresource: boolean;
 
-    varptr: 0..tmax
-  end;
-  npr, procmax, curpr: ptype;
+  processes: array[TProcessID] of TProcessRecord;
+  npr, procmax, curpr: TProcessID;
   stepcount: integer;
   concflag: boolean;
   statcounter: 0..maxint;
@@ -119,8 +127,8 @@ var
 
   procqueue: record
     proclist: array [1..pmax] of record
-      proc: ptype;
-      link: ptype
+      proc: TProcessID;
+      link: TProcessID
     end;
     Free: 0..pmax
   end;
@@ -302,7 +310,7 @@ var
 
     begin
       Write(tofile, '.');
-      target := ((target - ptab[1].stackbase) mod stkincr);
+      target := ((target - processes[1].stackbase) mod stkincr);
       with objrec do
       begin
         tptr := genbtab[bref].last;
@@ -312,10 +320,10 @@ var
     end;  (* entryname *)
 
   begin  (* Nameobj *)
-    if target > ptab[0].stacksize then
+    if target > processes[0].stacksize then
     begin
-      procptr := ((target - ptab[1].b) div stkincr) + 1;
-      prtarget := ptab[procptr].varptr;
+      procptr := ((target - processes[1].b) div stkincr) + 1;
+      prtarget := processes[procptr].varptr;
     end
     else
       prtarget := target;
@@ -332,7 +340,7 @@ var
     end;  (* with *)
     if tp in [arrays, records] then
       unselector(rf, tp);
-    if target > ptab[0].stacksize then
+    if target > processes[0].stacksize then
     begin
       entryname(rf);
       tp := entrys;
@@ -368,7 +376,7 @@ var
   procedure headermsg(tp: TType; var tofile: Text);
 
   begin
-    with ptab[curpr] do
+    with processes[curpr] do
     begin
       Write(tofile, 'Abnormal halt ');
       if active then
@@ -420,7 +428,7 @@ var
           'attempt to make entry on process without unique name');
       casechk:
         writeln(tofile,
-          'label of ', stack[ptab[curpr].t].i: 1, ' not found in case');
+          'label of ', stack[processes[curpr].t].i: 1, ' not found in case');
       bndchk:
         writeln(tofile, 'ordinal value out of range');
       instchk:
@@ -470,7 +478,7 @@ var
 
     writeln(pmdfile, '----------');
 
-    with ptab[nproc] do
+    with processes[nproc] do
     begin
       if nproc = 0 then
 
@@ -698,7 +706,7 @@ var
     97, 98;
 
 
-    procedure getqueuenode(pnum: ptype; var ptr: qpointer);
+    procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
 
     (* place pnum in a dynamic queue node *)
 
@@ -722,7 +730,7 @@ var
       foundplace: boolean;
 
     begin
-      with ptab[curpr] do
+      with processes[curpr] do
       begin
         wakeup := waketime;
         if wakestart = 0 then
@@ -738,7 +746,7 @@ var
           backpointer := nil;
           foundplace := False;
           while not foundplace and (frontpointer <> nil) do
-            if ptab[frontpointer^.proc].wakeup > waketime then
+            if processes[frontpointer^.proc].wakeup > waketime then
               foundplace := True
             else
             begin
@@ -758,7 +766,7 @@ var
     end;  (* joineventq *)
 
 
-    procedure leventqueue(pnum: ptype);
+    procedure leventqueue(pnum: TProcessID);
 
     (* process pnum is taken from event queue *)
     (* (a rendezvous has occurred before a timeout alternative expires) *)
@@ -787,7 +795,7 @@ var
           begin
             First := frontpointer^.Next;
             if First <> nil then
-              time := ptab[First^.proc].wakeup
+              time := processes[First^.proc].wakeup
             else
               time := 0;
           end
@@ -819,7 +827,7 @@ var
         procindex := (curpr + trunc(random * procmax)) mod (procmax + 1);
 
         while not foundproc and (d >= 0) do
-          with ptab[procindex] do
+          with processes[procindex] do
           begin
             foundproc :=
               active and (suspend = 0) and (wakeup = 0) and not termstate;
@@ -844,7 +852,7 @@ var
               raise DeadlockException.Create('deadlock');
             end
           else
-            ptab[0].active := True
+            processes[0].active := True
         else
         begin
           curpr := procindex;
@@ -863,7 +871,7 @@ var
       loop, nchans, frameptr, chanptr: integer;
 
     begin
-      with ptab[pnum] do
+      with processes[pnum] do
       begin
         nchans := abs(suspend);
         frameptr := chans;
@@ -901,14 +909,14 @@ var
 
     begin
       procn := stack[h + 2].i;
-      with ptab[procn] do
+      with processes[procn] do
       begin
         clearchans(procn, h);
         leventqueue(procn);
         wakeup := 0;
         pc := stack[h + 1].i;
 
-      end;  (* with ptab[procn] *)
+      end;  (* with processes[procn] *)
 
     end;  (* wakenon *)
 
@@ -931,7 +939,7 @@ var
     end;  (* initqueue *)
 
 
-    procedure getnode(var node: ptype);
+    procedure getnode(var node: TProcessID);
 
     (* get a node from the free list for process queues *)
     (* the link is set to zero *)
@@ -949,7 +957,7 @@ var
     end;  (* getnode *)
 
 
-    procedure disposenode(node: ptype);
+    procedure disposenode(node: TProcessID);
 
     (* return monitor queue node to free list *)
 
@@ -968,10 +976,10 @@ var
     (* add is the stack address of the condvar or monvar *)
 
     var
-      newnode, temp: ptype;
+      newnode, temp: TProcessID;
 
     begin  (* joinqueue *)
-      ptab[curpr].suspend := add;
+      processes[curpr].suspend := add;
       stepcount := 0;
       getnode(newnode);
       procqueue.proclist[newnode].proc := curpr;
@@ -1009,7 +1017,7 @@ var
         frontpointer := First;
         while (frontpointer <> nil) and not finished do
         begin
-          with ptab[frontpointer^.proc] do
+          with processes[frontpointer^.proc] do
           begin
             clearchans(frontpointer^.proc, 0);
             wakeup := 0;
@@ -1020,13 +1028,13 @@ var
           frontpointer := frontpointer^.Next;
           dispose(backpointer);
           if frontpointer <> nil then
-            finished := ptab[frontpointer^.proc].wakeup <> now;
+            finished := processes[frontpointer^.proc].wakeup <> now;
         end;  (* while *)
         First := frontpointer;
         if frontpointer = nil then
           time := 0
         else
-          time := ptab[frontpointer^.proc].wakeup;
+          time := processes[frontpointer^.proc].wakeup;
       end; (* with eventqueue *)
     end;  (* alarmclock *)
 
@@ -1038,7 +1046,7 @@ var
     (* add is the stack address of the condvar or monvar *)
 
     var
-      pr, node: ptype;
+      pr, node: TProcessID;
 
     begin  (* procwake *)
       if stack[add].i > 0 then
@@ -1048,7 +1056,7 @@ var
         stack[add].i := procqueue.proclist[node].link;
         disposenode(node);
 
-        ptab[pr].suspend := 0;
+        processes[pr].suspend := 0;
       end;
     end;  (* procwake *)
 
@@ -1373,55 +1381,55 @@ var
         ps := inpchk;
     end;  (* readreal *)
 
-    { Checks to see if process 'processID' will overflow its stack if we push
+    { Checks to see if process 'p' will overflow its stack if we push
       'nItems' items onto it. }
-    procedure CheckStackOverflowAfter(nItems: integer; processID: ptype);
+    procedure CheckStackOverflowAfter(nItems: integer; p: TProcessID);
     begin
-      with ptab[processID] do
+      with processes[p] do
         if (t + nItems) > stacksize then
            raise StkChkException.Create('stack overflow');
     end;
 
-    { Checks to see if process 'processID' has an overflowing stack. }
-    procedure CheckStackOverflow(processID: ptype);
+    { Checks to see if process 'p' has an overflowing stack. }
+    procedure CheckStackOverflow(p: TProcessID);
     begin
-      CheckStackOverflowAfter(0, processID);
+      CheckStackOverflowAfter(0, p);
     end;
 
-    { Pushes an integer 'i' onto the stack segment for process 'processID'. }
-    procedure PushInteger(i: integer; processID: ptype);
+    { Pushes an integer 'i' onto the stack segment for process 'p'. }
+    procedure PushInteger(i: integer; p: TProcessID);
     begin
-      with ptab[processID] do
+      with processes[p] do
       begin
         t := t + 1;
-        CheckStackOverflow(processID);
+        CheckStackOverflow(p);
 
         stack[t].i := i;
       end;
     end;
 
-    procedure RunStep(processID: ptype);
+    procedure RunStep(p: TProcessID);
     begin
-      with ptab[processID] do
+      with processes[p] do
       case ir.f of
 
         { Load address }
         0:
         begin
-          PushInteger(display[ir.x] + ir.y, processID);
+          PushInteger(display[ir.x] + ir.y, p);
         end;
 
         1:
         begin
           (*load value*) t := t + 1;
-          CheckStackOverflow(processID);
+          CheckStackOverflow(p);
           stack[t] := stack[display[ir.x] + ir.y];
         end;
 
         2:
         begin
           (*load indirect*) t := t + 1;
-          CheckStackOverflow(processID);
+          CheckStackOverflow(p);
           stack[t] := stack[stack[display[ir.x] + ir.y].i];
         end;
 
@@ -1447,7 +1455,7 @@ var
         begin
 
           procmax := npr;
-          ptab[0].active := False;
+          processes[0].active := False;
           stepcount := 0;
         end;
 
@@ -1474,7 +1482,7 @@ var
           t := t - 1;
           h2 := pmax + 1;
           h3 := trunc(random * h2);
-          while (h2 >= 0) and (ptab[h3].suspend <> h1) do
+          while (h2 >= 0) and (processes[h3].suspend <> h1) do
           begin
             h3 := (h3 + 1) mod (pmax + 1);
             h2 := h2 - 1;
@@ -1483,7 +1491,7 @@ var
           if h2 < 0 then
             stack[h1].i := stack[h1].i + 1
           else
-            ptab[h3].suspend := 0;
+            processes[h3].suspend := 0;
 
         end;
 
@@ -1543,12 +1551,12 @@ var
 
             17:
             begin
-              PushInteger(btoi(EOF(input)), processID);
+              PushInteger(btoi(EOF(input)), p);
             end;
 
             18:
             begin
-              PushInteger(btoi(eoln(input)), processID);
+              PushInteger(btoi(eoln(input)), p);
             end;
             19:
             begin
@@ -1690,12 +1698,12 @@ var
             end;
           end;
           h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
-          with ptab[curpr] do
+          with processes[curpr] do
           begin
             { TODO: is this correct?
               Hard to tell if it's an intentional overstatement of what the
               stack space will grow to. }
-            CheckStackOverflowAfter(h1, processID);
+            CheckStackOverflowAfter(h1, p);
             t := t + 5;
             stack[t - 1].i := h1 - 1;
             stack[t].i := ir.y;
@@ -1714,7 +1722,7 @@ var
           if ir.x = 1 then
           begin  (* process *)
             active := True;
-            stack[h1 + 3].i := ptab[0].b;
+            stack[h1 + 3].i := processes[0].b;
             concflag := False;
           end
           else
@@ -1748,7 +1756,7 @@ var
         begin
           (*load block*) h1 := stack[t].i;
           t := t - 1;
-          CheckStackOverflowAfter(ir.y, processID);
+          CheckStackOverflowAfter(ir.y, p);
           h2 := ir.y + t;
           while t < h2 do
           begin
@@ -1775,13 +1783,13 @@ var
         24:
         begin
           (*literal*)
-          PushInteger(ir.y, processID);
+          PushInteger(ir.y, p);
         end;
 
         25:
         begin
           t := t + 1;
-          CheckStackOverflow(processID);
+          CheckStackOverflow(p);
           stack[t].r := objrec.genrconst[ir.y];
         end;
 
@@ -1914,7 +1922,7 @@ var
             npr := npr - 1;
             active := False;
             stepcount := 0;
-            ptab[0].active := (npr = 0);
+            processes[0].active := (npr = 0);
 
           end;
         end;
@@ -2433,11 +2441,11 @@ var
           t := h1 - 2;
           h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
           if h2 > 0 then
-            if not ptab[h2].active then
+            if not processes[h2].active then
               ps := nexistchk
             else
             begin
-              h3 := ptab[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
+              h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
               if stack[h3].i <= 0 then
               begin  (* empty queue on entry *)
                 if stack[h3].i < 0 then
@@ -2477,7 +2485,7 @@ var
           else
           begin  (* another process has arrived *)
             h2 := stack[h1 + 2].i;  (* hs has proc number *)
-            h3 := ptab[h2].t + 3;  (* h3 points to first parameter *)
+            h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
             for h4 := 0 to ir.y - 1 do
 
               stack[h1 + h4 + entrysize] := stack[h3 + h4];
@@ -2495,7 +2503,7 @@ var
           if stack[h1].i <> 0 then
           begin  (* queue non-empty *)
             h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
-            stack[h1 + 1].i := ptab[h2].pc;
+            stack[h1 + 1].i := processes[h2].pc;
             stack[h1 + 2].i := h2;
           end;
         end;
@@ -2703,7 +2711,7 @@ var
 
     try { Exception trampoline for Deadlock }
 
-      with ptab[0] do
+      with processes[0] do
       begin
         stackbase := 0;
         b := 0;
@@ -2723,7 +2731,7 @@ var
           stack[h1].i := 0;
       end;
       for curpr := 1 to pmax do
-        with ptab[curpr] do
+        with processes[curpr] do
         begin
           active := False;
           termstate := False;
@@ -2733,7 +2741,7 @@ var
           curmon := 0;
           wakeup := 0;
           wakestart := 0;
-          stackbase := ptab[curpr - 1].stacksize + 1;
+          stackbase := processes[curpr - 1].stacksize + 1;
           b := stackbase;
           stacksize := stackbase + stkincr - 1;
           t := b - 1;
@@ -2758,14 +2766,14 @@ var
       end;
 
       repeat
-        if (ptab[0].active) and (ptab[0].suspend = 0) and (ptab[0].wakeup = 0) then
+        if (processes[0].active) and (processes[0].suspend = 0) and (processes[0].wakeup = 0) then
           curpr := 0
         else
         if stepcount = 0 then
           chooseproc
         else
           stepcount := stepcount - 1;
-        with ptab[curpr] do
+        with processes[curpr] do
         begin
 
           ir := objrec.gencode[pc];
