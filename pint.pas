@@ -662,22 +662,18 @@ var
 
 
   procedure initclock;
-
   var
     microsecs: integer;
-
   begin
     microsecs := 0;
     sysclock := 0;
     last := GetUnixTime(microsecs);
-  end;  (* initclock *)
+  end;
 
 
   procedure checkclock;
-
   var
     microsecs: integer;
-
   begin
     now := GetUnixTime(microsecs);
     if now <> last then
@@ -685,15 +681,14 @@ var
       last := now;
       sysclock := sysclock + 1;
     end;
-  end;  (* checkclock *)
+  end;
+
 
   procedure doze(n: integer);
-
   begin
     while eventqueue.time > sysclock do
       checkclock;
-  end;  (* doze *)
-
+  end;
 
 
   procedure runprog;
@@ -706,10 +701,8 @@ var
     97, 98;
 
 
-    procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
-
     (* place pnum in a dynamic queue node *)
-
+    procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
     begin
       new(ptr);
       with ptr^ do
@@ -717,18 +710,14 @@ var
         proc := pnum;
         Next := nil;
       end;
-    end;  (* getqueuenode *)
+    end;
 
-
-
-    procedure joineventq(waketime: integer);
 
     (* join queue of processes which have executed a "sleep" *)
-
+    procedure joineventq(waketime: integer);
     var
       thisnode, frontpointer, backpointer: qpointer;
       foundplace: boolean;
-
     begin
       with processes[curpr] do
       begin
@@ -763,18 +752,15 @@ var
           time := waketime;
         end;
       end;  (* with eventqueue *)
-    end;  (* joineventq *)
+    end;
 
-
-    procedure leventqueue(pnum: TProcessID);
 
     (* process pnum is taken from event queue *)
     (* (a rendezvous has occurred before a timeout alternative expires) *)
-
+    procedure leventqueue(pnum: TProcessID);
     var
       frontpointer, backpointer: qpointer;
       found: boolean;
-
     begin
       with eventqueue do
       begin
@@ -804,15 +790,14 @@ var
           dispose(frontpointer);
         end;  (* if found *)
       end;  (* with eventqueue *)
-    end;  (* leventqueue *)
+    end;
 
 
     procedure alarmclock; forward;
 
-    procedure chooseproc;
 
     (* modified to permit a terminate option on select - gld *)
-
+    procedure chooseproc;
     var
       d: integer;
       procindex: integer;
@@ -859,17 +844,13 @@ var
           stepcount := trunc(random * stepmax);
         end
       until foundproc or (ps <> run);
-    end;  (* chooseproc *)
+    end;
 
-
-
-    procedure clearchans(pnum, h: integer);
 
     (* clear all channels on which the process sleeps *)
-
+    procedure clearchans(pnum, h: integer);
     var
       loop, nchans, frameptr, chanptr: integer;
-
     begin
       with processes[pnum] do
       begin
@@ -894,19 +875,15 @@ var
         suspend := 0;
         termstate := False;
       end;  (* with *)
-    end;  (* clearchans *)
+    end;
 
-
-
-    procedure wakenon(h: integer);
 
     (* awakens the process asleep on this channel *)
-   (* also used to wake a process asleep on several entries
+    (* also used to wake a process asleep on several entries
       in a select statement, where it cannot be in a queue *)
-
+    procedure wakenon(h: integer);
     var
       procn: integer;
-
     begin
       procn := stack[h + 2].i;
       with processes[procn] do
@@ -915,19 +892,14 @@ var
         leventqueue(procn);
         wakeup := 0;
         pc := stack[h + 1].i;
-
       end;  (* with processes[procn] *)
+    end;
 
-    end;  (* wakenon *)
-
-
-    procedure initqueue;
 
     (* initialise process queue *)
-
+    procedure initqueue;
     var
       index: 1..pmax;
-
     begin  (* initqueue *)
       with procqueue do
       begin
@@ -936,14 +908,11 @@ var
           proclist[index].link := index + 1;
         proclist[pmax].link := 0;
       end;  (* with *)
-    end;  (* initqueue *)
-
-
-    procedure getnode(var node: TProcessID);
+    end;
 
     (* get a node from the free list for process queues *)
     (* the link is set to zero *)
-
+    procedure getnode(var node: TProcessID);
     begin  (* getnode *)
       with procqueue do
         if Free = 0 then
@@ -954,30 +923,25 @@ var
           Free := proclist[node].link;
           proclist[node].link := 0;
         end;
-    end;  (* getnode *)
+    end;
 
-
-    procedure disposenode(node: TProcessID);
 
     (* return monitor queue node to free list *)
-
+    procedure disposenode(node: TProcessID);
     begin  (* disposenode *)
       with procqueue do
       begin
         proclist[node].link := Free;
         Free := node;
       end;
-    end;  (* disposenode *)
+    end;
 
-
-    procedure joinqueue(add: integer);
 
     (* join a process queue *)
     (* add is the stack address of the condvar or monvar *)
-
+    procedure joinqueue(add: integer);
     var
       newnode, temp: TProcessID;
-
     begin  (* joinqueue *)
       processes[curpr].suspend := add;
       stepcount := 0;
@@ -998,17 +962,12 @@ var
     end;  (* joinqueue *)
 
 
-
-
-    procedure alarmclock;
-
     (* wake processes on event queue *)
-
+    procedure alarmclock;
     var
       now: integer;
       frontpointer, backpointer: qpointer;
       finished: boolean;
-
     begin
       now := eventqueue.time;
       finished := False;
@@ -1036,19 +995,15 @@ var
         else
           time := processes[frontpointer^.proc].wakeup;
       end; (* with eventqueue *)
-    end;  (* alarmclock *)
+    end;
 
-
-
-    procedure procwake(add: integer);
 
     (* wakes the first process in a monitor queue *)
     (* add is the stack address of the condvar or monvar *)
-
+    procedure procwake(add: integer);
     var
       pr, node: TProcessID;
-
-    begin  (* procwake *)
+    begin
       if stack[add].i > 0 then
       begin
         node := stack[add].i;
@@ -1058,15 +1013,12 @@ var
 
         processes[pr].suspend := 0;
       end;
-    end;  (* procwake *)
+    end;
 
-
-    procedure releasemon(curmon: integer);
 
     (* release mutual exclusion on a monitor *)
-
+    procedure releasemon(curmon: integer);
     begin
-
       if stack[curmon + 1].i > 0 then
         procwake(curmon + 1)
       else
@@ -1078,23 +1030,20 @@ var
       end
       else
         stack[curmon].i := 0;
-    end;  (* releasemon *)
+    end;
 
 
     procedure skipblanks;
     begin
       while not EOF and (inchar = ' ') do
         Read(input, inchar);
-    end;  (* skipblanks *)
-
+    end;
 
 
     procedure readunsignedint(var inum: integer; var numerror: boolean);
-
     var
       digit: integer;
-
-    begin  (* Readunsignedint *)
+    begin
       inum := 0;
       numerror := False;
       repeat
@@ -1113,14 +1062,11 @@ var
       until not (inchar in ['0'..'9']);
       if numerror then
         inum := 0;
-    end;  (* readunsignedint *)
+    end;
 
-
-
-    procedure readbasedint(var inum: integer; var numerror: boolean);
 
     (* on entry inum has been set by unsignedint *)
-
+    procedure readbasedint(var inum: integer; var numerror: boolean);
     var
       digit, base: integer;
       negative: boolean;
@@ -1177,10 +1123,8 @@ var
     end;  (* readbasedint *)
 
 
-    procedure findstart(var sign: integer);
-
     (* find start of integer or real *)
-
+    procedure findstart(var sign: integer);
     begin
       skipblanks;
       if EOF then
@@ -1197,18 +1141,14 @@ var
           sign := -1;
         end;
       end;
-    end;  (* findstart *)
-
-
+    end;
 
 
     procedure readint(var inum: integer);
-
     var
       sign: integer;
       numerror: boolean;
-
-    begin  (* Readint *)
+    begin
       findstart(sign);
       if not EOF then
       begin
@@ -1224,15 +1164,12 @@ var
         if numerror then
           ps := inpchk;
       end;
-    end;  (* readint *)
-
+    end;
 
 
     procedure readscale(var e: integer; var numerror: boolean);
-
     var
       s, sign, digit: integer;
-
     begin
       Read(input, inchar);
       sign := 1;
@@ -1266,15 +1203,13 @@ var
         e := 0
       else
         e := s * sign + e;
-    end;  (* readscale *)
+    end;
 
 
     procedure adjustscale(var rnum: real; k, e: integer; var numerror: boolean);
-
     var
       s: integer;
       d, t: real;
-
     begin
       if (k + e) > emax then
         numerror := True
@@ -1305,15 +1240,13 @@ var
         else
           rnum := rnum / t;
       end;
-    end;  (* adjustscale *)
+    end;
 
 
     procedure readreal(var rnum: real);
-
     var
       k, e, sign, digit: integer;
       numerror: boolean;
-
     begin
       numerror := False;
       findstart(sign);
@@ -1381,6 +1314,7 @@ var
         ps := inpchk;
     end;  (* readreal *)
 
+
     { Checks to see if process 'p' will overflow its stack if we push
       'nItems' items onto it. }
     procedure CheckStackOverflowAfter(nItems: integer; p: TProcessID);
@@ -1390,11 +1324,13 @@ var
            raise StkChkException.Create('stack overflow');
     end;
 
+
     { Checks to see if process 'p' has an overflowing stack. }
     procedure CheckStackOverflow(p: TProcessID);
     begin
       CheckStackOverflowAfter(0, p);
     end;
+
 
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
     procedure PushInteger(i: integer; p: TProcessID);
@@ -1407,6 +1343,7 @@ var
         stack[t].i := i;
       end;
     end;
+
 
     procedure RunStep(p: TProcessID);
     begin
