@@ -1345,6 +1345,15 @@ var
       end;
     end;
 
+    { Pops an integer from the stack segment for process 'p'. }
+    function PopInteger(p: TProcessID) : integer;
+    begin
+      with processes[p] do
+      begin
+        Result := stack[t].i;
+        t := t - 1;
+      end;
+    end;
 
     procedure RunStep(p: TProcessID);
     begin
@@ -1394,8 +1403,7 @@ var
 
           pWait:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
 
             if stack[h1].i > 0 then
               stack[h1].i := stack[h1].i - 1
@@ -1408,8 +1416,8 @@ var
 
           pSignal:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
+
             h2 := pmax + 1;
             h3 := trunc(random * h2);
             while (h2 >= 0) and (processes[h3].suspend <> h1) do
@@ -1678,8 +1686,7 @@ var
 
           pLdblk:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             CheckStackOverflowAfter(ir.y, p);
             h2 := ir.y + t;
             while t < h2 do
@@ -1692,8 +1699,9 @@ var
 
           pCpblk:
           begin
-            h1 := stack[t - 1].i;
-            h2 := stack[t].i;
+            h2 := PopInteger(p);
+            h1 := PopInteger(p);
+
             h3 := h1 + ir.y;
             while h1 < h3 do
             begin
@@ -1701,7 +1709,6 @@ var
               h1 := h1 + 1;
               h2 := h2 + 1;
             end;
-            t := t - 2;
           end;
 
           pLdconI:
@@ -1749,8 +1756,7 @@ var
           begin
             if ir.x = 1 then
             begin
-              h3 := stack[t].i;
-              t := t - 1;
+              h3 := PopInteger(p);
             end
             else
               h3 := 0;
@@ -1796,8 +1802,7 @@ var
 
           pWrfrm:
           begin
-            h3 := stack[t].i;  (* field width *)
-            t := t - 1;
+            h3 := PopInteger(p);  (* field width *)
             case ir.y of
               1:
                 Write(stack[t].i: h3);  (* ints *)
@@ -2232,9 +2237,9 @@ var
 
           pChanrd: { gld }
           begin
-            h1 := stack[t - 1].i;
+            h3 := PopInteger(p);
+            h1 := PopInteger(p);
             h2 := stack[h1].i;
-            h3 := stack[t].i;
             if h2 < 0 then
               ps := channerror
             else
@@ -2258,13 +2263,11 @@ var
               end;
               wakenon(h1);
             end;
-            t := t - 2;
           end;
 
           pDelay:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             joinqueue(h1);
             if curmon <> 0 then
               releasemon(curmon);
@@ -2272,8 +2275,7 @@ var
 
           pResum:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             if stack[h1].i > 0 then
             begin
               procwake(h1);
@@ -2298,21 +2300,18 @@ var
           pExmon:
           begin
             releasemon(curmon);
-            curmon := stack[t].i;
-            t := t - 1;
+            curmon := PopInteger(p);
           end;
 
           pMexec:
           begin  (* execute monitor body code *)
-            t := t + 1;
-            stack[t].i := pc;
+            PushInteger(pc, p);
             pc := ir.y;
           end;
 
           pMretn:
           begin  (* return from monitor body code *)
-            pc := stack[t].i;
-            t := t - 1;
+            pc := PopInteger(p);
           end;
 
           pLobnd:
@@ -2328,8 +2327,7 @@ var
 
           pSleap:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             if h1 <= 0 then
               stepcount := 0
             else
@@ -2338,13 +2336,12 @@ var
 
           pProcv:
           begin
-            h1 := stack[t].i;
+            h1 := PopInteger(p);
             varptr := h1;
             if stack[h1].i = 0 then
               stack[h1].i := curpr
             else
               ps := instchk;
-            t := t - 1;
           end;
 
           pEcall:
@@ -2383,8 +2380,7 @@ var
 
           pAcpt1:
           begin
-            h1 := stack[t].i;    (* h1 points to entry *)
-            t := t - 1;
+            h1 := PopInteger(p);    (* h1 points to entry *)
             if stack[h1].i = 0 then
             begin  (* no calls - sleep *)
               stack[h1].i := -1;
@@ -2407,8 +2403,7 @@ var
 
           pAcpt2:
           begin
-            h1 := stack[t].i; (* h1 points to entry *)
-            t := t - 1;
+            h1 := PopInteger(p); (* h1 points to entry *)
             procwake(h1);
 
             if stack[h1].i <> 0 then
@@ -2424,8 +2419,7 @@ var
 
           pRep2c:
           begin  (* replicate tail code *)
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             stack[h1].i := stack[h1].i + 1;
             pc := ir.y;
           end;
@@ -2570,14 +2564,12 @@ var
             end;
             t := h1 - 1;
             stack[curmon + 2].i := 0;
-            pc := stack[t].i;
-            t := t - 1;
+            pc := PopInteger(p);
           end;
 
           pPrtslp:
           begin
-            h1 := stack[t].i;
-            t := t - 1;
+            h1 := PopInteger(p);
             joinqueue(h1);
           end;
 
@@ -2587,18 +2579,15 @@ var
               clearresource := True
             else
               clearresource := False;
-            curmon := stack[t].i;
-            t := t - 1;
+            curmon := PopInteger(p);
           end;
 
           pPrtcnd:
             if clearresource then
             begin
               stack[curmon + 2].i := 1;
-              t := t + 1;
-              stack[t].i := pc;
-              t := t + 1;
-              stack[t].i := -1;
+              PushInteger(pc, p);
+              PushInteger(-1, p);
               pc := ir.y;
             end
 
