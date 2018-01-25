@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
-  SysUtils, GConsts, Objcode, CConsts;
+  SysUtils, GConsts, Objcode, Opcodes, CConsts;
 
 type
   FatalError = class(Exception);
@@ -5837,96 +5837,96 @@ var
       for cindex := 0 to lc - 1 do
         with code[cindex] do
           case f of
-            ldadr: gen(0, x, y);
-            ldval: gen(1, x, y);
-            ldind: gen(2, x, y);
-            updis: gen(3, x, y);
-            cobeg: gen(4, x, y);
-            coend: gen(5, x, y);
-            wait: gen(6, x, y);
-            signal: gen(7, x, y);
-            stfun: gen(8, x, y);
-            ixrec: gen(9, x, y);
-            jmp: gen(10, 0, y);
-            jmpiz: gen(11, 0, y);
-            case1: gen(12, 0, y);
-            case2: gen(13, 0, 0);
-            for1up: gen(14, 0, y);
-            for2up: gen(15, 0, y);
-            mrkstk: gen(18, x, y);
-            callsub: gen(19, x, y);
-            ixary: gen(21, x, y);
-            ldblk: gen(22, x, y);
-            cpblk: gen(23, x, y);
+            ldadr: gen(pLdadr, x, y);
+            ldval: gen(pLdval, x, y);
+            ldind: gen(pLdind, x, y);
+            updis: gen(pUpdis, x, y);
+            cobeg: gen(pCobeg, x, y);
+            coend: gen(pCoend, x, y);
+            wait: gen(pWait, x, y);
+            signal: gen(pSignal, x, y);
+            stfun: gen(pStfun, x, y);
+            ixrec: gen(pIxrec, x, y);
+            jmp: gen(pJmp, 0, y);
+            jmpiz: gen(pJmpiz, 0, y);
+            case1: gen(pCase1, 0, y);
+            case2: gen(pCase2, 0, 0);
+            for1up: gen(pFor1up, 0, y);
+            for2up: gen(pFor2up, 0, y);
+            mrkstk: gen(pMrkstk, x, y);
+            callsub: gen(pCallsub, x, y);
+            ixary: gen(pIxary, x, y);
+            ldblk: gen(pLdblk, x, y);
+            cpblk: gen(pCpblk, x, y);
             ldcon: if instyp = reals then
-                gen(25, 0, y)
+                gen(pLdconR, 0, y)
               else
-                gen(24, 0, y);
-            ifloat: gen(26, 0, y);
+                gen(pLdconI, 0, y);
+            ifloat: gen(pIfloat, 0, y);
             readip: case instyp of
                 notyp,
-                ints: gen(27, 0, 1);
-                reals: gen(27, 0, 4);
-                chars: gen(27, 0, 3)
+                ints: gen(pReadip, 0, 1);
+                reals: gen(pReadip, 0, 4);
+                chars: gen(pReadip, 0, 3)
               end;
-            wrstr: gen(28, 0, y);
-            wrsfm: gen(28, 1, y);
+            wrstr: gen(pWrstr, 0, y);
+            wrsfm: gen(pWrstr, 1, y);
             wrval: case instyp of
                 notyp,
                 ints,
-                semafors: gen(29, 0, 1);
-                bools: gen(29, 0, 2);
-                chars: gen(29, 0, 3);
-                reals: gen(29, 0, 4);
-                bitsets: gen(29, 0, 5)
+                semafors: gen(pWrval, 0, 1);
+                bools: gen(pWrval, 0, 2);
+                chars: gen(pWrval, 0, 3);
+                reals: gen(pWrval, 0, 4);
+                bitsets: gen(pWrval, 0, 5)
               end;
             wrfrm: case instyp of
                 notyp,
                 ints,
-                semafors: gen(30, 0, 1);
-                bools: gen(30, 0, 2);
-                chars: gen(30, 0, 3);
-                reals: gen(30, 0, 4);
-                bitsets: gen(30, 0, 5)
+                semafors: gen(pWrfrm, 0, 1);
+                bools: gen(pWrfrm, 0, 2);
+                chars: gen(pWrfrm, 0, 3);
+                reals: gen(pWrfrm, 0, 4);
+                bitsets: gen(pWrfrm, 0, 5)
               end;
-            w2frm: gen(37, 0, 0);
+            w2frm: gen(pW2frm, 0, 0);
             wrbas: if instyp = ints then
-                gen(107, 0, 1)
+                gen(pWrbas, 0, 1)
               else
-                gen(107, 0, 5);
-            stop: gen(31, x, y);
-            retproc: gen(32, x, y);
-            retfun: gen(33, x, y);
-            repadr: gen(34, x, y);
-            notop: gen(35, x, y);
-            negate: gen(36, x, y);
-            store: gen(38, 0, 0);
+                gen(pWrbas, 0, 5);
+            stop: gen(pStop, x, y);
+            retproc: gen(pRetproc, x, y);
+            retfun: gen(pRetfun, x, y);
+            repadr: gen(pRepadr, x, y);
+            notop: gen(pNotop, x, y);
+            negate: gen(pNegate, x, y);
+            store: gen(pStore, 0, 0);
             relequ: case instyp of
                 notyp,
                 ints,
                 bools,
                 chars,
-                enums: gen(45, 0, 0);
-                reals: gen(39, 0, 0);
-                bitsets: gen(112, 0, 0)
+                enums: gen(pRelequI, 0, 0);
+                reals: gen(pRelequR, 0, 0);
+                bitsets: gen(pRelequS, 0, 0)
               end;
             relneq: case instyp of
                 notyp,
                 ints,
                 bools,
                 chars,
-                enums: gen(46, 0, 0);
-                reals: gen(40, 0, 0);
-                bitsets: gen(113, 0, 0)
+                enums: gen(pRelneqI, 0, 0);
+                reals: gen(pRelneqR, 0, 0);
+                bitsets: gen(pRelneqS, 0, 0)
               end;
             rellt: case instyp of
                 notyp,
                 ints,
                 bools,
                 chars,
-                enums: gen(47, 0, 0);
-                reals: gen(41, 0, 0);
-                bitsets: gen(114, 0, 0)
+                enums: gen(pRelltI, 0, 0);
+                reals: gen(pRelltR, 0, 0);
+                bitsets: gen(pRelltS, 0, 0)
               end;
             relle: case instyp of
                 notyp,
@@ -5942,94 +5942,94 @@ var
                 ints,
                 bools,
                 chars,
-                enums: gen(49, 0, 0);
-                reals: gen(43, 0, 0);
-                bitsets: gen(116, 0, 0)
+                enums: gen(pRelgtI, 0, 0);
+                reals: gen(pRelgtR, 0, 0);
+                bitsets: gen(pRelgtS, 0, 0)
               end;
             relge: case instyp of
                 notyp,
                 ints,
                 bools,
                 chars,
-                enums: gen(50, 0, 0);
-                reals: gen(44, 0, 0);
-                bitsets: gen(117, 0, 0)
+                enums: gen(pRelgeI, 0, 0);
+                reals: gen(pRelgeR, 0, 0);
+                bitsets: gen(pRelgeS, 0, 0)
               end;
             orop: if instyp = bools then
-                gen(51, 0, 0)
+                gen(pOropB, 0, 0)
               else
-                gen(118, 0, 0);
+                gen(pOropS, 0, 0);
             add: if instyp = ints then
-                gen(52, 0, 0)
+                gen(pAddI, 0, 0)
               else
-                gen(54, 0, 0);
+                gen(pAddR, 0, 0);
             sub: if instyp = ints then
-                gen(53, 0, 0)
+                gen(pSubI, 0, 0)
               else
               if instyp = reals then
-                gen(55, 0, 0)
+                gen(pSubR, 0, 0)
               else
-                gen(119, 0, 0);
+                gen(pSubS, 0, 0);
             andop: if instyp = bools then
-                gen(56, 0, 0)
+                gen(pAndopB, 0, 0)
               else
-                gen(120, 0, 0);
+                gen(pAndopS, 0, 0);
             mul: if instyp = ints then
-                gen(57, 0, 0)
+                gen(pMulI, 0, 0)
               else
-                gen(60, 0, 0);
+                gen(pMulR, 0, 0);
             divop: if instyp = ints then
-                gen(58, 0, 0)
+                gen(pDivopI, 0, 0)
               else
-                gen(61, 0, 0);
-            modop: gen(59, 0, 0);
-            rdlin: gen(62, 0, 0);
-            wrlin: gen(63, 0, 0);
-            selec0: gen(64, x, y);
+                gen(pDivopR, 0, 0);
+            modop: gen(pModop, 0, 0);
+            rdlin: gen(pRdlin, 0, 0);
+            wrlin: gen(pWrlin, 0, 0);
+            selec0: gen(pSelec0, x, y);
             selec1:
               case x of
-                0: gen(24, 0, -1);
+                0: gen(pLdconI, 0, -1);
                 3,
                 4,
-                5: gen(24, 0, y)
+                5: gen(pLdconI, 0, y)
               end;
             chanwr: if instyp in [ints, bools, chars, reals, enums, bitsets] then
-                gen(65, 0, y)
+                gen(pChanwr, 0, y)
               else
-                gen(65, 1, y);
-            chanrd: gen(66, 0, y);
-            delay: gen(67, x, y);
-            resum: gen(68, x, y);
-            enmon: gen(69, x, y);
-            exmon: gen(70, x, y);
-            mexec: gen(71, x, y);
-            mretn: gen(72, x, y);
-            lobnd: gen(74, 0, y);
-            hibnd: gen(75, 0, y);
+                gen(pChanwr, 1, y);
+            chanrd: gen(pChanrd, 0, y);
+            delay: gen(pDelay, x, y);
+            resum: gen(pResum, x, y);
+            enmon: gen(pEnmon, x, y);
+            exmon: gen(pExmon, x, y);
+            mexec: gen(pMexec, x, y);
+            mretn: gen(pMretn, x, y);
+            lobnd: gen(pLobnd, 0, y);
+            hibnd: gen(pHibnd, 0, y);
             slabl,
             blokk,
-            param: gen(78, 0, 0);
+            param: gen(pNop, 0, 0);
             pref:
             begin
-              gen(96, 0, 0);
+              gen(pPref, 0, 0);
               writeln('w - priorities not implemented');
             end;
-            sleap: gen(97, 0, 0);
-            procv: gen(98, 0, 0);
-            ecall: gen(99, 0, y);
-            acpt1: gen(100, 0, y);
-            acpt2: gen(101, 0, y);
-            rep1c: gen(102, x, y);
-            rep2c: gen(103, 0, y);
-            power2: gen(104, 0, 0);
-            btest: gen(105, 0, 0);
+            sleap: gen(pSleap, 0, 0);
+            procv: gen(pProcv, 0, 0);
+            ecall: gen(pEcall, 0, y);
+            acpt1: gen(pAcpt1, 0, y);
+            acpt2: gen(pAcpt2, 0, y);
+            rep1c: gen(pRep1c, x, y);
+            rep2c: gen(pRep2c, 0, y);
+            power2: gen(pPower2, 0, 0);
+            btest: gen(pBtest, 0, 0);
             enmap: gen(106, 0, y);
-            sinit: gen(121, 0, 0);
-            prtjmp: gen(129, 0, y);
-            prtsel: gen(130, 0, 0);
-            prtslp: gen(131, 0, 0);
-            prtex: gen(132, x, 0);
-            prtcnd: gen(133, 0, y)
+            sinit: gen(pSinit, 0, 0);
+            prtjmp: gen(pPrtjmp, 0, y);
+            prtsel: gen(pPrtsel, 0, 0);
+            prtslp: gen(pPrtslp, 0, 0);
+            prtex: gen(pPrtex, x, 0);
+            prtcnd: gen(pPrtcnd, 0, y)
           end;
       (* case *);
       objrec.ngencode := lc - 1;
