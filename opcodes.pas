@@ -236,13 +236,7 @@ const
   pHibnd   = 75;
   { 076 UNUSED }
   { 077 UNUSED }
-  { 078 No operation
-
-    Does nothing.
-
-    x: Unused.
-    y: Unused. }
-  pNop     = 78;
+  { 078 UNUSED }
   { 079 UNUSED }
   { 080 UNUSED }
   { 081 UNUSED }

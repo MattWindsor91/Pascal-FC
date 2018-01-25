@@ -43,7 +43,7 @@ type
     chanrd, delay, resum, enmon, exmon, mexec, mretn,
     lobnd, hibnd, pref, sleap,
     procv, ecall, acpt1, acpt2, rep1c, rep2c, btest, wrfrm, w2frm,
-    wrsfm, wrbas, power2, slabl, blokk, param, case1, case2, selec1,
+    wrsfm, wrbas, power2, case1, case2, selec1,
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
   TOrder =
@@ -5630,9 +5630,6 @@ var
       w2frm: Write(tofile, 'w2frm');
       wrsfm: Write(tofile, 'wrsfm');
       power2: Write(tofile, 'powr2');
-      slabl: Write(tofile, 'slabl');
-      blokk: Write(tofile, 'block');
-      param: Write(tofile, 'param');
       case1: Write(tofile, 'case1');
       case2: Write(tofile, 'case2');
       selec1: Write(tofile, 'sel1 ');
@@ -6004,9 +6001,6 @@ var
             mretn: gen(pMretn, x, y);
             lobnd: gen(pLobnd, 0, y);
             hibnd: gen(pHibnd, 0, y);
-            slabl,
-            blokk,
-            param: gen(pNop, 0, 0);
             pref:
             begin
               gen(pPref, 0, 0);

@@ -2323,9 +2323,6 @@ var
           if stack[t].i > ir.y then
             ps := bndchk;
 
-        pNop:
-          ;
-
         pPref: { Not implemented }
           ;
 
