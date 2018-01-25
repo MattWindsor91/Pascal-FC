@@ -307,12 +307,12 @@ const
   pRelgtS  = 116;
   { 117 Greater than or equal (Bitset) }
   pRelgeS  = 117;
-  { 118 Add (Bitset) }
-  pAddS    = 118;
+  { 118 Logical OR (Bitset) }
+  pOropS   = 118;
   { 119 Subtract (Bitset) }
   pSubS    = 119;
-  { 120 Multiply (Bitset) }
-  pMulS    = 120;
+  { 120 Logical AND (Bitset) }
+  pAndopS  = 120;
   { 121 Sinit? }
   pSinit   = 121;
   { 122 UNUSED }

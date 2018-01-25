@@ -2504,7 +2504,7 @@ var
           stack[t].i := btoi(stack[t].bs >= stack[t + 1].bs);
         end;
 
-        pAddS:
+        pOropS:
         begin
           t := t - 1;
           stack[t].bs := stack[t].bs + stack[t + 1].bs;
@@ -2516,7 +2516,7 @@ var
           stack[t].bs := stack[t].bs - stack[t + 1].bs;
         end;
 
-        pMulS:
+        pAndopS:
         begin
           t := t - 1;
           stack[t].bs := stack[t].bs * stack[t + 1].bs;
