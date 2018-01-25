@@ -27,12 +27,13 @@ unit Objcode;
 interface
 
 uses
-  GConsts;
+  GConsts,
+  Opcodes;
 
 type
   TObjOrder =
     packed record
-    f: 0..omax;
+    f: TPCodeOp;
     x: -lmax..lmax;
     y: integer;
     l: integer
@@ -116,7 +117,6 @@ type
     useridstart: 0..tmax;
 
   end;
-
 implementation
 
 end.

@@ -6004,10 +6004,8 @@ var
             exmon: gen(70, x, y);
             mexec: gen(71, x, y);
             mretn: gen(72, x, y);
-            lobnd:
-              gen(74, 0, y);
-            hibnd:
-              gen(75, 0, y);
+            lobnd: gen(74, 0, y);
+            hibnd: gen(75, 0, y);
             slabl,
             blokk,
             param: gen(78, 0, 0);

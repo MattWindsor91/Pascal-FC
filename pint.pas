@@ -24,6 +24,7 @@ program pint;
 uses
   SysUtils,
   Objcode,
+  Opcodes,
   GConsts,
   IConsts;
 
@@ -1350,29 +1351,27 @@ var
       with processes[p] do
       case ir.f of
 
-        { Load address }
-        0:
+        pLdadr:
         begin
           PushInteger(display[ir.x] + ir.y, p);
         end;
 
-        1:
+        pLdval:
         begin
-          (*load value*) t := t + 1;
+          t := t + 1;
           CheckStackOverflow(p);
           stack[t] := stack[display[ir.x] + ir.y];
         end;
 
-        2:
+        pLdind:
         begin
-          (*load indirect*) t := t + 1;
+          t := t + 1;
           CheckStackOverflow(p);
           stack[t] := stack[stack[display[ir.x] + ir.y].i];
         end;
 
-        3:
+        pUpdis:
         begin
-          (*update display*)
           h1 := ir.y;
           h2 := ir.x;
           h3 := b;
@@ -1383,28 +1382,23 @@ var
           until h1 = h2;
         end;
 
-        4:
-          (*cobegin*)
+        pCobeg:
           ;
 
-        5:
-          (*coend*)
+        pCoend:
         begin
-
           procmax := npr;
           processes[0].active := False;
           stepcount := 0;
         end;
 
-        6:
+        pWait:
         begin
-          (*wait*)
           h1 := stack[t].i;
           t := t - 1;
 
           if stack[h1].i > 0 then
             stack[h1].i := stack[h1].i - 1
-
           else
           begin
             suspend := h1;
@@ -1412,9 +1406,8 @@ var
           end;
         end;
 
-        7:
+        pSignal:
         begin
-          (*signal*)
           h1 := stack[t].i;
           t := t - 1;
           h2 := pmax + 1;
@@ -1432,7 +1425,7 @@ var
 
         end;
 
-        8:
+        pStfun:
           case ir.y of
             0:
               stack[t].i := abs(stack[t].i);
@@ -1562,22 +1555,20 @@ var
 
           end;
 
-        9:
+        pIxrec:
           stack[t].i := stack[t].i + ir.y;
 
-        10:
+        pJmp:
           pc := ir.y;
 
-        (*jump*)
-        11:
+	pJmpiz:
         begin
-          (*conditional jump*)
           if stack[t].i = fals then
             pc := ir.y;
           t := t - 1;
         end;
 
-        12:  (* case1 *)
+        pCase1:
           if stack[t].i = stack[t - 1].i then
           begin
             t := t - 2;
@@ -1586,12 +1577,12 @@ var
           else
             t := t - 1;
 
-        13:  (* case 2 *)
+        pCase2:
           ps := casechk;
 
-        14:
+        pFor1up:
         begin
-          (*for1up*) h1 := stack[t - 1].i;
+          h1 := stack[t - 1].i;
           if h1 <= stack[t].i then
             stack[stack[t - 2].i].i := h1
           else
@@ -1601,9 +1592,9 @@ var
           end;
         end;
 
-        15:
+        pFor2up:
         begin
-          (*for2up*) h2 := stack[t - 2].i;
+          h2 := stack[t - 2].i;
           h1 := stack[h2].i + 1;
           if h1 <= stack[t].i then
           begin
@@ -1614,11 +1605,7 @@ var
             t := t - 3;
         end;
 
-        { Mark stack
-
-          x: 1 if process; 0 otherwise
-          y: 0 if process; ID of subroutine to call otherwise }
-        18:
+        pMrkstk:
         begin
           if ir.x = 1 then
           begin  (* process *)
@@ -1647,7 +1634,7 @@ var
           end;  (* with *)
         end;
 
-        19:
+        pCallsub:
         begin
           h1 := t - ir.y;
           h2 := stack[h1 + 4].i; (*h2 points to tab*)
@@ -1671,7 +1658,7 @@ var
           pc := objrec.gentab[h2].taddr;
         end;
 
-        21:
+        pIxary:
           with objrec do
           begin
             (*index*) h1 := ir.y; (*h1 points to genatab*)
@@ -1689,9 +1676,9 @@ var
             end;
           end;
 
-        22:
+        pLdblk:
         begin
-          (*load block*) h1 := stack[t].i;
+          h1 := stack[t].i;
           t := t - 1;
           CheckStackOverflowAfter(ir.y, p);
           h2 := ir.y + t;
@@ -1703,9 +1690,9 @@ var
           end;
         end;
 
-        23:
+        pCpblk:
         begin
-          (*copy block*) h1 := stack[t - 1].i;
+          h1 := stack[t - 1].i;
           h2 := stack[t].i;
           h3 := h1 + ir.y;
           while h1 < h3 do
@@ -1717,31 +1704,26 @@ var
           t := t - 2;
         end;
 
-        24:
+        pLdconI:
         begin
-          (*literal*)
           PushInteger(ir.y, p);
         end;
 
-        25:
+        pLdconR:
         begin
           t := t + 1;
           CheckStackOverflow(p);
           stack[t].r := objrec.genrconst[ir.y];
         end;
 
-        26:
-        begin  (* float *)
+        pIfloat:
+        begin
           h1 := t - ir.y;
           stack[h1].r := stack[h1].i;
         end;
 
-
-
-
-        27:
+        pReadip:
         begin
-          (*read*)
           if EOF(input) then
             ps := redchk
           else
@@ -1763,9 +1745,8 @@ var
           t := t - 1;
         end;
 
-        28:
+        pWrstr:
         begin
-          (*write string*)
           if ir.x = 1 then
           begin
             h3 := stack[t].i;
@@ -1789,7 +1770,7 @@ var
           until h1 = 0;
         end;
 
-        29:
+        pWrval:
         begin
           case ir.y of
             1:    (* ints *)
@@ -1813,8 +1794,8 @@ var
           t := t - 1;
         end;   (* s9 *)
 
-        30:
-        begin  (* write formatted *)
+        pWrfrm:
+        begin
           h3 := stack[t].i;  (* field width *)
           t := t - 1;
           case ir.y of
@@ -1845,13 +1826,14 @@ var
           t := t - 1;
         end;  (* 30 *)
 
-        31:
+        pStop:
           ps := fin;
 
-        32:
+        pRetproc:
         begin
           t := b - 1;
           pc := stack[b + 1].i;
+	  { Are we returning from the main procedure? }
           if pc <> 0 then
             b := stack[b + 3].i
           else
@@ -1864,26 +1846,23 @@ var
           end;
         end;
 
-        33:
+        pRetfun:
         begin
-          (* exit function *)
           t := b;
           pc := stack[b + 1].i;
           b := stack[b + 3].i;
         end;
 
-        34:
-
+        pRepadr:
           stack[t] := stack[stack[t].i];
 
-
-        35:
+        pNotop:
           stack[t].i := btoi(not (itob(stack[t].i)));
 
-        36:
+        pNegate:
           stack[t].i := -stack[t].i;
 
-        37:
+        pW2frm:
         begin    (* formatted reals output *)
           h3 := stack[t - 1].i;
           h4 := stack[t].i;
@@ -1891,94 +1870,91 @@ var
           t := t - 3;
         end;
 
-        38:
-
+        pStore:
         begin
-          (*store*) stack[stack[t - 1].i] := stack[t];
+          stack[stack[t - 1].i] := stack[t];
           t := t - 2;
-
         end;
 
-        39:
+        pRelequR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r = stack[t + 1].r);
         end;
 
-        40:
+        pRelneqR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r <> stack[t + 1].r);
         end;
 
-        41:
+        pRelltR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r < stack[t + 1].r);
         end;
 
-        42:
+        pRelleR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r <= stack[t + 1].r);
         end;
 
-        43:
+        pRelgtR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r > stack[t + 1].r);
         end;
 
-        44:
+        pRelgeR:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].r >= stack[t + 1].r);
         end;
 
-
-        45:
+        pRelequI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i = stack[t + 1].i);
         end;
 
-        46:
+        pRelneqI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i <> stack[t + 1].i);
         end;
 
-        47:
+        pRelltI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i < stack[t + 1].i);
         end;
 
-        48:
+        pRelleI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i <= stack[t + 1].i);
         end;
 
-        49:
+        pRelgtI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i > stack[t + 1].i);
         end;
 
-        50:
+        pRelgeI:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].i >= stack[t + 1].i);
         end;
 
-        51:
+        pOropB:
         begin
           t := t - 1;
           stack[t].i := btoi(itob(stack[t].i) or itob(stack[t + 1].i));
         end;
 
-        52:
+        pAddI:
         begin
           t := t - 1;
           if ((stack[t].i > 0) and (stack[t + 1].i > 0)) or
@@ -1989,7 +1965,7 @@ var
             stack[t].i := stack[t].i + stack[t + 1].i;
         end;
 
-        53:
+        pSubI:
         begin
           t := t - 1;
           if ((stack[t].i < 0) and (stack[t + 1].i > 0)) or
@@ -2000,7 +1976,7 @@ var
             stack[t].i := stack[t].i - stack[t + 1].i;
         end;
 
-        54:
+        pAddR:
         begin
           t := t - 1;
           if ((stack[t].r > 0.0) and (stack[t + 1].r > 0.0)) or
@@ -2011,7 +1987,7 @@ var
             stack[t].r := stack[t].r + stack[t + 1].r;
         end;
 
-        55:
+        pSubR:
         begin
           t := t - 1;
           if ((stack[t].r > 0.0) and (stack[t + 1].r < 0.0)) or
@@ -2022,13 +1998,13 @@ var
             stack[t].r := stack[t].r - stack[t + 1].r;
         end;
 
-        56:
+        pAndopB:
         begin
           t := t - 1;
           stack[t].i := btoi(itob(stack[t].i) and itob(stack[t + 1].i));
         end;
 
-        57:
+        pMulI:
         begin
           t := t - 1;
           if stack[t].i <> 0 then
@@ -2038,7 +2014,7 @@ var
             stack[t].i := stack[t].i * stack[t + 1].i;
         end;
 
-        58:
+        pDivopI:
         begin
           t := t - 1;
           if stack[t + 1].i = 0 then
@@ -2047,7 +2023,7 @@ var
             stack[t].i := stack[t].i div stack[t + 1].i;
         end;
 
-        59:
+        pModop:
         begin
           t := t - 1;
           if stack[t + 1].i = 0 then
@@ -2056,7 +2032,7 @@ var
             stack[t].i := stack[t].i mod stack[t + 1].i;
         end;
 
-        60:
+        pMulR:
         begin
           t := t - 1;
           if (abs(stack[t].r) > 1.0) and (abs(stack[t + 1].r) > 1.0) then
@@ -2066,7 +2042,7 @@ var
             stack[t].r := stack[t].r * stack[t + 1].r;
         end;
 
-        61:
+        pDivopR:
         begin
           t := t - 1;
           if stack[t + 1].r < minreal then
@@ -2075,20 +2051,19 @@ var
             stack[t].r := stack[t].r / stack[t + 1].r;
         end;
 
-
-        62:
+        pRdlin:
           if EOF(input) then
             ps := redchk
           else
             readln;
 
-        63:
+        pWrlin:
         begin
           writeln;
           chrcnt := 0;
         end;
 
-        64:
+        pSelec0:
         begin
           h1 := t;
           h2 := 0;
@@ -2216,7 +2191,7 @@ var
           t := t - 1 - (h2 * sfsize);
         end;  (* case 64 *)
 
-        65:      (* channel write - gld *)
+        pChanwr: { gld }
         begin
           h1 := stack[t - 1].i;   (* h1 now points to channel *)
           h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
@@ -2255,7 +2230,7 @@ var
           t := t - 2;
         end;  (* case 65 *)
 
-        66:      (*  channel read - gld *)
+        pChanrd: { gld }
         begin
           h1 := stack[t - 1].i;
           h2 := stack[h1].i;
@@ -2284,19 +2259,19 @@ var
             wakenon(h1);
           end;
           t := t - 2;
-        end;  (* case 66 *)
-        67:
-        begin (* delay *)
+        end;
+
+        pDelay:
+        begin
           h1 := stack[t].i;
           t := t - 1;
           joinqueue(h1);
           if curmon <> 0 then
             releasemon(curmon);
-        end;  (* case 67 *)
+        end;
 
-
-        68:
-        begin  (* resume *)
+        pResum:
+        begin
           h1 := stack[t].i;
           t := t - 1;
           if stack[h1].i > 0 then
@@ -2305,10 +2280,10 @@ var
             if curmon <> 0 then
               joinqueue(curmon + 1);
           end;
-        end;  (* case 68 *)
+        end;
 
-        69:
-        begin  (* enter monitor *)
+        pEnmon:
+        begin
           h1 := stack[t].i;  (* address of new monitor variable *)
           stack[t].i := curmon;  (* save old monitor variable *)
           curmon := h1;
@@ -2318,51 +2293,54 @@ var
 
           else
             joinqueue(curmon);
-        end;  (* case 69 *)
-        70:
-        begin  (* exit monitor *)
+        end;
+
+        pExmon:
+        begin
           releasemon(curmon);
           curmon := stack[t].i;
           t := t - 1;
-        end;  (* case 70 *)
-        71:
+        end;
+
+        pMexec:
         begin  (* execute monitor body code *)
           t := t + 1;
           stack[t].i := pc;
           pc := ir.y;
-        end;  (* case 70 *)
-        72:
+        end;
+
+        pMretn:
         begin  (* return from monitor body code *)
           pc := stack[t].i;
           t := t - 1;
-        end;  (* case 72 *)
+        end;
 
-        74:  (* check lower bound *)
+	pLobnd:
           if stack[t].i < ir.y then
             ps := bndchk;
 
-        75:  (* check upper bound *)
+        pHibnd:
           if stack[t].i > ir.y then
             ps := bndchk;
 
-        78:
-          ;  (* no operation *)
-
-        96:  (* pref *)
+        pNop:
           ;
 
-        97:
-        begin  (* sleep *)
+        pPref: { Not implemented }
+          ;
+
+        pSleap:
+        begin
           h1 := stack[t].i;
           t := t - 1;
           if h1 <= 0 then
             stepcount := 0
           else
             joineventq(h1 + sysclock);
-        end;  (* case 97 *)
+        end;
 
-        98:
-        begin  (* set process var on process start-up *)
+        pProcv:
+        begin
           h1 := stack[t].i;
           varptr := h1;
           if stack[h1].i = 0 then
@@ -2372,8 +2350,8 @@ var
           t := t - 1;
         end;
 
-        99:
-        begin  (* ecall *)
+        pEcall:
+        begin
           h1 := t - ir.y;
           t := h1 - 2;
           h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
@@ -2406,8 +2384,8 @@ var
             ps := namechk;
         end;
 
-        100:
-        begin    (* acpt1 *)
+        pAcpt1:
+        begin
           h1 := stack[t].i;    (* h1 points to entry *)
           t := t - 1;
           if stack[h1].i = 0 then
@@ -2430,9 +2408,8 @@ var
           end;
         end;
 
-        101:
-
-        begin  (* acpt2 *)
+        pAcpt2:
+        begin
           h1 := stack[t].i; (* h1 points to entry *)
           t := t - 1;
           procwake(h1);
@@ -2445,10 +2422,10 @@ var
           end;
         end;
 
-        102:  (* rep1c *)
+        pRep1c:
           stack[display[ir.x] + ir.y].i := repindex;
 
-        103:  (* rep2c *)
+        pRep2c:
         begin  (* replicate tail code *)
           h1 := stack[t].i;
           t := t - 1;
@@ -2456,17 +2433,16 @@ var
           pc := ir.y;
         end;
 
-        104:  (* powr2 *)
-
+        pPower2:
         begin
           h1 := stack[t].i;
           if not (h1 in [0..bsmsb]) then
             ps := setchk
           else
             stack[t].bs := [h1];
-        end;  (* 104 *)
+        end;
 
-        105:  (* btest *)
+        pBtest:
         begin
           t := t - 1;
           h1 := stack[t].i;
@@ -2474,86 +2450,79 @@ var
             ps := setchk
           else
             stack[t].i := btoi(h1 in stack[t + 1].bs);
-        end;  (* 105 *)
+        end;
 
-        107:  (* write based *)
+	pWrbas:
         begin
           h3 := stack[t].i;
           h1 := stack[t - 1].i;
           h1r := stack[t - 1].r;
           t := t - 2;
           if h3 = 8 then
-
-
             Write(h1r: 11: 8)
-
-
           else
-
-
             Write(h1r: 8: 16);
 
-        end;  (* 107 *)
+        end;
 
-
-        112:
+        pRelequS:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].bs = stack[t + 1].bs);
-        end;  (* 112 *)
+        end;
 
-        113:
+        pRelneqS:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].bs <> stack[t + 1].bs);
-        end;  (* 113 *)
+        end;
 
-        114:
+        pRelltS:
         begin
           t := t - 1;
           //stack[t].i := btoi(stack[t].bs < stack[t+1].bs)
           stack[t].i := btoi((stack[t].bs <= stack[t + 1].bs) and (stack[t].bs <> stack[t + 1].bs));
-        end;  (* 114 *)
+        end;
 
-        115:
-
+        pRelleS:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].bs <= stack[t + 1].bs);
-        end;  (* 115 *)
+        end;
 
 
-        116:
+        pRelgtS:
         begin
           t := t - 1;
           //stack[t].i := btoi(stack[t].bs > stack[t+1].bs)
           stack[t].i := btoi((stack[t].bs >= stack[t + 1].bs) and (stack[t].bs <> stack[t + 1].bs));
-        end;  (* 116 *)
+        end;
 
-        117:
+        pRelgeS:
         begin
           t := t - 1;
           stack[t].i := btoi(stack[t].bs >= stack[t + 1].bs);
-        end;  (* 117 *)
+        end;
 
-        118:
+        pAddS:
         begin
           t := t - 1;
           stack[t].bs := stack[t].bs + stack[t + 1].bs;
-        end;  (* 118 *)
+        end;
 
-        119:
+        pSubS:
         begin
           t := t - 1;
           stack[t].bs := stack[t].bs - stack[t + 1].bs;
-        end;  (* 119 *)
+        end;
 
-        120:
+        pMulS:
         begin
           t := t - 1;
           stack[t].bs := stack[t].bs * stack[t + 1].bs;
-        end;  (* 120 *)
-        121:  (* sinit *)
+        end;
+
+        pSinit:
           if curpr <> 0 then
             ps := seminitchk
           else
@@ -2562,13 +2531,14 @@ var
             t := t - 2;
           end;
 
-        129:
-        begin (* prtjmp *)
+        pPrtjmp:
+        begin
           if stack[curmon + 2].i = 0 then
             pc := ir.y;
         end;
-        130:
-        begin (* prtsel *)
+
+        pPrtsel:
+        begin
           h1 := t;
           h2 := 0;
           foundcall := False;
@@ -2604,14 +2574,16 @@ var
           pc := stack[t].i;
           t := t - 1;
         end;
-        131:
-        begin (* prtslp *)
+
+        pPrtslp:
+        begin
           h1 := stack[t].i;
           t := t - 1;
           joinqueue(h1);
         end;
-        132:
-        begin (* prtex *)
+
+        pPrtex:
+        begin
           if ir.x = 0 then
             clearresource := True
           else
@@ -2619,7 +2591,8 @@ var
           curmon := stack[t].i;
           t := t - 1;
         end;
-        133:  (* prtcnd *)
+
+        pPrtcnd:
           if clearresource then
           begin
             stack[curmon + 2].i := 1;
