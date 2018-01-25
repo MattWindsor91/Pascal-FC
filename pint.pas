@@ -1345,6 +1345,18 @@ var
       end;
     end;
 
+    { Pushes a stack record 'r' onto the stack segment for process 'p'. }
+    procedure PushRecord(p: TProcessID; r: TStackRecord);
+    begin
+      with processes[p] do
+      begin
+        t := t + 1;
+        CheckStackOverflow(p);
+
+        stack[t] := r;
+      end;
+    end;
+
     { Pops an integer from the stack segment for process 'p'. }
     function PopInteger(p: TProcessID) : integer;
     begin
@@ -1355,29 +1367,42 @@ var
       end;
     end;
 
+    { TODO: work out precisely what this function does }
+    function LocalAddress(p: TProcessID; x, y: integer): integer;
+    begin
+      Result := processes[p].display[x] + y;
+    end;
+
+    procedure RunLdadr(p: TProcessID; x, y: integer);
+    begin
+      PushInteger(LocalAddress(p, x, y), p);
+    end;
+
+    procedure RunLdval(p: TProcessID; x, y: integer);
+    var
+      rec : TStackRecord;
+    begin
+      rec := stack[LocalAddress(p, x, y)];
+      PushRecord(p, rec);
+    end;
+
+    procedure RunLdind(p: TProcessID; x, y: integer);
+    var
+      addr : integer;
+      rec : TStackRecord;
+    begin
+      addr := stack[LocalAddress(p, x, y)].i;
+      rec := stack[addr];
+      PushRecord(p, rec);
+    end;
+
     procedure RunStep(p: TProcessID);
     begin
       with processes[p] do
         case ir.f of
-
-          pLdadr:
-          begin
-            PushInteger(display[ir.x] + ir.y, p);
-          end;
-
-          pLdval:
-          begin
-            t := t + 1;
-            CheckStackOverflow(p);
-            stack[t] := stack[display[ir.x] + ir.y];
-          end;
-
-          pLdind:
-          begin
-            t := t + 1;
-            CheckStackOverflow(p);
-            stack[t] := stack[stack[display[ir.x] + ir.y].i];
-          end;
+          pLdadr: RunLdadr(p, ir.x, ir.y);
+          pLdval: RunLdval(p, ir.x, ir.y);
+          pLdind: RunLdind(p, ir.x, ir.y);
 
           pUpdis:
           begin
@@ -1391,8 +1416,7 @@ var
             until h1 = h2;
           end;
 
-          pCobeg:
-            ;
+          pCobeg: ;
 
           pCoend:
           begin
