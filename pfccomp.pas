@@ -42,7 +42,7 @@ type
     add, sub, andop, mul, divop, modop, rdlin, wrlin, selec0, chanwr,
     chanrd, delay, resum, enmon, exmon, mexec, mretn,
     lobnd, hibnd, pref, sleap,
-    procv, ecall, acpt1, acpt2, rep1c, rep2c, btest, enmap, wrfrm, w2frm,
+    procv, ecall, acpt1, acpt2, rep1c, rep2c, btest, wrfrm, w2frm,
     wrsfm, wrbas, power2, slabl, blokk, param, case1, case2, selec1,
     sinit, prtex, prtjmp, prtsel, prtslp, prtcnd);
 
@@ -5191,7 +5191,6 @@ var
               else
                 index := index + 1
             until found;
-            emit1(enmap, index - 1);
           end;
           t := tab[t].link;
         end;  (* while *)
@@ -5627,7 +5626,6 @@ var
       rep1c: Write(tofile, 'rep1c');
       rep2c: Write(tofile, 'rep2c');
       btest: Write(tofile, 'btest');
-      enmap: Write(tofile, 'enmap');
       wrfrm: Write(tofile, 'wrfrm');
       w2frm: Write(tofile, 'w2frm');
       wrsfm: Write(tofile, 'wrsfm');
@@ -6023,7 +6021,6 @@ var
             rep2c: gen(pRep2c, 0, y);
             power2: gen(pPower2, 0, 0);
             btest: gen(pBtest, 0, 0);
-            enmap: gen(106, 0, y);
             sinit: gen(pSinit, 0, 0);
             prtjmp: gen(pPrtjmp, 0, y);
             prtsel: gen(pPrtsel, 0, 0);

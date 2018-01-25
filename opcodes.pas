@@ -285,7 +285,7 @@ const
   pPower2  = 104;
   { 105 Test power-of-2 bit? }
   pBtest   = 105;
-  { 106 (Used for enmap, but not interpreted by interpreter?) }
+  { 106 UNUSED (was enmap) }
   { 107 Write based
 
     x: Unused.
