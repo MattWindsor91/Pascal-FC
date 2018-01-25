@@ -22,7 +22,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
-  SysUtils, GConsts, Objcode, Opcodes, CConsts;
+  SysUtils,
+  GConsts,
+  Objcode,
+  Opcodes,
+  CConsts;
 
 type
   FatalError = class(Exception);
@@ -52,7 +56,7 @@ type
     x: -lmax.. +lmax;
     y: integer;
     instyp: TType;
-    line: Integer
+    line: integer
   end;
   TOrderArray = array[0..cmax] of TOrder;
 var
@@ -62,26 +66,26 @@ var
   filename: ShortString;
   progfile, listfile: Text;
   progname: ShortString;
-  lc, t, a, b, sx: Integer;
+  lc, t, a, b, sx: integer;
   stantyps: TTypeSet;
-  display: array[0..lmax] of Integer;
+  display: array[0..lmax] of integer;
   tab: TTabArray;
   atab: TATabArray;
   btab: TBTabArray;
   stab: TSTabArray;
   rconst: TRealArray;
-  rnum: Real;
-  r, realindex: Integer;
-  e: Integer;
+  rnum: real;
+  r, realindex: integer;
+  e: integer;
   code: TOrderArray;
   useridstart: 0..tmax;
 
   intab: TInTabarray;
 
-  int: Integer;
+  int: integer;
   simpletyps, ipctyps: TTypeSet;
 
-  success: Boolean;
+  success: boolean;
 
 
 
@@ -1580,8 +1584,7 @@ var
 
 
 
-      procedure internalname(var internalnum: integer;
-      var namestring: ShortString);
+      procedure internalname(var internalnum: integer; var namestring: ShortString);
       var
         temp: integer;
         index: integer;
@@ -1770,8 +1773,8 @@ var
               level := level + 1;
               display[level] := b;
               offset := 0;
-              while not (sy in fsys -
-                  [semicolon, comma, ident] + [endsy]) do
+              while not (sy in fsys - [semicolon, comma, ident] +
+                  [endsy]) do
               begin  (* field section *)
                 if sy = ident then
                 begin
@@ -1926,8 +1929,8 @@ var
                       rf := ref;
                     if valpar then
                     begin
-                      if contains([semafors, channels,
-                        condvars], typ, ref) then
+                      if contains([semafors, channels, condvars],
+                        typ, ref) then
                         error(ervarpar);
                       sz := taddr;
                     end
@@ -5396,13 +5399,13 @@ var
     sps['?'] := query;
     sps['%'] := percent;
 
-    legalchars := ['A'..'Z', 'a'..'z', '0'..'9', ':', '<', '>', '.', '(', '''',
-      '{', '=', '+', '-', '*', '/', ')', '}', ',', '[', ']',
-      ';', '?', '!', '%'];
+    legalchars := ['A'..'Z', 'a'..'z', '0'..'9', ':', '<', '>', '.',
+      '(', '''', '{', '=', '+', '-', '*', '/', ')', '}', ',', '[',
+      ']', ';', '?', '!', '%'];
     constbegsys := [plus, minus, intcon, realcon, charcon, ident];
     typebegsys := [ident, arraysy, recordsy, channelsy, lparent];
-    blockbegsys := [constsy, typesy, varsy,
-      monitorsy, proceduresy, functionsy, processsy, beginsy, resourcesy, guardedsy];
+    blockbegsys := [constsy, typesy, varsy, monitorsy, proceduresy,
+      functionsy, processsy, beginsy, resourcesy, guardedsy];
     facbegsys := [intcon, realcon, charcon, ident, lparent, notsy, lbrack];
     statbegsys := [beginsy, ifsy, casesy, whilesy, repeatsy, forsy,
       selectsy, prisy, nullsy, acceptsy, requeuesy];
@@ -6070,37 +6073,37 @@ var
 
   procedure Usage;
   begin
-    Writeln('Usage: pfccomp progfile listfile objfile')
+    Writeln('Usage: pfccomp progfile listfile objfile');
   end;
 
 begin
   (* dgm *)
   if paramcount = 3 then
-    begin
-      filename := ParamStr(1);
-      Assign(progfile, ParamStr(1));
-      Assign(listfile, ParamStr(2));
-      Assign(objfile, ParamStr(3));
-    end
+  begin
+    filename := ParamStr(1);
+    Assign(progfile, ParamStr(1));
+    Assign(listfile, ParamStr(2));
+    Assign(objfile, ParamStr(3));
+  end
   else
-    begin
-      Usage;
-      Exit;
-    end;
+  begin
+    Usage;
+    Exit;
+  end;
 
   try
     pfcfront(success);
     impcheck(success);
     if success then
-       ict(success);
+      ict(success);
     puttab;
     if not success then
       errorbanner;
   except
     on e: FatalError do
-      begin
-        Writeln('A fatal error occurred:');
-        Writeln(e.Message);
-      end;
+    begin
+      Writeln('A fatal error occurred:');
+      Writeln(e.Message);
+    end;
   end;
 end.

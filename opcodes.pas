@@ -30,59 +30,59 @@ const
   { Minimum P-code opcode }
   minPCodeOp = 0;
   { 000 Load address }
-  pLdadr   = 0;
+  pLdadr = 0;
   { 001 Load value }
-  pLdval   = 1;
+  pLdval = 1;
   { 002 Load indirect }
-  pLdind   = 2;
+  pLdind = 2;
   { 003 Update display }
-  pUpdis   = 3;
+  pUpdis = 3;
   { 004 Cobegin }
-  pCobeg   = 4;
+  pCobeg = 4;
   { 005 Coend }
-  pCoend   = 5;
+  pCoend = 5;
   { 006 Wait }
-  pWait    = 6;
+  pWait = 6;
   { 007 Signal }
-  pSignal  = 7;
+  pSignal = 7;
   { 008 Standard function call }
-  pStfun   = 8;
+  pStfun = 8;
   { 009 Index record? }
-  pIxrec   = 9;
+  pIxrec = 9;
   { 010 Unconditional jump }
-  pJmp     = 10;
+  pJmp = 10;
   { 011 Jump if zero }
-  pJmpiz   = 11;
+  pJmpiz = 11;
   { 012 Case 1? }
-  pCase1   = 12;
+  pCase1 = 12;
   { 013 Case 2? }
-  pCase2   = 13;
+  pCase2 = 13;
   { 014 For1up? }
-  pFor1up  = 14;
+  pFor1up = 14;
   { 015 For2up? }
-  pFor2up  = 15;
+  pFor2up = 15;
   { 016 UNUSED }
   { 017 UNUSED }
   { 018 Mark stack
 
     x: 1 if process; 0 otherwise
     y: 0 if process; ID of subroutine to call otherwise }
-  pMrkstk  = 18;
+  pMrkstk = 18;
   { 019 Call subroutine }
   pCallsub = 19;
   { 020 UNUSED }
   { 021 Index array? }
-  pIxary   = 21;
+  pIxary = 21;
   { 022 Load block }
-  pLdblk   = 22;
+  pLdblk = 22;
   { 023 Copy block }
-  pCpblk   = 23;
+  pCpblk = 23;
   { 024 Load constant (Integer) }
-  pLdconI  = 24;
+  pLdconI = 24;
   { 025 Load constant (Real) }
-  pLdconR  = 25;
+  pLdconR = 25;
   { 026 Convert integer to float? }
-  pIfloat  = 26;
+  pIfloat = 26;
   { 027 Read
 
     Pop a stack address off the top of the stack.
@@ -91,13 +91,13 @@ const
 
     x: Unused.
     y: 1 for integer; 3 for char; 4 for real }
-  pReadip  = 27;
+  pReadip = 27;
   { 028 Write string
 
     x: If 1, pop an amount to left-pad the string off the stack.
        If 0, don't left-pad.
     y: The location of the begining of the string in genstab. }
-  pWrstr   = 28;
+  pWrstr = 28;
   { 029 Write value
 
     Pop a value off the stack, interpret it according to y, and write it to
@@ -105,20 +105,20 @@ const
 
     x: Unused.
     y: 1 for integer; 2 for bool; 3 for char; 4 for real; 5 for bitset. }
-  pWrval   = 29;
+  pWrval = 29;
   { 030 Write formatted }
-  pWrfrm   = 30;
+  pWrfrm = 30;
   { 031 Stop
 
     Halts the interpreter.
 
     x: Unused.
     y. Unused. }
-  pStop    = 31;
+  pStop = 31;
   { 032 Return from procedure }
   pRetproc = 32;
   { 033 Return from function }
-  pRetfun  = 33;
+  pRetfun = 33;
   { 034 Replace with address contents
 
     Pops an address from the top of the stack and pushes the contents of
@@ -126,14 +126,14 @@ const
     
     x: Unused.
     y: Unused. }
-  pRepadr  = 34;
+  pRepadr = 34;
   { 035 Logical negate
 
     Pops a Boolean from the top of the stack and pushes its logical negation.
   
     x: Unused.
     y: Unused. }
-  pNotop   = 35;
+  pNotop = 35;
   { 036 Arithmetic negate
 
     Pops an integer from the top of the stack and pushes its arithmetic
@@ -141,79 +141,79 @@ const
 
     x: Unused.
     y. Unused. }
-  pNegate  = 36;
+  pNegate = 36;
   { 037 Write formatted real }
-  pW2frm   = 37;
+  pW2frm = 37;
   { 038 Store }
-  pStore   = 38;
+  pStore = 38;
   { 039 Equal (Real) }
   pRelequR = 39;
   { 040 Not equal (Real) }
   pRelneqR = 40;
   { 041 Less than (Real) }
-  pRelltR  = 41;
+  pRelltR = 41;
   { 042 Less than or equal (Real) }
-  pRelleR  = 42;
+  pRelleR = 42;
   { 043 Greater than (Real) }
-  pRelgtR  = 43;
+  pRelgtR = 43;
   { 044 Greater than or equal (Real) }
-  pRelgeR  = 44;
+  pRelgeR = 44;
   { 045 Equal (Integer) }
   pRelequI = 45;
   { 046 Not equal (Integer) }
   pRelneqI = 46;
   { 047 Less than (Integer) }
-  pRelltI  = 47;
+  pRelltI = 47;
   { 048 Less than or equal (Integer) }
-  pRelleI  = 48;
+  pRelleI = 48;
   { 049 Greater than (Integer) }
-  pRelgtI  = 49;
+  pRelgtI = 49;
   { 050 Greater than or equal (Integer) }
-  pRelgeI  = 50;
+  pRelgeI = 50;
   { 051 Logical OR (Boolean) }
-  pOropB   = 51;
+  pOropB = 51;
   { 052 Add (Integer) }
-  pAddI    = 52;
+  pAddI = 52;
   { 053 Subtract (Integer) }
-  pSubI    = 53;
+  pSubI = 53;
   { 054 Add (Real) }
-  pAddR    = 54;
+  pAddR = 54;
   { 055 Subtract (Real) }
-  pSubR    = 55;
+  pSubR = 55;
   { 056 Logical AND (Boolean) }
-  pAndopB  = 56;
+  pAndopB = 56;
   { 057 Multiply (Integer) }
-  pMulI    = 57;
+  pMulI = 57;
   { 058 Divide (Integer) }
-  pDivopI  = 58;
+  pDivopI = 58;
   { 059 Modulo }
-  pModop   = 59;
+  pModop = 59;
   { 060 Multiply (Real) }
-  pMulR    = 60;
+  pMulR = 60;
   { 061 Divide (Real) }
-  pDivopR  = 61;
+  pDivopR = 61;
   { 062 Read line }
-  pRdlin   = 62;
+  pRdlin = 62;
   { 063 Write line }
-  pWrlin   = 63;
+  pWrlin = 63;
   { 064 Select? }
-  pSelec0  = 64;
+  pSelec0 = 64;
   { 065 Channel write }
-  pChanwr  = 65;
+  pChanwr = 65;
   { 066 Channel read }
-  pChanrd  = 66;
+  pChanrd = 66;
   { 067 Delay }
-  pDelay   = 67;
+  pDelay = 67;
   { 068 Resume }
-  pResum   = 68;
+  pResum = 68;
   { 069 Enter monitor }
-  pEnmon   = 69;
+  pEnmon = 69;
   { 070 Exit monitor }
-  pExmon   = 70;
+  pExmon = 70;
   { 071 Execute monitor body code }
-  pMexec   = 71;
+  pMexec = 71;
   { 072 Return from monitor body code }
-  pMretn   = 72;
+  pMretn = 72;
   { 073 UNUSED }
   { 074 Check lower bound
   
@@ -222,7 +222,7 @@ const
     
     x: Unused.
     y: The lower bound. }
-  pLobnd   = 74;
+  pLobnd = 74;
   { 075 Check upper bound
   
     Raises a bound check fault if the integer at the top of the stack is above
@@ -230,7 +230,7 @@ const
     
     x: Unused.
     y. The upper bound. }
-  pHibnd   = 75;
+  pHibnd = 75;
   { 076 UNUSED }
   { 077 UNUSED }
   { 078 UNUSED }
@@ -257,31 +257,31 @@ const
 
     x: Unused.
     y: Unused. }
-  pPref    = 96;
+  pPref = 96;
   { 097 Sleep }
-  pSleap   = 97;
+  pSleap = 97;
   { 098 Set process var on process start-up }
-  pProcv   = 98;
+  pProcv = 98;
   { 099 Ecall? }
-  pEcall   = 99;
+  pEcall = 99;
   { 100 Acpt1? }
-  pAcpt1   = 100;
+  pAcpt1 = 100;
   { 101 Acpt2? }
-  pAcpt2   = 101;
+  pAcpt2 = 101;
   { 102 Replicate? }
-  pRep1c   = 102;
+  pRep1c = 102;
   { 103 Replicate tail code? }
-  pRep2c   = 103;
+  pRep2c = 103;
   { 104 Set power-of-2 bit? }
-  pPower2  = 104;
+  pPower2 = 104;
   { 105 Test power-of-2 bit? }
-  pBtest   = 105;
+  pBtest = 105;
   { 106 UNUSED (was enmap) }
   { 107 Write based
 
     x: Unused.
     y: 1 = integers; 5 = bitsets; ignored in practice }
-  pWrbas   = 107;
+  pWrbas = 107;
   { 108 UNUSED }
   { 109 UNUSED }
   { 110 UNUSED }
@@ -291,21 +291,21 @@ const
   { 113 Not equal (Bitset) }
   pRelneqS = 113;
   { 114 Less than (Bitset) }
-  pRelltS  = 114;
+  pRelltS = 114;
   { 115 Less than or equal (Bitset) }
-  pRelleS  = 115;
+  pRelleS = 115;
   { 116 Greater than (Bitset) }
-  pRelgtS  = 116;
+  pRelgtS = 116;
   { 117 Greater than or equal (Bitset) }
-  pRelgeS  = 117;
+  pRelgeS = 117;
   { 118 Logical OR (Bitset) }
-  pOropS   = 118;
+  pOropS = 118;
   { 119 Subtract (Bitset) }
-  pSubS    = 119;
+  pSubS = 119;
   { 120 Logical AND (Bitset) }
-  pAndopS  = 120;
+  pAndopS = 120;
   { 121 Sinit? }
-  pSinit   = 121;
+  pSinit = 121;
   { 122 UNUSED }
   { 123 UNUSED }
   { 124 UNUSED }
@@ -314,15 +314,15 @@ const
   { 127 UNUSED }
   { 128 UNUSED }
   { 129 Prtjmp? }
-  pPrtjmp  = 129;
+  pPrtjmp = 129;
   { 130 Prtsel? }
-  pPrtsel  = 130;
+  pPrtsel = 130;
   { 131 Prtslp? }
-  pPrtslp  = 131;
+  pPrtslp = 131;
   { 132 Prtex? }
-  pPrtex   = 132;
+  pPrtex = 132;
   { 133 Prtcnd? }
-  pPrtcnd  = 133;
+  pPrtcnd = 133;
   { Maximum P-code opcode }
   maxPCodeOp = pPrtcnd;
 

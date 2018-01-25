@@ -58,9 +58,9 @@ type
     obj: TMyObject;
     typ: TType;
     ref: TIndex;
-    normal: Boolean;
+    normal: boolean;
     lev: 0..lmax;
-    taddr: Integer;
+    taddr: integer;
     auxref: TIndex
   end;
   TTabArray = array[0..tmax] of TTabRec;
@@ -79,8 +79,8 @@ type
   end;
   TBTabArray = array[1..bmax] of TBTabRec;
 
-  TSTabArray = packed array[0..smax] of Char;
-  TRealArray = array[1..rmax] of Real;
+  TSTabArray = packed array[0..smax] of char;
+  TRealArray = array[1..rmax] of real;
 
   TInTabRec =
     packed record
@@ -117,6 +117,7 @@ type
     useridstart: 0..tmax;
 
   end;
+
 implementation
 
 end.

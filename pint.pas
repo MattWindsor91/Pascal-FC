@@ -104,9 +104,9 @@ var
 
 
   ir: TObjOrder;
-  ps: (run, fin, divchk, inxchk, charchk, redchk, deadlock,
-    channerror, guardchk, queuechk, procnchk, statchk, nexistchk,
-    namechk, casechk, bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
+  ps: (run, fin, divchk, inxchk, charchk, redchk, deadlock, channerror,
+    guardchk, queuechk, procnchk, statchk, nexistchk, namechk, casechk,
+    bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
 
   lncnt, chrcnt: integer;
   h1, h2, h3, h4: integer;
@@ -1322,7 +1322,7 @@ var
     begin
       with processes[p] do
         if (t + nItems) > stacksize then
-           raise StkChkException.Create('stack overflow');
+          raise StkChkException.Create('stack overflow');
     end;
 
 
@@ -1349,1258 +1349,1260 @@ var
     procedure RunStep(p: TProcessID);
     begin
       with processes[p] do
-      case ir.f of
+        case ir.f of
 
-        pLdadr:
-        begin
-          PushInteger(display[ir.x] + ir.y, p);
-        end;
-
-        pLdval:
-        begin
-          t := t + 1;
-          CheckStackOverflow(p);
-          stack[t] := stack[display[ir.x] + ir.y];
-        end;
-
-        pLdind:
-        begin
-          t := t + 1;
-          CheckStackOverflow(p);
-          stack[t] := stack[stack[display[ir.x] + ir.y].i];
-        end;
-
-        pUpdis:
-        begin
-          h1 := ir.y;
-          h2 := ir.x;
-          h3 := b;
-          repeat
-            display[h1] := h3;
-            h1 := h1 - 1;
-            h3 := stack[h3 + 2].i
-          until h1 = h2;
-        end;
-
-        pCobeg:
-          ;
-
-        pCoend:
-        begin
-          procmax := npr;
-          processes[0].active := False;
-          stepcount := 0;
-        end;
-
-        pWait:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-
-          if stack[h1].i > 0 then
-            stack[h1].i := stack[h1].i - 1
-          else
+          pLdadr:
           begin
-            suspend := h1;
+            PushInteger(display[ir.x] + ir.y, p);
+          end;
+
+          pLdval:
+          begin
+            t := t + 1;
+            CheckStackOverflow(p);
+            stack[t] := stack[display[ir.x] + ir.y];
+          end;
+
+          pLdind:
+          begin
+            t := t + 1;
+            CheckStackOverflow(p);
+            stack[t] := stack[stack[display[ir.x] + ir.y].i];
+          end;
+
+          pUpdis:
+          begin
+            h1 := ir.y;
+            h2 := ir.x;
+            h3 := b;
+            repeat
+              display[h1] := h3;
+              h1 := h1 - 1;
+              h3 := stack[h3 + 2].i
+            until h1 = h2;
+          end;
+
+          pCobeg:
+            ;
+
+          pCoend:
+          begin
+            procmax := npr;
+            processes[0].active := False;
             stepcount := 0;
           end;
-        end;
 
-        pSignal:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          h2 := pmax + 1;
-          h3 := trunc(random * h2);
-          while (h2 >= 0) and (processes[h3].suspend <> h1) do
+          pWait:
           begin
-            h3 := (h3 + 1) mod (pmax + 1);
-            h2 := h2 - 1;
-          end;
-
-          if h2 < 0 then
-            stack[h1].i := stack[h1].i + 1
-          else
-            processes[h3].suspend := 0;
-
-        end;
-
-        pStfun:
-          case ir.y of
-            0:
-              stack[t].i := abs(stack[t].i);
-            1:
-              stack[t].r := abs(stack[t].r);
-            2:    (* integer sqr *)
-              if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
-                ps := ovchk
-              else
-                stack[t].i := sqr(stack[t].i);
-            3:    (* real sqr *)
-              if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
-                ps := ovchk
-              else
-                stack[t].r := sqr(stack[t].r);
-            4:
-              stack[t].i := btoi(odd(stack[t].i));
-            5: if not (stack[t].i in [charl..charh]) then
-                ps := charchk;
-            6: ;
-            7:  (* succ *)
-              stack[t].i := stack[t].i + 1;
-            8: (* pred *)
-              stack[t].i := stack[t].i - 1;
-            9:    (* round *)
-              if abs(stack[t].r) >= (intmax + 0.5) then
-                ps := ovchk
-              else
-                stack[t].i := round(stack[t].r);
-            10:  (* trunc *)
-              if abs(stack[t].r) >= (intmax + 1.0) then
-                ps := ovchk
-              else
-                stack[t].i := trunc(stack[t].r);
-            11:
-              stack[t].r := sin(stack[t].r);
-            12:
-              stack[t].r := cos(stack[t].r);
-            13:
-              stack[t].r := exp(stack[t].r);
-            14:  (* ln *)
-              if stack[t].r <= 0.0 then
-                ps := ovchk
-              else
-                stack[t].r := ln(stack[t].r);
-            15:  (* sqrt *)
-              if stack[t].r < 0.0 then
-                ps := ovchk
-              else
-                stack[t].r := sqrt(stack[t].r);
-            16:
-              stack[t].r := arctan(stack[t].r);
-
-            17:
-            begin
-              PushInteger(btoi(EOF(input)), p);
-            end;
-
-            18:
-            begin
-              PushInteger(btoi(eoln(input)), p);
-            end;
-            19:
-            begin
-              h1 := abs(stack[t].i) + 1;
-              stack[t].i := trunc(random * h1);
-            end;
-            20:  (* empty *)
-            begin
-              h1 := stack[t].i;
-              if stack[h1].i = 0 then
-                stack[t].i := 1
-              else
-                stack[t].i := 0;
-            end;  (* f21 *)
-            21:  (* bits *)
-            begin
-              h1 := stack[t].i;
-              stack[t].bs := [];
-              h3 := 0;
-              if h1 < 0 then
-                if bsmsb < intmsb then
-                begin
-                  ps := setchk;
-                  h1 := 0;
-                end
-                else
-                begin
-                  stack[t].bs := [bsmsb];
-                  h1 := (h1 + 1) + maxint;
-                  h3 := 1;
-                end;
-              for h2 := 0 to bsmsb - h3 do
-              begin
-                if (h1 mod 2) = 1 then
-                  stack[t].bs := stack[t].bs + [h2];
-                h1 := h1 div 2;
-              end;
-              if h1 <> 0 then
-                ps := setchk;
-            end;  (* f21 *)
-
-            24:  (* int - bitset to integer *)
-            begin
-              h1 := 0;
-              if bsmsb = intmsb then
-                if intmsb in stack[t].bs then
-                  h1 := 1;
-              h2 := 0;  (* running total *)
-              h3 := 1;  (* place value *)
-              for h4 := 0 to bsmsb - h1 do
-              begin
-                if h4 in stack[t].bs then
-                  h2 := h2 + h3;
-                h3 := h3 * 2;
-              end;
-              if h1 <> 0 then
-                stack[t].i := (h2 - maxint) - 1
-              else
-                stack[t].i := h2;
-            end;
-
-            25:  (* clock *)
-            begin
-              PushInteger(sysclock, curpr);
-            end;  (* f25 *)
-
-          end;
-
-        pIxrec:
-          stack[t].i := stack[t].i + ir.y;
-
-        pJmp:
-          pc := ir.y;
-
-	pJmpiz:
-        begin
-          if stack[t].i = fals then
-            pc := ir.y;
-          t := t - 1;
-        end;
-
-        pCase1:
-          if stack[t].i = stack[t - 1].i then
-          begin
-            t := t - 2;
-            pc := ir.y;
-          end
-          else
+            h1 := stack[t].i;
             t := t - 1;
 
-        pCase2:
-          ps := casechk;
-
-        pFor1up:
-        begin
-          h1 := stack[t - 1].i;
-          if h1 <= stack[t].i then
-            stack[stack[t - 2].i].i := h1
-          else
-          begin
-            t := t - 3;
-            pc := ir.y;
-          end;
-        end;
-
-        pFor2up:
-        begin
-          h2 := stack[t - 2].i;
-          h1 := stack[h2].i + 1;
-          if h1 <= stack[t].i then
-          begin
-            stack[h2].i := h1;
-            pc := ir.y;
-          end
-          else
-            t := t - 3;
-        end;
-
-        pMrkstk:
-        begin
-          if ir.x = 1 then
-          begin  (* process *)
-            if npr = pmax then
-            begin
-              ps := procnchk;
-              raise ProcNchkException.Create('process overflow');
-            end
+            if stack[h1].i > 0 then
+              stack[h1].i := stack[h1].i - 1
             else
             begin
-              npr := npr + 1;
-              concflag := True;
-              curpr := npr;
+              suspend := h1;
+              stepcount := 0;
             end;
           end;
-          h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
-          with processes[curpr] do
+
+          pSignal:
           begin
+            h1 := stack[t].i;
+            t := t - 1;
+            h2 := pmax + 1;
+            h3 := trunc(random * h2);
+            while (h2 >= 0) and (processes[h3].suspend <> h1) do
+            begin
+              h3 := (h3 + 1) mod (pmax + 1);
+              h2 := h2 - 1;
+            end;
+
+            if h2 < 0 then
+              stack[h1].i := stack[h1].i + 1
+            else
+              processes[h3].suspend := 0;
+
+          end;
+
+          pStfun:
+            case ir.y of
+              0:
+                stack[t].i := abs(stack[t].i);
+              1:
+                stack[t].r := abs(stack[t].r);
+              2:    (* integer sqr *)
+                if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
+                  ps := ovchk
+                else
+                  stack[t].i := sqr(stack[t].i);
+              3:    (* real sqr *)
+                if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
+                  ps := ovchk
+                else
+                  stack[t].r := sqr(stack[t].r);
+              4:
+                stack[t].i := btoi(odd(stack[t].i));
+              5: if not (stack[t].i in [charl..charh]) then
+                  ps := charchk;
+              6: ;
+              7:  (* succ *)
+                stack[t].i := stack[t].i + 1;
+              8: (* pred *)
+                stack[t].i := stack[t].i - 1;
+              9:    (* round *)
+                if abs(stack[t].r) >= (intmax + 0.5) then
+                  ps := ovchk
+                else
+                  stack[t].i := round(stack[t].r);
+              10:  (* trunc *)
+                if abs(stack[t].r) >= (intmax + 1.0) then
+                  ps := ovchk
+                else
+                  stack[t].i := trunc(stack[t].r);
+              11:
+                stack[t].r := sin(stack[t].r);
+              12:
+                stack[t].r := cos(stack[t].r);
+              13:
+                stack[t].r := exp(stack[t].r);
+              14:  (* ln *)
+                if stack[t].r <= 0.0 then
+                  ps := ovchk
+                else
+                  stack[t].r := ln(stack[t].r);
+              15:  (* sqrt *)
+                if stack[t].r < 0.0 then
+                  ps := ovchk
+                else
+                  stack[t].r := sqrt(stack[t].r);
+              16:
+                stack[t].r := arctan(stack[t].r);
+
+              17:
+              begin
+                PushInteger(btoi(EOF(input)), p);
+              end;
+
+              18:
+              begin
+                PushInteger(btoi(eoln(input)), p);
+              end;
+              19:
+              begin
+                h1 := abs(stack[t].i) + 1;
+                stack[t].i := trunc(random * h1);
+              end;
+              20:  (* empty *)
+              begin
+                h1 := stack[t].i;
+                if stack[h1].i = 0 then
+                  stack[t].i := 1
+                else
+                  stack[t].i := 0;
+              end;  (* f21 *)
+              21:  (* bits *)
+              begin
+                h1 := stack[t].i;
+                stack[t].bs := [];
+                h3 := 0;
+                if h1 < 0 then
+                  if bsmsb < intmsb then
+                  begin
+                    ps := setchk;
+                    h1 := 0;
+                  end
+                  else
+                  begin
+                    stack[t].bs := [bsmsb];
+                    h1 := (h1 + 1) + maxint;
+                    h3 := 1;
+                  end;
+                for h2 := 0 to bsmsb - h3 do
+                begin
+                  if (h1 mod 2) = 1 then
+                    stack[t].bs := stack[t].bs + [h2];
+                  h1 := h1 div 2;
+                end;
+                if h1 <> 0 then
+                  ps := setchk;
+              end;  (* f21 *)
+
+              24:  (* int - bitset to integer *)
+              begin
+                h1 := 0;
+                if bsmsb = intmsb then
+                  if intmsb in stack[t].bs then
+                    h1 := 1;
+                h2 := 0;  (* running total *)
+                h3 := 1;  (* place value *)
+                for h4 := 0 to bsmsb - h1 do
+                begin
+                  if h4 in stack[t].bs then
+                    h2 := h2 + h3;
+                  h3 := h3 * 2;
+                end;
+                if h1 <> 0 then
+                  stack[t].i := (h2 - maxint) - 1
+                else
+                  stack[t].i := h2;
+              end;
+
+              25:  (* clock *)
+              begin
+                PushInteger(sysclock, curpr);
+              end;  (* f25 *)
+
+            end;
+
+          pIxrec:
+            stack[t].i := stack[t].i + ir.y;
+
+          pJmp:
+            pc := ir.y;
+
+          pJmpiz:
+          begin
+            if stack[t].i = fals then
+              pc := ir.y;
+            t := t - 1;
+          end;
+
+          pCase1:
+            if stack[t].i = stack[t - 1].i then
+            begin
+              t := t - 2;
+              pc := ir.y;
+            end
+            else
+              t := t - 1;
+
+          pCase2:
+            ps := casechk;
+
+          pFor1up:
+          begin
+            h1 := stack[t - 1].i;
+            if h1 <= stack[t].i then
+              stack[stack[t - 2].i].i := h1
+            else
+            begin
+              t := t - 3;
+              pc := ir.y;
+            end;
+          end;
+
+          pFor2up:
+          begin
+            h2 := stack[t - 2].i;
+            h1 := stack[h2].i + 1;
+            if h1 <= stack[t].i then
+            begin
+              stack[h2].i := h1;
+              pc := ir.y;
+            end
+            else
+              t := t - 3;
+          end;
+
+          pMrkstk:
+          begin
+            if ir.x = 1 then
+            begin  (* process *)
+              if npr = pmax then
+              begin
+                ps := procnchk;
+                raise ProcNchkException.Create('process overflow');
+              end
+              else
+              begin
+                npr := npr + 1;
+                concflag := True;
+                curpr := npr;
+              end;
+            end;
+            h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
+            with processes[curpr] do
+            begin
             { TODO: is this correct?
               Hard to tell if it's an intentional overstatement of what the
               stack space will grow to. }
-            CheckStackOverflowAfter(h1, p);
-            t := t + 5;
-            stack[t - 1].i := h1 - 1;
-            stack[t].i := ir.y;
-          end;  (* with *)
-        end;
+              CheckStackOverflowAfter(h1, p);
+              t := t + 5;
+              stack[t - 1].i := h1 - 1;
+              stack[t].i := ir.y;
+            end;  (* with *)
+          end;
 
-        pCallsub:
-        begin
-          h1 := t - ir.y;
-          h2 := stack[h1 + 4].i; (*h2 points to tab*)
-          h3 := objrec.gentab[h2].lev;
-          display[h3 + 1] := h1;
-          h4 := stack[h1 + 3].i + h1;
-          stack[h1 + 1].i := pc;
-          stack[h1 + 2].i := display[h3];
-          if ir.x = 1 then
-          begin  (* process *)
-            active := True;
-            stack[h1 + 3].i := processes[0].b;
-            concflag := False;
-          end
-          else
-            stack[h1 + 3].i := b;
-          for h3 := t + 1 to h4 do
-            stack[h3].i := 0;
-          b := h1;
-          t := h4;
-          pc := objrec.gentab[h2].taddr;
-        end;
-
-        pIxary:
-          with objrec do
+          pCallsub:
           begin
-            (*index*) h1 := ir.y; (*h1 points to genatab*)
-            h2 := genatab[h1].low;
-            h3 := stack[t].i;
-            if h3 < h2 then
-              ps := inxchk
+            h1 := t - ir.y;
+            h2 := stack[h1 + 4].i; (*h2 points to tab*)
+            h3 := objrec.gentab[h2].lev;
+            display[h3 + 1] := h1;
+            h4 := stack[h1 + 3].i + h1;
+            stack[h1 + 1].i := pc;
+            stack[h1 + 2].i := display[h3];
+            if ir.x = 1 then
+            begin  (* process *)
+              active := True;
+              stack[h1 + 3].i := processes[0].b;
+              concflag := False;
+            end
             else
-            if h3 > genatab[h1].high then
-              ps := inxchk
-            else
+              stack[h1 + 3].i := b;
+            for h3 := t + 1 to h4 do
+              stack[h3].i := 0;
+            b := h1;
+            t := h4;
+            pc := objrec.gentab[h2].taddr;
+          end;
+
+          pIxary:
+            with objrec do
             begin
-              t := t - 1;
-              stack[t].i := stack[t].i + (h3 - h2) * genatab[h1].elsize;
+              (*index*) h1 := ir.y; (*h1 points to genatab*)
+              h2 := genatab[h1].low;
+              h3 := stack[t].i;
+              if h3 < h2 then
+                ps := inxchk
+              else
+              if h3 > genatab[h1].high then
+                ps := inxchk
+              else
+              begin
+                t := t - 1;
+                stack[t].i := stack[t].i + (h3 - h2) * genatab[h1].elsize;
+              end;
+            end;
+
+          pLdblk:
+          begin
+            h1 := stack[t].i;
+            t := t - 1;
+            CheckStackOverflowAfter(ir.y, p);
+            h2 := ir.y + t;
+            while t < h2 do
+            begin
+              t := t + 1;
+              stack[t] := stack[h1];
+              h1 := h1 + 1;
             end;
           end;
 
-        pLdblk:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          CheckStackOverflowAfter(ir.y, p);
-          h2 := ir.y + t;
-          while t < h2 do
+          pCpblk:
+          begin
+            h1 := stack[t - 1].i;
+            h2 := stack[t].i;
+            h3 := h1 + ir.y;
+            while h1 < h3 do
+            begin
+              stack[h1] := stack[h2];
+              h1 := h1 + 1;
+              h2 := h2 + 1;
+            end;
+            t := t - 2;
+          end;
+
+          pLdconI:
+          begin
+            PushInteger(ir.y, p);
+          end;
+
+          pLdconR:
           begin
             t := t + 1;
-            stack[t] := stack[h1];
-            h1 := h1 + 1;
+            CheckStackOverflow(p);
+            stack[t].r := objrec.genrconst[ir.y];
           end;
-        end;
 
-        pCpblk:
-        begin
-          h1 := stack[t - 1].i;
-          h2 := stack[t].i;
-          h3 := h1 + ir.y;
-          while h1 < h3 do
+          pIfloat:
           begin
-            stack[h1] := stack[h2];
-            h1 := h1 + 1;
-            h2 := h2 + 1;
+            h1 := t - ir.y;
+            stack[h1].r := stack[h1].i;
           end;
-          t := t - 2;
-        end;
 
-        pLdconI:
-        begin
-          PushInteger(ir.y, p);
-        end;
-
-        pLdconR:
-        begin
-          t := t + 1;
-          CheckStackOverflow(p);
-          stack[t].r := objrec.genrconst[ir.y];
-        end;
-
-        pIfloat:
-        begin
-          h1 := t - ir.y;
-          stack[h1].r := stack[h1].i;
-        end;
-
-        pReadip:
-        begin
-          if EOF(input) then
-            ps := redchk
-          else
-            case ir.y of
-              1:    (* integer *)
-                readint(stack[stack[t].i].i);
-
-              3:    (* char *)
-                if EOF then
-                  ps := redchk
-                else
-                begin
-                  Read(ch);
-                  stack[stack[t].i].i := Ord(ch);
-                end;
-              4:  (* real *)
-                readreal(stack[stack[t].i].r)
-            end;
-          t := t - 1;
-        end;
-
-        pWrstr:
-        begin
-          if ir.x = 1 then
+          pReadip:
           begin
-            h3 := stack[t].i;
-            t := t - 1;
-          end
-          else
-            h3 := 0;
-          h1 := stack[t].i;
-          h2 := ir.y;
-          t := t - 1;
-          chrcnt := chrcnt + h1 + h3;
-          while h3 > h1 do
-          begin
-            Write(' ');
-            h3 := h3 - 1;
-          end;
-          repeat
-            Write(objrec.genstab[h2]);
-            h1 := h1 - 1;
-            h2 := h2 + 1
-          until h1 = 0;
-        end;
-
-        pWrval:
-        begin
-          case ir.y of
-            1:    (* ints *)
-              Write(stack[t].i);
-            2:  (* bools *)
-              Write(itob(stack[t].i));
-            3:    (* chars *)
-              if (stack[t].i < charl) or (stack[t].i > charh) then
-                ps := charchk
-              else
-                Write(chr(stack[t].i));
-            4:  (* reals *)
-              Write(stack[t].r);
-            5:  (* bitsets *)
-              for h1 := bsmsb downto 0 do
-                if h1 in stack[t].bs then
-                  Write('1')
-                else
-                  Write('0')
-          end;   (* case *)
-          t := t - 1;
-        end;   (* s9 *)
-
-        pWrfrm:
-        begin
-          h3 := stack[t].i;  (* field width *)
-          t := t - 1;
-          case ir.y of
-            1:
-              Write(stack[t].i: h3);  (* ints *)
-            2:
-              Write(itob(stack[t].i): h3);  (* bools *)
-            3:
-              if (stack[t].i < charl) or (stack[t].i > charh) then
-                ps := charchk
-              else
-                Write(chr(stack[t].i): h3);
-            4: Write(stack[t].r: h3);
-            5:
-            begin
-              while h3 > (bsmsb + 1) do
-              begin
-                Write(' ');
-                h3 := h3 - 1;
-              end;
-              for h1 := bsmsb downto 0 do
-                if h1 in stack[t].bs then
-                  Write('1')
-                else
-                  Write('0');
-            end
-          end;  (* case *)
-          t := t - 1;
-        end;  (* 30 *)
-
-        pStop:
-          ps := fin;
-
-        pRetproc:
-        begin
-          t := b - 1;
-          pc := stack[b + 1].i;
-	  { Are we returning from the main procedure? }
-          if pc <> 0 then
-            b := stack[b + 3].i
-          else
-          begin
-            npr := npr - 1;
-            active := False;
-            stepcount := 0;
-            processes[0].active := (npr = 0);
-
-          end;
-        end;
-
-        pRetfun:
-        begin
-          t := b;
-          pc := stack[b + 1].i;
-          b := stack[b + 3].i;
-        end;
-
-        pRepadr:
-          stack[t] := stack[stack[t].i];
-
-        pNotop:
-          stack[t].i := btoi(not (itob(stack[t].i)));
-
-        pNegate:
-          stack[t].i := -stack[t].i;
-
-        pW2frm:
-        begin    (* formatted reals output *)
-          h3 := stack[t - 1].i;
-          h4 := stack[t].i;
-          Write(stack[t - 2].r: h3: h4);
-          t := t - 3;
-        end;
-
-        pStore:
-        begin
-          stack[stack[t - 1].i] := stack[t];
-          t := t - 2;
-        end;
-
-        pRelequR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r = stack[t + 1].r);
-        end;
-
-        pRelneqR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r <> stack[t + 1].r);
-        end;
-
-        pRelltR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r < stack[t + 1].r);
-        end;
-
-        pRelleR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r <= stack[t + 1].r);
-        end;
-
-        pRelgtR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r > stack[t + 1].r);
-        end;
-
-        pRelgeR:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].r >= stack[t + 1].r);
-        end;
-
-        pRelequI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i = stack[t + 1].i);
-        end;
-
-        pRelneqI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i <> stack[t + 1].i);
-        end;
-
-        pRelltI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i < stack[t + 1].i);
-        end;
-
-        pRelleI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i <= stack[t + 1].i);
-        end;
-
-        pRelgtI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i > stack[t + 1].i);
-        end;
-
-        pRelgeI:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].i >= stack[t + 1].i);
-        end;
-
-        pOropB:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(itob(stack[t].i) or itob(stack[t + 1].i));
-        end;
-
-        pAddI:
-        begin
-          t := t - 1;
-          if ((stack[t].i > 0) and (stack[t + 1].i > 0)) or
-            ((stack[t].i < 0) and (stack[t + 1].i < 0)) then
-            if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].i := stack[t].i + stack[t + 1].i;
-        end;
-
-        pSubI:
-        begin
-          t := t - 1;
-          if ((stack[t].i < 0) and (stack[t + 1].i > 0)) or
-            ((stack[t].i > 0) and (stack[t + 1].i < 0)) then
-            if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].i := stack[t].i - stack[t + 1].i;
-        end;
-
-        pAddR:
-        begin
-          t := t - 1;
-          if ((stack[t].r > 0.0) and (stack[t + 1].r > 0.0)) or
-            ((stack[t].r < 0.0) and (stack[t + 1].r < 0.0)) then
-            if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].r := stack[t].r + stack[t + 1].r;
-        end;
-
-        pSubR:
-        begin
-          t := t - 1;
-          if ((stack[t].r > 0.0) and (stack[t + 1].r < 0.0)) or
-            ((stack[t].r < 0.0) and (stack[t + 1].r > 0.0)) then
-            if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].r := stack[t].r - stack[t + 1].r;
-        end;
-
-        pAndopB:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(itob(stack[t].i) and itob(stack[t + 1].i));
-        end;
-
-        pMulI:
-        begin
-          t := t - 1;
-          if stack[t].i <> 0 then
-            if (maxint div abs(stack[t].i)) < abs(stack[t + 1].i) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].i := stack[t].i * stack[t + 1].i;
-        end;
-
-        pDivopI:
-        begin
-          t := t - 1;
-          if stack[t + 1].i = 0 then
-            ps := divchk
-          else
-            stack[t].i := stack[t].i div stack[t + 1].i;
-        end;
-
-        pModop:
-        begin
-          t := t - 1;
-          if stack[t + 1].i = 0 then
-            ps := divchk
-          else
-            stack[t].i := stack[t].i mod stack[t + 1].i;
-        end;
-
-        pMulR:
-        begin
-          t := t - 1;
-          if (abs(stack[t].r) > 1.0) and (abs(stack[t + 1].r) > 1.0) then
-            if (realmax / abs(stack[t].r)) < abs(stack[t + 1].r) then
-              ps := ovchk;
-          if ps <> ovchk then
-            stack[t].r := stack[t].r * stack[t + 1].r;
-        end;
-
-        pDivopR:
-        begin
-          t := t - 1;
-          if stack[t + 1].r < minreal then
-            ps := divchk
-          else
-            stack[t].r := stack[t].r / stack[t + 1].r;
-        end;
-
-        pRdlin:
-          if EOF(input) then
-            ps := redchk
-          else
-            readln;
-
-        pWrlin:
-        begin
-          writeln;
-          chrcnt := 0;
-        end;
-
-        pSelec0:
-        begin
-          h1 := t;
-          h2 := 0;
-          while stack[h1].i <> -1 do
-          begin
-            h1 := h1 - sfsize;
-            h2 := h2 + 1;
-          end;  (* h2 is now the number of open guards *)
-          if h2 = 0 then
-          begin
-            if ir.y = 0 then
-              ps := guardchk  (* closed guards and no else/terminate *)
+            if EOF(input) then
+              ps := redchk
             else
-            if ir.y = 1 then
-              termstate := True;
-          end
-          else
-          begin  (* channels/entries to check *)
-            if ir.x = 0 then
-              h3 := trunc(random * h2)  (* arbitrary choice *)
-            else
-              h3 := h2 - 1;  (* priority select *)
-            h4 := t - (sfsize - 1) - (h3 * sfsize);
-            (* h4 points to bottom of "frame" *)
-            h1 := 1;
-            foundcall := False;
-            while not foundcall and (h1 <= h2) do
-            begin
-              if stack[h4].i = 0 then
-              begin  (* timeout alternative *)
-                if stack[h4 + 3].i < 0 then
-                  stack[h4 + 3].i := sysclock
-                else
-                  stack[h4 + 3].i := stack[h4 + 3].i + sysclock;
-                if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
-                begin
-                  wakeup := stack[h4 + 3].i;
-                  wakestart := stack[h4 + 4].i;
-                end;
-                h3 := (h3 + 1) mod h2;
-                h4 := t - (sfsize - 1) - (h3 * sfsize);
-                h1 := h1 + 1;
-              end
-              else
-              if stack[stack[h4].i].i <> 0 then
-                foundcall := True
-              else
-              begin
-                h3 := (h3 + 1) mod h2;
-                h4 := t - (sfsize - 1) - (h3 * sfsize);
-                h1 := h1 + 1;
-              end;
-            end;  (* while not foundcall ... *)
-            if not foundcall then  (* no channel/entry has a call *)
-            begin
-              if ir.y <> 2 then  (* ie, if no else part *)
-              begin  (* sleep on all channels *)
-                if ir.y = 1 then
-                  termstate := True;
-                h1 := t - (sfsize - 1) - ((h2 - 1) * sfsize);
-                chans := h1;
-                for h3 := 1 to h2 do
-                begin
-                  h4 := stack[h1].i;  (* h4 points to channel/entry *)
-                  if h4 <> 0 then  (* 0 means timeout *)
-                  begin
-                    if stack[h1 + 2].i = 2 then
-                      stack[h4].i := -stack[h1 + 1].i (* query sleep *)
-                    else
-                    if stack[h1 + 2].i = 0 then
-                      stack[h4].i := h1 + 1
-                    else
-                    if stack[h1 + 2].i = 1 then
-                      stack[h4] := stack[h1 + 1]  (* shriek sleep *)
-                    else
-                      stack[h4].i := -1;  (* entry sleep *)
-                    stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
-                    stack[h4 + 2].i := curpr;
-                  end; (* if h4 <> 0 *)
-                  h1 := h1 + sfsize;
-                end;  (* for loop *)
-                stepcount := 0;
-                suspend := -h2;
-                onselect := True;
-                if wakeup <> 0 then
-                  joineventq(wakeup);
-              end; (* sleep on open-guard channels/entries *)
-            end (* no call *)
-            else
-            begin  (* someone is waiting *)
-              wakeup := 0;
-              wakestart := 0;
-              h1 := stack[h4].i;  (* h1 points to channel/entry *)
-              if stack[h4 + 2].i in [0..2] then
-              begin  (* channel rendezvous *)
-                if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
-                  ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
-                  ps := channerror
-                else
-                begin  (* rendezvous *)
-                  stack[h1].i := abs(stack[h1].i);
-                  if stack[h4 + 2].i = 0 then
-                    stack[stack[h1].i] := stack[h4 + 1]
+              case ir.y of
+                1:    (* integer *)
+                  readint(stack[stack[t].i].i);
+
+                3:    (* char *)
+                  if EOF then
+                    ps := redchk
                   else
-                  begin  (* block copy *)
-                    h3 := 0;
-                    while h3 < stack[h4 + 3].i do
-                    begin
-                      if stack[h4 + 2].i = 1 then
-                        stack[stack[h1].i + h3] := stack[stack[h4 + 1].i + h3]
-                      else
-                        stack[stack[h4 + 1].i + h3] := stack[stack[h1].i + h3];
-                      h3 := h3 + 1;
-                    end;  (* while *)
-                  end;  (* block copy *)
-                  pc := stack[h4 + 4].i;
-                  repindex := stack[h4 + 5].i;  (* recover repindex *)
-                  wakenon(h1);  (* wake the other process *)
-                end;  (* rendezvous *)
-              end  (* channel rendezvous *)
-              else
-                pc := stack[h4 + 4].i;  (* entry *)
-            end;  (* someone was waiting *)
-          end;  (* calls to check *)
-          t := t - 1 - (h2 * sfsize);
-        end;  (* case 64 *)
-
-        pChanwr: { gld }
-        begin
-          h1 := stack[t - 1].i;   (* h1 now points to channel *)
-          h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
-          h3 := stack[t].i;   (* base address of source (for ir.x=1) *)
-          if h2 > 0 then
-            ps := channerror  (* another writer on this channel *)
-          else
-          if h2 = 0 then
-          begin  (* first *)
-            if ir.x = 0 then
-              stack[h1].i := t
-            else
-              stack[h1].i := h3;
-            stack[h1 + 1].i := pc;
-            stack[h1 + 2].i := curpr;
-            chans := t - 1;
-            suspend := -1;
-            stepcount := 0;
-          end  (* first *)
-          else
-          begin  (* second *)
-            h2 := abs(h2);  (* readers leave negated address *)
-            if ir.x = 0 then
-              stack[h2] := stack[t]
-            else
-            begin
-              h4 := 0;  (* loop control for block copy *)
-              while h4 < ir.y do
-              begin
-                stack[h2 + h4] := stack[h3 + h4];
-                h4 := h4 + 1;
-              end;  (* while *)
-            end;  (* ir.x was 1 *)
-            wakenon(h1);
-          end;  (* second *)
-          t := t - 2;
-        end;  (* case 65 *)
-
-        pChanrd: { gld }
-        begin
-          h1 := stack[t - 1].i;
-          h2 := stack[h1].i;
-          h3 := stack[t].i;
-          if h2 < 0 then
-            ps := channerror
-          else
-          if h2 = 0 then
-          begin  (* first *)
-            stack[h1].i := -h3;
-            stack[h1 + 1].i := pc;
-            stack[h1 + 2].i := curpr;
-            chans := t - 1;
-            suspend := -1;
-            stepcount := 0;
-          end  (* first *)
-          else
-          begin  (* second *)
-            h2 := abs(h2);
-            h4 := 0;
-            while h4 < ir.y do
-            begin
-              stack[h3 + h4] := stack[h2 + h4];
-              h4 := h4 + 1;
-            end;
-            wakenon(h1);
-          end;
-          t := t - 2;
-        end;
-
-        pDelay:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          joinqueue(h1);
-          if curmon <> 0 then
-            releasemon(curmon);
-        end;
-
-        pResum:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          if stack[h1].i > 0 then
-          begin
-            procwake(h1);
-            if curmon <> 0 then
-              joinqueue(curmon + 1);
-          end;
-        end;
-
-        pEnmon:
-        begin
-          h1 := stack[t].i;  (* address of new monitor variable *)
-          stack[t].i := curmon;  (* save old monitor variable *)
-          curmon := h1;
-          if stack[curmon].i = 0 then
-
-            stack[curmon].i := -1
-
-          else
-            joinqueue(curmon);
-        end;
-
-        pExmon:
-        begin
-          releasemon(curmon);
-          curmon := stack[t].i;
-          t := t - 1;
-        end;
-
-        pMexec:
-        begin  (* execute monitor body code *)
-          t := t + 1;
-          stack[t].i := pc;
-          pc := ir.y;
-        end;
-
-        pMretn:
-        begin  (* return from monitor body code *)
-          pc := stack[t].i;
-          t := t - 1;
-        end;
-
-	pLobnd:
-          if stack[t].i < ir.y then
-            ps := bndchk;
-
-        pHibnd:
-          if stack[t].i > ir.y then
-            ps := bndchk;
-
-        pPref: { Not implemented }
-          ;
-
-        pSleap:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          if h1 <= 0 then
-            stepcount := 0
-          else
-            joineventq(h1 + sysclock);
-        end;
-
-        pProcv:
-        begin
-          h1 := stack[t].i;
-          varptr := h1;
-          if stack[h1].i = 0 then
-            stack[h1].i := curpr
-          else
-            ps := instchk;
-          t := t - 1;
-        end;
-
-        pEcall:
-        begin
-          h1 := t - ir.y;
-          t := h1 - 2;
-          h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
-          if h2 > 0 then
-            if not processes[h2].active then
-              ps := nexistchk
-            else
-            begin
-              h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
-              if stack[h3].i <= 0 then
-              begin  (* empty queue on entry *)
-                if stack[h3].i < 0 then
-                begin  (* other process has arrived *)
-                  for h4 := 1 to ir.y do
-                    stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
-                  wakenon(h3);
-                end;
-                stack[h3 + 1].i := pc;
-                stack[h3 + 2].i := curpr;
+                  begin
+                    Read(ch);
+                    stack[stack[t].i].i := Ord(ch);
+                  end;
+                4:  (* real *)
+                  readreal(stack[stack[t].i].r)
               end;
-              joinqueue(h3);
-              stack[t + 1].i := h3;
-              chans := t + 1;
-              suspend := -1;
+            t := t - 1;
+          end;
+
+          pWrstr:
+          begin
+            if ir.x = 1 then
+            begin
+              h3 := stack[t].i;
+              t := t - 1;
             end
-          else
-          if h2 = 0 then
-            ps := nexistchk
-          else
-            ps := namechk;
-        end;
-
-        pAcpt1:
-        begin
-          h1 := stack[t].i;    (* h1 points to entry *)
-          t := t - 1;
-          if stack[h1].i = 0 then
-          begin  (* no calls - sleep *)
-            stack[h1].i := -1;
-            stack[h1 + 1].i := pc;
-            stack[h1 + 2].i := curpr;
-            suspend := -1;
-            chans := t + 1;
-            stepcount := 0;
-          end
-          else
-          begin  (* another process has arrived *)
-            h2 := stack[h1 + 2].i;  (* hs has proc number *)
-            h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
-            for h4 := 0 to ir.y - 1 do
-
-              stack[h1 + h4 + entrysize] := stack[h3 + h4];
-
+            else
+              h3 := 0;
+            h1 := stack[t].i;
+            h2 := ir.y;
+            t := t - 1;
+            chrcnt := chrcnt + h1 + h3;
+            while h3 > h1 do
+            begin
+              Write(' ');
+              h3 := h3 - 1;
+            end;
+            repeat
+              Write(objrec.genstab[h2]);
+              h1 := h1 - 1;
+              h2 := h2 + 1
+            until h1 = 0;
           end;
-        end;
 
-        pAcpt2:
-        begin
-          h1 := stack[t].i; (* h1 points to entry *)
-          t := t - 1;
-          procwake(h1);
+          pWrval:
+          begin
+            case ir.y of
+              1:    (* ints *)
+                Write(stack[t].i);
+              2:  (* bools *)
+                Write(itob(stack[t].i));
+              3:    (* chars *)
+                if (stack[t].i < charl) or (stack[t].i > charh) then
+                  ps := charchk
+                else
+                  Write(chr(stack[t].i));
+              4:  (* reals *)
+                Write(stack[t].r);
+              5:  (* bitsets *)
+                for h1 := bsmsb downto 0 do
+                  if h1 in stack[t].bs then
+                    Write('1')
+                  else
+                    Write('0')
+            end;   (* case *)
+            t := t - 1;
+          end;   (* s9 *)
 
-          if stack[h1].i <> 0 then
-          begin  (* queue non-empty *)
-            h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
-            stack[h1 + 1].i := processes[h2].pc;
-            stack[h1 + 2].i := h2;
+          pWrfrm:
+          begin
+            h3 := stack[t].i;  (* field width *)
+            t := t - 1;
+            case ir.y of
+              1:
+                Write(stack[t].i: h3);  (* ints *)
+              2:
+                Write(itob(stack[t].i): h3);  (* bools *)
+              3:
+                if (stack[t].i < charl) or (stack[t].i > charh) then
+                  ps := charchk
+                else
+                  Write(chr(stack[t].i): h3);
+              4: Write(stack[t].r: h3);
+              5:
+              begin
+                while h3 > (bsmsb + 1) do
+                begin
+                  Write(' ');
+                  h3 := h3 - 1;
+                end;
+                for h1 := bsmsb downto 0 do
+                  if h1 in stack[t].bs then
+                    Write('1')
+                  else
+                    Write('0');
+              end
+            end;  (* case *)
+            t := t - 1;
+          end;  (* 30 *)
+
+          pStop:
+            ps := fin;
+
+          pRetproc:
+          begin
+            t := b - 1;
+            pc := stack[b + 1].i;
+            { Are we returning from the main procedure? }
+            if pc <> 0 then
+              b := stack[b + 3].i
+            else
+            begin
+              npr := npr - 1;
+              active := False;
+              stepcount := 0;
+              processes[0].active := (npr = 0);
+
+            end;
           end;
-        end;
 
-        pRep1c:
-          stack[display[ir.x] + ir.y].i := repindex;
+          pRetfun:
+          begin
+            t := b;
+            pc := stack[b + 1].i;
+            b := stack[b + 3].i;
+          end;
 
-        pRep2c:
-        begin  (* replicate tail code *)
-          h1 := stack[t].i;
-          t := t - 1;
-          stack[h1].i := stack[h1].i + 1;
-          pc := ir.y;
-        end;
+          pRepadr:
+            stack[t] := stack[stack[t].i];
 
-        pPower2:
-        begin
-          h1 := stack[t].i;
-          if not (h1 in [0..bsmsb]) then
-            ps := setchk
-          else
-            stack[t].bs := [h1];
-        end;
+          pNotop:
+            stack[t].i := btoi(not (itob(stack[t].i)));
 
-        pBtest:
-        begin
-          t := t - 1;
-          h1 := stack[t].i;
-          if not (h1 in [0..bsmsb]) then
-            ps := setchk
-          else
-            stack[t].i := btoi(h1 in stack[t + 1].bs);
-        end;
+          pNegate:
+            stack[t].i := -stack[t].i;
 
-	pWrbas:
-        begin
-          h3 := stack[t].i;
-          h1 := stack[t - 1].i;
-          h1r := stack[t - 1].r;
-          t := t - 2;
-          if h3 = 8 then
-            Write(h1r: 11: 8)
-          else
-            Write(h1r: 8: 16);
+          pW2frm:
+          begin    (* formatted reals output *)
+            h3 := stack[t - 1].i;
+            h4 := stack[t].i;
+            Write(stack[t - 2].r: h3: h4);
+            t := t - 3;
+          end;
 
-        end;
-
-        pRelequS:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].bs = stack[t + 1].bs);
-        end;
-
-        pRelneqS:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].bs <> stack[t + 1].bs);
-        end;
-
-        pRelltS:
-        begin
-          t := t - 1;
-          //stack[t].i := btoi(stack[t].bs < stack[t+1].bs)
-          stack[t].i := btoi((stack[t].bs <= stack[t + 1].bs) and (stack[t].bs <> stack[t + 1].bs));
-        end;
-
-        pRelleS:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].bs <= stack[t + 1].bs);
-        end;
-
-
-        pRelgtS:
-        begin
-          t := t - 1;
-          //stack[t].i := btoi(stack[t].bs > stack[t+1].bs)
-          stack[t].i := btoi((stack[t].bs >= stack[t + 1].bs) and (stack[t].bs <> stack[t + 1].bs));
-        end;
-
-        pRelgeS:
-        begin
-          t := t - 1;
-          stack[t].i := btoi(stack[t].bs >= stack[t + 1].bs);
-        end;
-
-        pOropS:
-        begin
-          t := t - 1;
-          stack[t].bs := stack[t].bs + stack[t + 1].bs;
-        end;
-
-        pSubS:
-        begin
-          t := t - 1;
-          stack[t].bs := stack[t].bs - stack[t + 1].bs;
-        end;
-
-        pAndopS:
-        begin
-          t := t - 1;
-          stack[t].bs := stack[t].bs * stack[t + 1].bs;
-        end;
-
-        pSinit:
-          if curpr <> 0 then
-            ps := seminitchk
-          else
+          pStore:
           begin
             stack[stack[t - 1].i] := stack[t];
             t := t - 2;
           end;
 
-        pPrtjmp:
-        begin
-          if stack[curmon + 2].i = 0 then
-            pc := ir.y;
-        end;
-
-        pPrtsel:
-        begin
-          h1 := t;
-          h2 := 0;
-          foundcall := False;
-          while stack[h1].i <> -1 do
+          pRelequR:
           begin
-            h1 := h1 - 1;
-            h2 := h2 + 1;
-          end;  (* h2 is now the number of open guards *)
-          if h2 <> 0 then
-          begin  (* barriers to check *)
-            h3 := trunc(random * h2);  (* arbitrary choice *)
-            h4 := 0;  (* count of barriers tested *)
-            while not foundcall and (h4 < h2) do
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r = stack[t + 1].r);
+          end;
+
+          pRelneqR:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r <> stack[t + 1].r);
+          end;
+
+          pRelltR:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r < stack[t + 1].r);
+          end;
+
+          pRelleR:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r <= stack[t + 1].r);
+          end;
+
+          pRelgtR:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r > stack[t + 1].r);
+          end;
+
+          pRelgeR:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].r >= stack[t + 1].r);
+          end;
+
+          pRelequI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i = stack[t + 1].i);
+          end;
+
+          pRelneqI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i <> stack[t + 1].i);
+          end;
+
+          pRelltI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i < stack[t + 1].i);
+          end;
+
+          pRelleI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i <= stack[t + 1].i);
+          end;
+
+          pRelgtI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i > stack[t + 1].i);
+          end;
+
+          pRelgeI:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].i >= stack[t + 1].i);
+          end;
+
+          pOropB:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(itob(stack[t].i) or itob(stack[t + 1].i));
+          end;
+
+          pAddI:
+          begin
+            t := t - 1;
+            if ((stack[t].i > 0) and (stack[t + 1].i > 0)) or
+              ((stack[t].i < 0) and (stack[t + 1].i < 0)) then
+              if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].i := stack[t].i + stack[t + 1].i;
+          end;
+
+          pSubI:
+          begin
+            t := t - 1;
+            if ((stack[t].i < 0) and (stack[t + 1].i > 0)) or
+              ((stack[t].i > 0) and (stack[t + 1].i < 0)) then
+              if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].i := stack[t].i - stack[t + 1].i;
+          end;
+
+          pAddR:
+          begin
+            t := t - 1;
+            if ((stack[t].r > 0.0) and (stack[t + 1].r > 0.0)) or
+              ((stack[t].r < 0.0) and (stack[t + 1].r < 0.0)) then
+              if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].r := stack[t].r + stack[t + 1].r;
+          end;
+
+          pSubR:
+          begin
+            t := t - 1;
+            if ((stack[t].r > 0.0) and (stack[t + 1].r < 0.0)) or
+              ((stack[t].r < 0.0) and (stack[t + 1].r > 0.0)) then
+              if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].r := stack[t].r - stack[t + 1].r;
+          end;
+
+          pAndopB:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(itob(stack[t].i) and itob(stack[t + 1].i));
+          end;
+
+          pMulI:
+          begin
+            t := t - 1;
+            if stack[t].i <> 0 then
+              if (maxint div abs(stack[t].i)) < abs(stack[t + 1].i) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].i := stack[t].i * stack[t + 1].i;
+          end;
+
+          pDivopI:
+          begin
+            t := t - 1;
+            if stack[t + 1].i = 0 then
+              ps := divchk
+            else
+              stack[t].i := stack[t].i div stack[t + 1].i;
+          end;
+
+          pModop:
+          begin
+            t := t - 1;
+            if stack[t + 1].i = 0 then
+              ps := divchk
+            else
+              stack[t].i := stack[t].i mod stack[t + 1].i;
+          end;
+
+          pMulR:
+          begin
+            t := t - 1;
+            if (abs(stack[t].r) > 1.0) and (abs(stack[t + 1].r) > 1.0) then
+              if (realmax / abs(stack[t].r)) < abs(stack[t + 1].r) then
+                ps := ovchk;
+            if ps <> ovchk then
+              stack[t].r := stack[t].r * stack[t + 1].r;
+          end;
+
+          pDivopR:
+          begin
+            t := t - 1;
+            if stack[t + 1].r < minreal then
+              ps := divchk
+            else
+              stack[t].r := stack[t].r / stack[t + 1].r;
+          end;
+
+          pRdlin:
+            if EOF(input) then
+              ps := redchk
+            else
+              readln;
+
+          pWrlin:
+          begin
+            writeln;
+            chrcnt := 0;
+          end;
+
+          pSelec0:
+          begin
+            h1 := t;
+            h2 := 0;
+            while stack[h1].i <> -1 do
             begin
-              if stack[stack[h1 + h3 + 1].i].i <> 0 then
-                foundcall := True
+              h1 := h1 - sfsize;
+              h2 := h2 + 1;
+            end;  (* h2 is now the number of open guards *)
+            if h2 = 0 then
+            begin
+              if ir.y = 0 then
+                ps := guardchk  (* closed guards and no else/terminate *)
+              else
+              if ir.y = 1 then
+                termstate := True;
+            end
+            else
+            begin  (* channels/entries to check *)
+              if ir.x = 0 then
+                h3 := trunc(random * h2)  (* arbitrary choice *)
+              else
+                h3 := h2 - 1;  (* priority select *)
+              h4 := t - (sfsize - 1) - (h3 * sfsize);
+              (* h4 points to bottom of "frame" *)
+              h1 := 1;
+              foundcall := False;
+              while not foundcall and (h1 <= h2) do
+              begin
+                if stack[h4].i = 0 then
+                begin  (* timeout alternative *)
+                  if stack[h4 + 3].i < 0 then
+                    stack[h4 + 3].i := sysclock
+                  else
+                    stack[h4 + 3].i := stack[h4 + 3].i + sysclock;
+                  if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
+                  begin
+                    wakeup := stack[h4 + 3].i;
+                    wakestart := stack[h4 + 4].i;
+                  end;
+                  h3 := (h3 + 1) mod h2;
+                  h4 := t - (sfsize - 1) - (h3 * sfsize);
+                  h1 := h1 + 1;
+                end
+                else
+                if stack[stack[h4].i].i <> 0 then
+                  foundcall := True
+                else
+                begin
+                  h3 := (h3 + 1) mod h2;
+                  h4 := t - (sfsize - 1) - (h3 * sfsize);
+                  h1 := h1 + 1;
+                end;
+              end;  (* while not foundcall ... *)
+              if not foundcall then  (* no channel/entry has a call *)
+              begin
+                if ir.y <> 2 then  (* ie, if no else part *)
+                begin  (* sleep on all channels *)
+                  if ir.y = 1 then
+                    termstate := True;
+                  h1 := t - (sfsize - 1) - ((h2 - 1) * sfsize);
+                  chans := h1;
+                  for h3 := 1 to h2 do
+                  begin
+                    h4 := stack[h1].i;  (* h4 points to channel/entry *)
+                    if h4 <> 0 then  (* 0 means timeout *)
+                    begin
+                      if stack[h1 + 2].i = 2 then
+                        stack[h4].i := -stack[h1 + 1].i (* query sleep *)
+                      else
+                      if stack[h1 + 2].i = 0 then
+                        stack[h4].i := h1 + 1
+                      else
+                      if stack[h1 + 2].i = 1 then
+                        stack[h4] := stack[h1 + 1]  (* shriek sleep *)
+                      else
+                        stack[h4].i := -1;  (* entry sleep *)
+                      stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
+                      stack[h4 + 2].i := curpr;
+                    end; (* if h4 <> 0 *)
+                    h1 := h1 + sfsize;
+                  end;  (* for loop *)
+                  stepcount := 0;
+                  suspend := -h2;
+                  onselect := True;
+                  if wakeup <> 0 then
+                    joineventq(wakeup);
+                end; (* sleep on open-guard channels/entries *)
+              end (* no call *)
+              else
+              begin  (* someone is waiting *)
+                wakeup := 0;
+                wakestart := 0;
+                h1 := stack[h4].i;  (* h1 points to channel/entry *)
+                if stack[h4 + 2].i in [0..2] then
+                begin  (* channel rendezvous *)
+                  if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
+                    ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
+                    ps := channerror
+                  else
+                  begin  (* rendezvous *)
+                    stack[h1].i := abs(stack[h1].i);
+                    if stack[h4 + 2].i = 0 then
+                      stack[stack[h1].i] := stack[h4 + 1]
+                    else
+                    begin  (* block copy *)
+                      h3 := 0;
+                      while h3 < stack[h4 + 3].i do
+                      begin
+                        if stack[h4 + 2].i = 1 then
+                          stack[stack[h1].i + h3] := stack[stack[h4 + 1].i + h3]
+                        else
+                          stack[stack[h4 + 1].i + h3] := stack[stack[h1].i + h3];
+                        h3 := h3 + 1;
+                      end;  (* while *)
+                    end;  (* block copy *)
+                    pc := stack[h4 + 4].i;
+                    repindex := stack[h4 + 5].i;  (* recover repindex *)
+                    wakenon(h1);  (* wake the other process *)
+                  end;  (* rendezvous *)
+                end  (* channel rendezvous *)
+                else
+                  pc := stack[h4 + 4].i;  (* entry *)
+              end;  (* someone was waiting *)
+            end;  (* calls to check *)
+            t := t - 1 - (h2 * sfsize);
+          end;  (* case 64 *)
+
+          pChanwr: { gld }
+          begin
+            h1 := stack[t - 1].i;   (* h1 now points to channel *)
+            h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
+            h3 := stack[t].i;   (* base address of source (for ir.x=1) *)
+            if h2 > 0 then
+              ps := channerror  (* another writer on this channel *)
+            else
+            if h2 = 0 then
+            begin  (* first *)
+              if ir.x = 0 then
+                stack[h1].i := t
+              else
+                stack[h1].i := h3;
+              stack[h1 + 1].i := pc;
+              stack[h1 + 2].i := curpr;
+              chans := t - 1;
+              suspend := -1;
+              stepcount := 0;
+            end  (* first *)
+            else
+            begin  (* second *)
+              h2 := abs(h2);  (* readers leave negated address *)
+              if ir.x = 0 then
+                stack[h2] := stack[t]
               else
               begin
-                h3 := (h3 + 1) mod h2;
+                h4 := 0;  (* loop control for block copy *)
+                while h4 < ir.y do
+                begin
+                  stack[h2 + h4] := stack[h3 + h4];
+                  h4 := h4 + 1;
+                end;  (* while *)
+              end;  (* ir.x was 1 *)
+              wakenon(h1);
+            end;  (* second *)
+            t := t - 2;
+          end;  (* case 65 *)
+
+          pChanrd: { gld }
+          begin
+            h1 := stack[t - 1].i;
+            h2 := stack[h1].i;
+            h3 := stack[t].i;
+            if h2 < 0 then
+              ps := channerror
+            else
+            if h2 = 0 then
+            begin  (* first *)
+              stack[h1].i := -h3;
+              stack[h1 + 1].i := pc;
+              stack[h1 + 2].i := curpr;
+              chans := t - 1;
+              suspend := -1;
+              stepcount := 0;
+            end  (* first *)
+            else
+            begin  (* second *)
+              h2 := abs(h2);
+              h4 := 0;
+              while h4 < ir.y do
+              begin
+                stack[h3 + h4] := stack[h2 + h4];
                 h4 := h4 + 1;
               end;
+              wakenon(h1);
             end;
-          end;  (* barriers to check *)
-          if not foundcall then
-            releasemon(curmon)
-          else
-          begin
-            h3 := stack[h1 + h3 + 1].i;
-            procwake(h3);
+            t := t - 2;
           end;
-          t := h1 - 1;
-          stack[curmon + 2].i := 0;
-          pc := stack[t].i;
-          t := t - 1;
-        end;
 
-        pPrtslp:
-        begin
-          h1 := stack[t].i;
-          t := t - 1;
-          joinqueue(h1);
-        end;
-
-        pPrtex:
-        begin
-          if ir.x = 0 then
-            clearresource := True
-          else
-            clearresource := False;
-          curmon := stack[t].i;
-          t := t - 1;
-        end;
-
-        pPrtcnd:
-          if clearresource then
+          pDelay:
           begin
-            stack[curmon + 2].i := 1;
+            h1 := stack[t].i;
+            t := t - 1;
+            joinqueue(h1);
+            if curmon <> 0 then
+              releasemon(curmon);
+          end;
+
+          pResum:
+          begin
+            h1 := stack[t].i;
+            t := t - 1;
+            if stack[h1].i > 0 then
+            begin
+              procwake(h1);
+              if curmon <> 0 then
+                joinqueue(curmon + 1);
+            end;
+          end;
+
+          pEnmon:
+          begin
+            h1 := stack[t].i;  (* address of new monitor variable *)
+            stack[t].i := curmon;  (* save old monitor variable *)
+            curmon := h1;
+            if stack[curmon].i = 0 then
+
+              stack[curmon].i := -1
+
+            else
+              joinqueue(curmon);
+          end;
+
+          pExmon:
+          begin
+            releasemon(curmon);
+            curmon := stack[t].i;
+            t := t - 1;
+          end;
+
+          pMexec:
+          begin  (* execute monitor body code *)
             t := t + 1;
             stack[t].i := pc;
-            t := t + 1;
-            stack[t].i := -1;
             pc := ir.y;
-          end
+          end;
 
-      end  (*case*);
+          pMretn:
+          begin  (* return from monitor body code *)
+            pc := stack[t].i;
+            t := t - 1;
+          end;
+
+          pLobnd:
+            if stack[t].i < ir.y then
+              ps := bndchk;
+
+          pHibnd:
+            if stack[t].i > ir.y then
+              ps := bndchk;
+
+          pPref: { Not implemented }
+            ;
+
+          pSleap:
+          begin
+            h1 := stack[t].i;
+            t := t - 1;
+            if h1 <= 0 then
+              stepcount := 0
+            else
+              joineventq(h1 + sysclock);
+          end;
+
+          pProcv:
+          begin
+            h1 := stack[t].i;
+            varptr := h1;
+            if stack[h1].i = 0 then
+              stack[h1].i := curpr
+            else
+              ps := instchk;
+            t := t - 1;
+          end;
+
+          pEcall:
+          begin
+            h1 := t - ir.y;
+            t := h1 - 2;
+            h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
+            if h2 > 0 then
+              if not processes[h2].active then
+                ps := nexistchk
+              else
+              begin
+                h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
+                if stack[h3].i <= 0 then
+                begin  (* empty queue on entry *)
+                  if stack[h3].i < 0 then
+                  begin  (* other process has arrived *)
+                    for h4 := 1 to ir.y do
+                      stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
+                    wakenon(h3);
+                  end;
+                  stack[h3 + 1].i := pc;
+                  stack[h3 + 2].i := curpr;
+                end;
+                joinqueue(h3);
+                stack[t + 1].i := h3;
+                chans := t + 1;
+                suspend := -1;
+              end
+            else
+            if h2 = 0 then
+              ps := nexistchk
+            else
+              ps := namechk;
+          end;
+
+          pAcpt1:
+          begin
+            h1 := stack[t].i;    (* h1 points to entry *)
+            t := t - 1;
+            if stack[h1].i = 0 then
+            begin  (* no calls - sleep *)
+              stack[h1].i := -1;
+              stack[h1 + 1].i := pc;
+              stack[h1 + 2].i := curpr;
+              suspend := -1;
+              chans := t + 1;
+              stepcount := 0;
+            end
+            else
+            begin  (* another process has arrived *)
+              h2 := stack[h1 + 2].i;  (* hs has proc number *)
+              h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
+              for h4 := 0 to ir.y - 1 do
+
+                stack[h1 + h4 + entrysize] := stack[h3 + h4];
+
+            end;
+          end;
+
+          pAcpt2:
+          begin
+            h1 := stack[t].i; (* h1 points to entry *)
+            t := t - 1;
+            procwake(h1);
+
+            if stack[h1].i <> 0 then
+            begin  (* queue non-empty *)
+              h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
+              stack[h1 + 1].i := processes[h2].pc;
+              stack[h1 + 2].i := h2;
+            end;
+          end;
+
+          pRep1c:
+            stack[display[ir.x] + ir.y].i := repindex;
+
+          pRep2c:
+          begin  (* replicate tail code *)
+            h1 := stack[t].i;
+            t := t - 1;
+            stack[h1].i := stack[h1].i + 1;
+            pc := ir.y;
+          end;
+
+          pPower2:
+          begin
+            h1 := stack[t].i;
+            if not (h1 in [0..bsmsb]) then
+              ps := setchk
+            else
+              stack[t].bs := [h1];
+          end;
+
+          pBtest:
+          begin
+            t := t - 1;
+            h1 := stack[t].i;
+            if not (h1 in [0..bsmsb]) then
+              ps := setchk
+            else
+              stack[t].i := btoi(h1 in stack[t + 1].bs);
+          end;
+
+          pWrbas:
+          begin
+            h3 := stack[t].i;
+            h1 := stack[t - 1].i;
+            h1r := stack[t - 1].r;
+            t := t - 2;
+            if h3 = 8 then
+              Write(h1r: 11: 8)
+            else
+              Write(h1r: 8: 16);
+
+          end;
+
+          pRelequS:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].bs = stack[t + 1].bs);
+          end;
+
+          pRelneqS:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].bs <> stack[t + 1].bs);
+          end;
+
+          pRelltS:
+          begin
+            t := t - 1;
+            //stack[t].i := btoi(stack[t].bs < stack[t+1].bs)
+            stack[t].i := btoi((stack[t].bs <= stack[t + 1].bs) and
+              (stack[t].bs <> stack[t + 1].bs));
+          end;
+
+          pRelleS:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].bs <= stack[t + 1].bs);
+          end;
+
+
+          pRelgtS:
+          begin
+            t := t - 1;
+            //stack[t].i := btoi(stack[t].bs > stack[t+1].bs)
+            stack[t].i := btoi((stack[t].bs >= stack[t + 1].bs) and
+              (stack[t].bs <> stack[t + 1].bs));
+          end;
+
+          pRelgeS:
+          begin
+            t := t - 1;
+            stack[t].i := btoi(stack[t].bs >= stack[t + 1].bs);
+          end;
+
+          pOropS:
+          begin
+            t := t - 1;
+            stack[t].bs := stack[t].bs + stack[t + 1].bs;
+          end;
+
+          pSubS:
+          begin
+            t := t - 1;
+            stack[t].bs := stack[t].bs - stack[t + 1].bs;
+          end;
+
+          pAndopS:
+          begin
+            t := t - 1;
+            stack[t].bs := stack[t].bs * stack[t + 1].bs;
+          end;
+
+          pSinit:
+            if curpr <> 0 then
+              ps := seminitchk
+            else
+            begin
+              stack[stack[t - 1].i] := stack[t];
+              t := t - 2;
+            end;
+
+          pPrtjmp:
+          begin
+            if stack[curmon + 2].i = 0 then
+              pc := ir.y;
+          end;
+
+          pPrtsel:
+          begin
+            h1 := t;
+            h2 := 0;
+            foundcall := False;
+            while stack[h1].i <> -1 do
+            begin
+              h1 := h1 - 1;
+              h2 := h2 + 1;
+            end;  (* h2 is now the number of open guards *)
+            if h2 <> 0 then
+            begin  (* barriers to check *)
+              h3 := trunc(random * h2);  (* arbitrary choice *)
+              h4 := 0;  (* count of barriers tested *)
+              while not foundcall and (h4 < h2) do
+              begin
+                if stack[stack[h1 + h3 + 1].i].i <> 0 then
+                  foundcall := True
+                else
+                begin
+                  h3 := (h3 + 1) mod h2;
+                  h4 := h4 + 1;
+                end;
+              end;
+            end;  (* barriers to check *)
+            if not foundcall then
+              releasemon(curmon)
+            else
+            begin
+              h3 := stack[h1 + h3 + 1].i;
+              procwake(h3);
+            end;
+            t := h1 - 1;
+            stack[curmon + 2].i := 0;
+            pc := stack[t].i;
+            t := t - 1;
+          end;
+
+          pPrtslp:
+          begin
+            h1 := stack[t].i;
+            t := t - 1;
+            joinqueue(h1);
+          end;
+
+          pPrtex:
+          begin
+            if ir.x = 0 then
+              clearresource := True
+            else
+              clearresource := False;
+            curmon := stack[t].i;
+            t := t - 1;
+          end;
+
+          pPrtcnd:
+            if clearresource then
+            begin
+              stack[curmon + 2].i := 1;
+              t := t + 1;
+              stack[t].i := pc;
+              t := t + 1;
+              stack[t].i := -1;
+              pc := ir.y;
+            end
+
+        end  (*case*);
 
     end;
 
@@ -2673,7 +2675,8 @@ var
       end;
 
       repeat
-        if (processes[0].active) and (processes[0].suspend = 0) and (processes[0].wakeup = 0) then
+        if (processes[0].active) and (processes[0].suspend = 0) and
+          (processes[0].wakeup = 0) then
           curpr := 0
         else
         if stepcount = 0 then
