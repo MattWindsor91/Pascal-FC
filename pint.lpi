@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="4">
+    <Units Count="5">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -45,6 +45,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="IConsts"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="opcodes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Opcodes"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -26,9 +26,6 @@ unit Opcodes;
 
 interface
 
-uses
-  GConsts;
-
 const
   { Minimum P-code opcode }
   minPCodeOp = 0;
