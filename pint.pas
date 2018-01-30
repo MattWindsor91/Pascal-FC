@@ -1332,39 +1332,32 @@ var
       CheckStackOverflowAfter(0, p);
     end;
 
+    { Increments the stack pointer for process 'p', checking for overflow. }
+    procedure IncStackPointer(p: TProcessID);
+    begin
+      processes[p].t := processes[p].t + 1;
+      CheckStackOverflow(p);
+    end;
 
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
-    procedure PushInteger(i: integer; p: TProcessID);
+    procedure PushInteger(p: TProcessID; i: integer);
     begin
-      with processes[p] do
-      begin
-        t := t + 1;
-        CheckStackOverflow(p);
-
-        stack[t].i := i;
-      end;
+      IncStackPointer(p);
+      stack[processes[p].t].i := i;
     end;
 
     { Pushes a stack record 'r' onto the stack segment for process 'p'. }
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
-      with processes[p] do
-      begin
-        t := t + 1;
-        CheckStackOverflow(p);
-
-        stack[t] := r;
-      end;
+      IncStackPointer(p);
+      stack[processes[p].t] := r;
     end;
 
     { Pops an integer from the stack segment for process 'p'. }
     function PopInteger(p: TProcessID) : integer;
     begin
-      with processes[p] do
-      begin
-        Result := stack[t].i;
-        t := t - 1;
-      end;
+      Result := stack[processes[p].t].i;
+      processes[p].t := processes[p].t - 1;
     end;
 
     { TODO: work out precisely what this function does }
@@ -1375,7 +1368,7 @@ var
 
     procedure RunLdadr(p: TProcessID; x, y: integer);
     begin
-      PushInteger(LocalAddress(p, x, y), p);
+      PushInteger(p, LocalAddress(p, x, y));
     end;
 
     procedure RunLdval(p: TProcessID; x, y: integer);
@@ -1396,6 +1389,225 @@ var
       PushRecord(p, rec);
     end;
 
+    procedure RunUpdis(p: TProcessID; x, y: integer);
+    begin
+      h1 := y;
+      h2 := x;
+      h3 := processes[p].b;
+      repeat
+        processes[p].display[h1] := h3;
+        h1 := h1 - 1;
+        h3 := stack[h3 + 2].i
+      until h1 = h2;
+    end;
+
+    procedure RunCoend;
+    begin
+      procmax := npr;
+      processes[0].active := False;
+      stepcount := 0;
+    end;
+
+    procedure RunWait(p: TProcessID);
+    begin
+      h1 := PopInteger(p);
+
+      if stack[h1].i > 0 then
+        stack[h1].i := stack[h1].i - 1
+      else
+      begin
+        processes[p].suspend := h1;
+        stepcount := 0;
+      end;
+    end;
+
+    procedure RunSignal(p: TProcessID);
+    begin
+      h1 := PopInteger(p);
+
+      h2 := pmax + 1;
+      h3 := trunc(random * h2);
+      while (h2 >= 0) and (processes[h3].suspend <> h1) do
+      begin
+        h3 := (h3 + 1) mod (pmax + 1);
+        h2 := h2 - 1;
+      end;
+
+      if h2 < 0 then
+        stack[h1].i := stack[h1].i + 1
+      else
+        processes[h3].suspend := 0;
+    end;
+
+    procedure RunStfun(p: TProcessID; y: integer);
+    begin
+      with processes[p] do
+      case y of
+        0:
+          stack[t].i := abs(stack[t].i);
+        1:
+          stack[t].r := abs(stack[t].r);
+        2:    (* integer sqr *)
+          if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
+            ps := ovchk
+          else
+            stack[t].i := sqr(stack[t].i);
+        3:    (* real sqr *)
+          if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
+            ps := ovchk
+          else
+            stack[t].r := sqr(stack[t].r);
+        4:
+          stack[t].i := btoi(odd(stack[t].i));
+        5: if not (stack[t].i in [charl..charh]) then
+            ps := charchk;
+        6: ;
+        7:  (* succ *)
+          stack[t].i := stack[t].i + 1;
+        8: (* pred *)
+          stack[t].i := stack[t].i - 1;
+        9:    (* round *)
+          if abs(stack[t].r) >= (intmax + 0.5) then
+            ps := ovchk
+          else
+            stack[t].i := round(stack[t].r);
+        10:  (* trunc *)
+          if abs(stack[t].r) >= (intmax + 1.0) then
+            ps := ovchk
+          else
+            stack[t].i := trunc(stack[t].r);
+        11:
+          stack[t].r := sin(stack[t].r);
+        12:
+          stack[t].r := cos(stack[t].r);
+        13:
+          stack[t].r := exp(stack[t].r);
+        14:  (* ln *)
+          if stack[t].r <= 0.0 then
+            ps := ovchk
+          else
+            stack[t].r := ln(stack[t].r);
+        15:  (* sqrt *)
+          if stack[t].r < 0.0 then
+            ps := ovchk
+          else
+            stack[t].r := sqrt(stack[t].r);
+        16:
+          stack[t].r := arctan(stack[t].r);
+
+        17:
+        begin
+          PushInteger(p, btoi(EOF(input)));
+        end;
+
+        18:
+        begin
+          PushInteger(p, btoi(eoln(input)));
+        end;
+        19:
+        begin
+          h1 := abs(stack[t].i) + 1;
+          stack[t].i := trunc(random * h1);
+        end;
+        20:  (* empty *)
+        begin
+          h1 := stack[t].i;
+          if stack[h1].i = 0 then
+            stack[t].i := 1
+          else
+            stack[t].i := 0;
+        end;  (* f21 *)
+        21:  (* bits *)
+        begin
+          h1 := stack[t].i;
+          stack[t].bs := [];
+          h3 := 0;
+          if h1 < 0 then
+            if bsmsb < intmsb then
+            begin
+              ps := setchk;
+              h1 := 0;
+            end
+            else
+            begin
+              stack[t].bs := [bsmsb];
+              h1 := (h1 + 1) + maxint;
+              h3 := 1;
+            end;
+          for h2 := 0 to bsmsb - h3 do
+          begin
+            if (h1 mod 2) = 1 then
+              stack[t].bs := stack[t].bs + [h2];
+            h1 := h1 div 2;
+          end;
+          if h1 <> 0 then
+            ps := setchk;
+        end;  (* f21 *)
+
+        24:  (* int - bitset to integer *)
+        begin
+          h1 := 0;
+          if bsmsb = intmsb then
+            if intmsb in stack[t].bs then
+              h1 := 1;
+          h2 := 0;  (* running total *)
+          h3 := 1;  (* place value *)
+          for h4 := 0 to bsmsb - h1 do
+          begin
+            if h4 in stack[t].bs then
+              h2 := h2 + h3;
+            h3 := h3 * 2;
+          end;
+          if h1 <> 0 then
+            stack[t].i := (h2 - maxint) - 1
+          else
+            stack[t].i := h2;
+        end;
+
+        25:  (* clock *)
+        begin
+          PushInteger(p, sysclock);
+        end;  (* f25 *)
+
+      end;
+    end;
+
+    procedure RunIxrec(p: TProcessID; y: integer);
+    var
+      ix: integer; { Unsure what this actually is. }
+    begin
+      ix := PopInteger(p);
+      PushInteger(p, ix + y);
+    end;
+
+    procedure RunJmp(p: TProcessID; y: integer);
+    begin
+      processes[p].pc := y;
+    end;
+
+    procedure RunJmpiz(p: TProcessID; y: integer);
+    var
+      condition : integer;
+    begin
+      condition := PopInteger(p);
+      if condition = fals then
+        RunJmp(p, y);
+    end;
+
+    procedure RunCase1(p: TProcessID; y: integer);
+    var
+      r1: integer; { TODO: what is this? }
+      r2: integer; { TODO: what is this? }
+    begin
+      r1 := PopInteger(p);
+      r2 := PopInteger(p);
+
+      if r1 = r1 then
+        RunJmp(p, y)
+      else
+        PushInteger(p, r2);
+    end;
+
     procedure RunStep(p: TProcessID);
     begin
       with processes[p] do
@@ -1403,214 +1615,17 @@ var
           pLdadr: RunLdadr(p, ir.x, ir.y);
           pLdval: RunLdval(p, ir.x, ir.y);
           pLdind: RunLdind(p, ir.x, ir.y);
-
-          pUpdis:
-          begin
-            h1 := ir.y;
-            h2 := ir.x;
-            h3 := b;
-            repeat
-              display[h1] := h3;
-              h1 := h1 - 1;
-              h3 := stack[h3 + 2].i
-            until h1 = h2;
-          end;
-
-          pCobeg: ;
-
-          pCoend:
-          begin
-            procmax := npr;
-            processes[0].active := False;
-            stepcount := 0;
-          end;
-
-          pWait:
-          begin
-            h1 := PopInteger(p);
-
-            if stack[h1].i > 0 then
-              stack[h1].i := stack[h1].i - 1
-            else
-            begin
-              suspend := h1;
-              stepcount := 0;
-            end;
-          end;
-
-          pSignal:
-          begin
-            h1 := PopInteger(p);
-
-            h2 := pmax + 1;
-            h3 := trunc(random * h2);
-            while (h2 >= 0) and (processes[h3].suspend <> h1) do
-            begin
-              h3 := (h3 + 1) mod (pmax + 1);
-              h2 := h2 - 1;
-            end;
-
-            if h2 < 0 then
-              stack[h1].i := stack[h1].i + 1
-            else
-              processes[h3].suspend := 0;
-
-          end;
-
-          pStfun:
-            case ir.y of
-              0:
-                stack[t].i := abs(stack[t].i);
-              1:
-                stack[t].r := abs(stack[t].r);
-              2:    (* integer sqr *)
-                if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
-                  ps := ovchk
-                else
-                  stack[t].i := sqr(stack[t].i);
-              3:    (* real sqr *)
-                if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
-                  ps := ovchk
-                else
-                  stack[t].r := sqr(stack[t].r);
-              4:
-                stack[t].i := btoi(odd(stack[t].i));
-              5: if not (stack[t].i in [charl..charh]) then
-                  ps := charchk;
-              6: ;
-              7:  (* succ *)
-                stack[t].i := stack[t].i + 1;
-              8: (* pred *)
-                stack[t].i := stack[t].i - 1;
-              9:    (* round *)
-                if abs(stack[t].r) >= (intmax + 0.5) then
-                  ps := ovchk
-                else
-                  stack[t].i := round(stack[t].r);
-              10:  (* trunc *)
-                if abs(stack[t].r) >= (intmax + 1.0) then
-                  ps := ovchk
-                else
-                  stack[t].i := trunc(stack[t].r);
-              11:
-                stack[t].r := sin(stack[t].r);
-              12:
-                stack[t].r := cos(stack[t].r);
-              13:
-                stack[t].r := exp(stack[t].r);
-              14:  (* ln *)
-                if stack[t].r <= 0.0 then
-                  ps := ovchk
-                else
-                  stack[t].r := ln(stack[t].r);
-              15:  (* sqrt *)
-                if stack[t].r < 0.0 then
-                  ps := ovchk
-                else
-                  stack[t].r := sqrt(stack[t].r);
-              16:
-                stack[t].r := arctan(stack[t].r);
-
-              17:
-              begin
-                PushInteger(btoi(EOF(input)), p);
-              end;
-
-              18:
-              begin
-                PushInteger(btoi(eoln(input)), p);
-              end;
-              19:
-              begin
-                h1 := abs(stack[t].i) + 1;
-                stack[t].i := trunc(random * h1);
-              end;
-              20:  (* empty *)
-              begin
-                h1 := stack[t].i;
-                if stack[h1].i = 0 then
-                  stack[t].i := 1
-                else
-                  stack[t].i := 0;
-              end;  (* f21 *)
-              21:  (* bits *)
-              begin
-                h1 := stack[t].i;
-                stack[t].bs := [];
-                h3 := 0;
-                if h1 < 0 then
-                  if bsmsb < intmsb then
-                  begin
-                    ps := setchk;
-                    h1 := 0;
-                  end
-                  else
-                  begin
-                    stack[t].bs := [bsmsb];
-                    h1 := (h1 + 1) + maxint;
-                    h3 := 1;
-                  end;
-                for h2 := 0 to bsmsb - h3 do
-                begin
-                  if (h1 mod 2) = 1 then
-                    stack[t].bs := stack[t].bs + [h2];
-                  h1 := h1 div 2;
-                end;
-                if h1 <> 0 then
-                  ps := setchk;
-              end;  (* f21 *)
-
-              24:  (* int - bitset to integer *)
-              begin
-                h1 := 0;
-                if bsmsb = intmsb then
-                  if intmsb in stack[t].bs then
-                    h1 := 1;
-                h2 := 0;  (* running total *)
-                h3 := 1;  (* place value *)
-                for h4 := 0 to bsmsb - h1 do
-                begin
-                  if h4 in stack[t].bs then
-                    h2 := h2 + h3;
-                  h3 := h3 * 2;
-                end;
-                if h1 <> 0 then
-                  stack[t].i := (h2 - maxint) - 1
-                else
-                  stack[t].i := h2;
-              end;
-
-              25:  (* clock *)
-              begin
-                PushInteger(sysclock, curpr);
-              end;  (* f25 *)
-
-            end;
-
-          pIxrec:
-            stack[t].i := stack[t].i + ir.y;
-
-          pJmp:
-            pc := ir.y;
-
-          pJmpiz:
-          begin
-            if stack[t].i = fals then
-              pc := ir.y;
-            t := t - 1;
-          end;
-
-          pCase1:
-            if stack[t].i = stack[t - 1].i then
-            begin
-              t := t - 2;
-              pc := ir.y;
-            end
-            else
-              t := t - 1;
-
-          pCase2:
-            ps := casechk;
+          pUpdis: RunUpdis(p, ir.x, ir.y);
+          pCobeg: ; { This opcode is a no-op. }
+          pCoend: RunCoend;
+          pWait: RunWait(p);
+          pSignal: RunSignal(p);
+          pStfun: RunStfun(p, ir.y);
+          pIxrec: RunIxrec(p, ir.y);
+          pJmp: RunJmp(p, ir.y);
+          pJmpiz: RunJmpiz(p, ir.y);
+          pCase1: RunCase1(p, ir.y);
+          pCase2: ps := casechk;
 
           pFor1up:
           begin
@@ -1737,7 +1752,7 @@ var
 
           pLdconI:
           begin
-            PushInteger(ir.y, p);
+            PushInteger(p, ir.y);
           end;
 
           pLdconR:
@@ -2610,8 +2625,8 @@ var
             if clearresource then
             begin
               stack[curmon + 2].i := 1;
-              PushInteger(pc, p);
-              PushInteger(-1, p);
+              PushInteger(p, pc);
+              PushInteger(p, -1);
               pc := ir.y;
             end
 
