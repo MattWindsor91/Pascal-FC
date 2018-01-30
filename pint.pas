@@ -65,7 +65,7 @@ type
   end;
 
   { Record for a single Pascal-FC process. }
-  TProcessRecord = record
+  TProcess = record
     { Stack pointers }
 
     t: integer;         { The current stack pointer. }
@@ -73,9 +73,9 @@ type
     stacksize: integer; { The end of this process's segment on the stack. }
     b: integer;
 
-    pc: integer;        { Program counter }
+    pc: integer;        { Program counter. }
     display: array[1..lmax] of integer;
-    suspend: integer;
+    suspend: integer;   { The address of the semaphore being awaited, if <>0. }
     chans: integer;
     repindex: integer;
     onselect: boolean;
@@ -86,6 +86,9 @@ type
 
     varptr: 0..tmax
   end;
+
+  { Pointer to a TProcess. }
+  PProcess = ^TProcess;
 
 
   (* This type is declared within the GCP Run Time System *)
@@ -115,7 +118,7 @@ var
 
   stack: array[1..stmax] of TStackRecord;
 
-  processes: array[TProcessID] of TProcessRecord;
+  processes: array[TProcessID] of TProcess;
   npr, procmax, curpr: TProcessID;
   stepcount: integer;
   concflag: boolean;
@@ -1409,34 +1412,55 @@ var
     end;
 
     procedure RunWait(p: TProcessID);
+    var
+      semAddr: integer;
     begin
-      h1 := PopInteger(p);
+      semAddr := PopInteger(p);
 
-      if stack[h1].i > 0 then
-        stack[h1].i := stack[h1].i - 1
+      if stack[semAddr].i > 0 then
+        stack[semAddr].i := stack[semAddr].i - 1
       else
       begin
-        processes[p].suspend := h1;
+        processes[p].suspend := semAddr;
         stepcount := 0;
       end;
     end;
 
-    procedure RunSignal(p: TProcessID);
-    begin
-      h1 := PopInteger(p);
+    { Tries to find a process 'p' awaiting a semaphore at address 'semAddr'.
 
-      h2 := pmax + 1;
-      h3 := trunc(random * h2);
-      while (h2 >= 0) and (processes[h3].suspend <> h1) do
+      If there is such a process, return a pointer to it.
+      Else, return 'nil'. }
+    function FindWaitingProcess(semAddr: integer): PProcess;
+    var
+      n: integer;
+      p: TProcessID;
+    begin
+      n := pmax + 1;
+      p := trunc(random * n);
+      while (n >= 0) and (processes[p].suspend <> semAddr) do
       begin
-        h3 := (h3 + 1) mod (pmax + 1);
-        h2 := h2 - 1;
+        p := (p + 1) mod (pmax + 1);
+        n := n - 1;
       end;
 
-      if h2 < 0 then
-        stack[h1].i := stack[h1].i + 1
+      if n >= 0 then
+        Result := @processes[p]
       else
-        processes[h3].suspend := 0;
+        Result := nil;
+    end;
+
+    procedure RunSignal(p: TProcessID);
+    var
+      semAddr: integer;
+      toWake: PProcess;
+    begin
+      semAddr := PopInteger(p);
+
+      toWake := FindWaitingProcess(semAddr);
+      if toWake = nil then
+        stack[semAddr].i := stack[semAddr].i + 1
+      else
+        toWake^.suspend := 0;
     end;
 
     procedure RunStfun(p: TProcessID; y: integer);
