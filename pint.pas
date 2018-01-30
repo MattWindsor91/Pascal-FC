@@ -1602,7 +1602,7 @@ var
       r1 := PopInteger(p);
       r2 := PopInteger(p);
 
-      if r1 = r1 then
+      if r1 = r2 then
         RunJmp(p, y)
       else
         PushInteger(p, r2);
