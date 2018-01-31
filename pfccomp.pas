@@ -94,8 +94,7 @@ var
 
   (* implementation-dependent variable declarations for 1 *)
 
-  objrec: TObjCodeRec;
-  objfile: file of TObjCodeRec;
+  objrec: TObjcode;
 
 
   (* @(#)pfcfront.i  5.2 12/1/92 *)
@@ -5800,7 +5799,7 @@ var
 
   (* intermediate code translator procedure *)
 
-  procedure ict(var success: boolean);
+  procedure ict(var success: boolean; outfname: string);
 
 
   (* Pascal-FC intermediate code translator for Unix systems *)
@@ -5819,16 +5818,8 @@ var
 
 
       procedure gen(fobj, xobj, yobj: integer);
-
       begin
-        with objrec do
-          with gencode[cindex] do
-          begin
-            f := fobj;
-            x := xobj;
-            y := yobj;
-            l := code[cindex].line;
-          end;
+        AddPCodeToObjcode(objrec, code[cindex].line, fobj, xobj, yobj);
       end;  (* gen *)
 
     begin  (* Putcode *)
@@ -6026,7 +6017,6 @@ var
             prtcnd: gen(pPrtcnd, 0, y)
           end;
       (* case *);
-      objrec.ngencode := lc - 1;
     end;  (* putcode *)
 
 
@@ -6053,10 +6043,9 @@ var
     (* implementation checks to go here *)
     if success then
     begin
-      rewrite(objfile);
       putcode;
       puttabs;
-      Write(objfile, objrec);
+      WriteObjcode(objrec, outfname);
     end;
   end;  (* ict *)
 
@@ -6083,7 +6072,6 @@ begin
     filename := ParamStr(1);
     Assign(progfile, ParamStr(1));
     Assign(listfile, ParamStr(2));
-    Assign(objfile, ParamStr(3));
   end
   else
   begin
@@ -6095,7 +6083,7 @@ begin
     pfcfront(success);
     impcheck(success);
     if success then
-      ict(success);
+      ict(success, ParamStr(3));
     puttab;
     if not success then
       errorbanner;

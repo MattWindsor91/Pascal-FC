@@ -31,12 +31,16 @@ uses
   Opcodes;
 
 type
+  TXArgument = -lmax..lmax;
+  TYArgument = integer;
+  TLineNo = integer;
+
   TObjOrder =
     packed record
     f: TPCodeOp;
-    x: -lmax..lmax;
-    y: integer;
-    l: integer
+    x: TXArgument;
+    y: TYArgument;
+    l: TLineNo;
   end;
   TObjOrderArray = array[0..cmax] of TObjOrder;
 
@@ -94,7 +98,7 @@ type
   TInTabArray = array[1..intermax] of TInTabRec;
 
   { Type of object code records. }
-  TObjCodeRec =
+  TObjcode =
     packed record
     fname: ShortString;
     prgname: ShortString;
@@ -118,6 +122,49 @@ type
 
   end;
 
-implementation
+  { Reads an object code record from file 'fname' into variable 'o'. }
+  procedure ReadObjcode(out o: TObjcode; fname: shortstring);
 
+  { Writes an object code record 'o' to file 'fname'. }
+  procedure WriteObjcode(var o: TObjcode; fname: shortstring);
+
+  { Adds a P-code instruction into the code section of object code record 'o'. }
+  procedure AddPCodeToObjcode(var o: TObjcode; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+implementation
+  procedure ReadObjcode(out o: TObjcode; fname: shortstring);
+  var
+    f: file of TObjcode;
+  begin
+    { TODO: Handle I/O errors gracefully. }
+
+    Assign(f, fname);
+    Reset(f);
+    Read(f, o);
+  end;
+
+  procedure WriteObjcode(var o: TObjcode; fname: shortstring);
+  var
+    f: file of TObjcode;
+  begin
+    { TODO: Handle I/O errors gracefully. }
+
+    Assign(f, fname);
+    Rewrite(f);
+    Write(f, o);
+  end;
+
+  procedure AddPCodeToObjcode(var o: TObjcode; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+  var
+    i: 0..cmax;
+  begin
+    { TODO: Error if we've hit cmax. }
+    i := o.ngencode;
+
+    o.gencode[i].f := opcode;
+    o.gencode[i].x := x;
+    o.gencode[i].y := y;
+    o.gencode[i].l := line;
+
+    o.ngencode := i + 1;
+  end;
 end.

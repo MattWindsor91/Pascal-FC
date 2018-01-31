@@ -98,8 +98,7 @@ type
 
 
 var
-  objfile: file of TObjCodeRec;
-  objrec: TObjCodeRec;
+  objrec: TObjcode;
 
   pmdfile: Text;
   stantyps: TTypeSet;
@@ -350,19 +349,6 @@ var
       tp := entrys;
     end;
   end;  (* nameobJ *)
-
-
-  procedure getcode;
-
-  (* get code from objfile *)
-
-  begin
-
-    reset(objfile);
-    Read(objfile, objrec);
-
-  end;  (* getcode *)
-
 
   procedure putversion(var tofile: Text);
 
@@ -2805,19 +2791,19 @@ begin  (* Main *)
      *)
 
   (* dgm *)
-  if paramcount = 2 then
+  if paramcount <> 2 then
   begin
-    Assign(objfile, ParamStr(1));
-    Assign(pmdfile, ParamStr(2));
+    Writeln('Usage: pint objfile pmdfile');
+    Exit;
   end;
+
+  Assign(pmdfile, ParamStr(2));
+  rewrite(pmdfile);
 
   randomize;
   putversion(output);
 
-
-  rewrite(pmdfile);
-
-  getcode;
+  ReadObjcode(objrec, ParamStr(1));
 
   repeat
 
