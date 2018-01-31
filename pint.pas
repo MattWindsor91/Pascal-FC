@@ -1596,6 +1596,9 @@ var
       end;
     end;
 
+    { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'ixrec' in the 'Opcodes' unit for details. }
     procedure RunIxrec(p: TProcessID; y: integer);
     var
       ix: integer; { Unsure what this actually is. }
@@ -1604,33 +1607,46 @@ var
       PushInteger(p, ix + y);
     end;
 
-    procedure RunJmp(p: TProcessID; y: integer);
+    { Unconditionally jumps process 'p' to program counter 'pc'.
+
+      This procedure also implements the 'jmp' instruction, with Y-value 'pc'. }
+    procedure Jump(p: TProcessID; pc: Integer);
     begin
-      processes[p].pc := y;
+      processes[p].pc := pc;
     end;
 
+    { No RunJmp: use Jump instead. }
+
+    { Executes a 'jmpiz' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pJmpiz' in the 'Opcodes' unit for details. }
     procedure RunJmpiz(p: TProcessID; y: integer);
     var
       condition : integer;
     begin
       condition := PopInteger(p);
       if condition = fals then
-        RunJmp(p, y);
+        Jump(p, y);
     end;
 
+    { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pCase1' in the 'Opcodes' unit for details. }
     procedure RunCase1(p: TProcessID; y: integer);
     var
-      r1: integer; { TODO: what is this? }
-      r2: integer; { TODO: what is this? }
+      caseValue: integer; { The value of this leg of the case (popped first). }
+      testValue: integer; { The value tested by the cases (popped second). }
     begin
-      r1 := PopInteger(p);
-      r2 := PopInteger(p);
+      caseValue := PopInteger(p);
+      testValue := PopInteger(p);
 
-      if r1 = r2 then
-        RunJmp(p, y)
+      if caseValue = testValue then
+        Jump(p, y)
       else
-        PushInteger(p, r2);
+        PushInteger(p, testValue);
     end;
+
+    { No RunCase2: interpreting Case2 is a case-check exception. }
 
     procedure RunStep(p: TProcessID);
     begin
@@ -1646,7 +1662,7 @@ var
           pSignal: RunSignal(p);
           pStfun: RunStfun(p, ir.y);
           pIxrec: RunIxrec(p, ir.y);
-          pJmp: RunJmp(p, ir.y);
+          pJmp: Jump(p, ir.y);
           pJmpiz: RunJmpiz(p, ir.y);
           pCase1: RunCase1(p, ir.y);
           pCase2: ps := casechk;
@@ -1659,7 +1675,7 @@ var
             else
             begin
               t := t - 3;
-              pc := ir.y;
+              Jump(p, ir.y);
             end;
           end;
 
@@ -1670,7 +1686,7 @@ var
             if h1 <= stack[t].i then
             begin
               stack[h2].i := h1;
-              pc := ir.y;
+              Jump(p, ir.y);
             end
             else
               t := t - 3;
