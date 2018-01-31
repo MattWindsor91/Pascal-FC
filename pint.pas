@@ -98,7 +98,7 @@ type
 
 
 var
-  objrec: TObjcode;
+  objrec: TPCodeObject;
 
   pmdfile: Text;
   stantyps: TTypeSet;
@@ -2803,7 +2803,7 @@ begin  (* Main *)
   randomize;
   putversion(output);
 
-  ReadObjcode(objrec, ParamStr(1));
+  ReadPCode(objrec, ParamStr(1));
 
   repeat
 

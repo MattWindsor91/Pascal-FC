@@ -19,10 +19,13 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ P-Code: On-disk representation of object code }
+{ P-code: On-disk representation of object code }
 unit PCodeObj;
 
 {$mode objfpc}{$H+}
+
+{ TODO: Make the on-disk representation portable between systems: it's not
+  'really' P-code until it is. }
 
 interface
 
@@ -99,7 +102,7 @@ type
   TInTabArray = array[1..intermax] of TInTabRec;
 
   { Type of object code records. }
-  TObjcode =
+  TPCodeObject =
     packed record
     fname: ShortString;
     prgname: ShortString;
@@ -123,18 +126,18 @@ type
 
   end;
 
-  { Reads an object code record from file 'fname' into variable 'o'. }
-  procedure ReadObjcode(out o: TObjcode; fname: shortstring);
+  { Reads an P-code object from file 'fname' into variable 'o'. }
+  procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
 
-  { Writes an object code record 'o' to file 'fname'. }
-  procedure WriteObjcode(var o: TObjcode; fname: shortstring);
+  { Writes a P-code object 'o' to file 'fname'. }
+  procedure WritePCode(var o: TPCodeObject; fname: shortstring);
 
-  { Adds a P-code instruction into the code section of object code record 'o'. }
-  procedure AddPCodeToObjcode(var o: TObjcode; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+  { Adds a P-code instruction into the code section of object 'o'. }
+  procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
 implementation
-  procedure ReadObjcode(out o: TObjcode; fname: shortstring);
+  procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
   var
-    f: file of TObjcode;
+    f: file of TPCodeObject;
   begin
     { TODO: Handle I/O errors gracefully. }
 
@@ -143,9 +146,9 @@ implementation
     Read(f, o);
   end;
 
-  procedure WriteObjcode(var o: TObjcode; fname: shortstring);
+  procedure WritePCode(var o: TPCodeObject; fname: shortstring);
   var
-    f: file of TObjcode;
+    f: file of TPCodeObject;
   begin
     { TODO: Handle I/O errors gracefully. }
 
@@ -154,7 +157,7 @@ implementation
     Write(f, o);
   end;
 
-  procedure AddPCodeToObjcode(var o: TObjcode; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+  procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
   var
     i: 0..cmax;
   begin

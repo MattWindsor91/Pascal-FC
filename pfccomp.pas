@@ -94,7 +94,7 @@ var
 
   (* implementation-dependent variable declarations for 1 *)
 
-  objrec: TObjcode;
+  objrec: TPCodeObject;
 
 
   (* @(#)pfcfront.i  5.2 12/1/92 *)
@@ -5809,7 +5809,7 @@ var
     procedure EmitPCodeFor(var i: TOrder);
       procedure gen(fobj, xobj, yobj: integer);
       begin
-        AddPCodeToObjcode(objrec, i.line, fobj, xobj, yobj);
+        AddInstructionToPCode(objrec, i.line, fobj, xobj, yobj);
       end;  (* gen *)
     begin
         with i do
@@ -6043,7 +6043,7 @@ var
     begin
       putcode;
       puttabs;
-      WriteObjcode(objrec, outfname);
+      WritePCode(objrec, outfname);
     end;
   end;  (* ict *)
 
