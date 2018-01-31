@@ -19,8 +19,8 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Opcodes used in Pascal-FC}
-unit Opcodes;
+{ P-Code: Opcodes used in Pascal-FC }
+unit PCodeOps;
 
 {$mode objfpc}{$H+}
 

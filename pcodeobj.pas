@@ -19,8 +19,8 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ On-disk representation of object code }
-unit Objcode;
+{ P-Code: On-disk representation of object code }
+unit PCodeObj;
 
 {$mode objfpc}{$H+}
 
@@ -28,7 +28,7 @@ interface
 
 uses
   GConsts,
-  Opcodes;
+  PCodeOps;
 
 type
   TXArgument = -lmax..lmax;
@@ -72,7 +72,8 @@ type
   TATabRec =
     packed record
     inxtyp, eltyp: TType;
-    inxref, elref, low, high, elsize, size: TIndex;
+    inxref, elref: TIndex;
+    low, high, elsize, size: TIndex;
   end;
   TATabArray = array[1..amax] of TATabRec;
 

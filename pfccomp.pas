@@ -24,8 +24,8 @@ program pfccomp;
 uses
   SysUtils,
   GConsts,
-  Objcode,
-  Opcodes,
+  PCodeObj,
+  PCodeOps,
   CConsts;
 
 type
@@ -5806,25 +5806,13 @@ var
 
 
 
-
-    procedure putcode;
-
-    (* outputs the objektcode array *)
-
-    var
-      cindex: integer;
-
-
-
-
+    procedure EmitPCodeFor(var i: TOrder);
       procedure gen(fobj, xobj, yobj: integer);
       begin
-        AddPCodeToObjcode(objrec, code[cindex].line, fobj, xobj, yobj);
+        AddPCodeToObjcode(objrec, i.line, fobj, xobj, yobj);
       end;  (* gen *)
-
-    begin  (* Putcode *)
-      for cindex := 0 to lc - 1 do
-        with code[cindex] do
+    begin
+        with i do
           case f of
             ldadr: gen(pLdadr, x, y);
             ldval: gen(pLdval, x, y);
@@ -6016,7 +6004,17 @@ var
             prtex: gen(pPrtex, x, 0);
             prtcnd: gen(pPrtcnd, 0, y)
           end;
-      (* case *);
+    end;
+
+    procedure putcode;
+
+    (* outputs the objektcode array *)
+
+    var
+      cindex: integer;
+    begin  (* Putcode *)
+      for cindex := 0 to lc - 1 do
+        EmitPCodeFor(code[cindex]);
     end;  (* putcode *)
 
 

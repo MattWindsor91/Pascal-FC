@@ -1,9 +1,9 @@
 all: pfccomp pint
 
-pfccomp: pfccomp.pas gconsts.pas cconsts.pas objcode.pas
+pfccomp: pfccomp.pas gconsts.pas cconsts.pas pcodeobj.pas pcodeops.pas
 	fpc -Mobjfpc -g $<
 
-pint: pint.pas gconsts.pas iconsts.pas objcode.pas
+pint: pint.pas gconsts.pas iconsts.pas pcodeobj.pas pcodeops.pas
 	fpc -Mobjfpc -g $<
 
 install: pfccomp pint

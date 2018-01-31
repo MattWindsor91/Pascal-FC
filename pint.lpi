@@ -31,9 +31,9 @@
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="objcode.pas"/>
+        <Filename Value="pcodeobj.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Objcode"/>
+        <UnitName Value="PCodeObj"/>
       </Unit1>
       <Unit2>
         <Filename Value="gconsts.pas"/>
@@ -46,9 +46,9 @@
         <UnitName Value="IConsts"/>
       </Unit3>
       <Unit4>
-        <Filename Value="opcodes.pas"/>
+        <Filename Value="pcodeops.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="Opcodes"/>
+        <UnitName Value="PCodeOps"/>
       </Unit4>
     </Units>
   </ProjectOptions>

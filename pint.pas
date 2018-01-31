@@ -23,8 +23,8 @@ program pint;
 
 uses
   SysUtils,
-  Objcode,
-  Opcodes,
+  PCodeOps,
+  PCodeObj,
   GConsts,
   IConsts;
 
