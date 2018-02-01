@@ -27,7 +27,7 @@
         <WorkingDirectory Value="/home/mattbw/Documents/git/Pascal-FC"/>
       </local>
     </RunParams>
-    <Units Count="5">
+    <Units Count="7">
       <Unit0>
         <Filename Value="pfccomp.pas"/>
         <IsPartOfProject Value="True"/>
@@ -52,6 +52,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Opcodes"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="gtables.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GTables"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="gtypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GTypes"/>
+      </Unit6>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

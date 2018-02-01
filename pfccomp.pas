@@ -26,7 +26,7 @@ uses
   GConsts,
   PCodeObj,
   PCodeOps,
-  CConsts;
+  CConsts, gtables, gtypes;
 
 type
   FatalError = class(Exception);

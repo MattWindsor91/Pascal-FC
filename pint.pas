@@ -26,7 +26,8 @@ uses
   PCodeOps,
   PCodeObj,
   GConsts,
-  IConsts;
+  GTypes,
+  IConsts, GTables;
 
 (* Pascal-FC interpreter *)
 

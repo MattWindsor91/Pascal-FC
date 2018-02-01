@@ -31,6 +31,8 @@ interface
 
 uses
   GConsts,
+  GTables,
+  GTypes,
   PCodeOps;
 
 type
@@ -46,60 +48,6 @@ type
     l: TLineNo;
   end;
   TObjOrderArray = array[0..cmax] of TObjOrder;
-
-  TIndex = -xmax .. xmax;
-  TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
-    grdproc, xgrdproc);
-
-  TType = (notyp, ints, reals, bools, chars, arrays, records,
-    semafors, channels, monvars, condvars, synchros, adrs,
-    procs, entrys, enums, bitsets,
-    protvars, protq);
-
-  TTypeSet = set of TType;
-
-  TTabRec =
-    packed record
-    Name: ShortString;
-    link: TIndex;
-    obj: TMyObject;
-    typ: TType;
-    ref: TIndex;
-    normal: boolean;
-    lev: 0..lmax;
-    taddr: integer;
-    auxref: TIndex
-  end;
-  TTabArray = array[0..tmax] of TTabRec;
-
-  TATabRec =
-    packed record
-    inxtyp, eltyp: TType;
-    inxref, elref: TIndex;
-    low, high, elsize, size: TIndex;
-  end;
-  TATabArray = array[1..amax] of TATabRec;
-
-  TBTabRec =
-    packed record
-    last, lastpar, psize, vsize: TIndex;
-    tabptr: 0..tmax
-  end;
-  TBTabArray = array[1..bmax] of TBTabRec;
-
-  TSTabArray = packed array[0..smax] of char;
-  TRealArray = array[1..rmax] of real;
-
-  TInTabRec =
-    packed record
-    tp: TType;
-    lv: 0..lmax;
-    rf: integer;
-    vector: integer;
-    off: integer;
-    tabref: integer
-  end;
-  TInTabArray = array[1..intermax] of TInTabRec;
 
   { Type of object code records. }
   TPCodeObject =
