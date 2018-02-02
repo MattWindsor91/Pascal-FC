@@ -105,8 +105,6 @@ var
   stantyps: TTypeSet;
   ch: char;
 
-
-  ir: TObjOrder;
   ps: (run, fin, divchk, inxchk, charchk, redchk, deadlock, channerror,
     guardchk, queuechk, procnchk, statchk, nexistchk, namechk, casechk,
     bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
@@ -1635,7 +1633,7 @@ var
 
     { No RunCase2: interpreting Case2 is a case-check exception. }
 
-    procedure RunStep(p: TProcessID);
+    procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
         case ir.f of
@@ -2661,6 +2659,42 @@ var
 
     end;
 
+    procedure RunStep;
+    var
+      ir: TObjOrder;
+    begin
+      if (processes[0].active) and (processes[0].suspend = 0) and
+        (processes[0].wakeup = 0) then
+        curpr := 0
+      else
+      if stepcount = 0 then
+        chooseproc
+      else
+        stepcount := stepcount - 1;
+      with processes[curpr] do
+      begin
+
+        ir := objrec.gencode[pc];
+
+        pc := pc + 1;
+
+      end;
+      if concflag then
+        curpr := npr;
+
+      RunInstruction(curpr, ir);
+
+      checkclock;
+
+      if eventqueue.First <> nil then
+        if eventqueue.time <= sysclock then
+          alarmclock;
+      statcounter := statcounter + 1;
+      ;
+      if statcounter >= statmax then
+        ps := statchk
+    end;
+
   begin (* Runprog *)
     stantyps := [ints, reals, chars, bools];
     writeln;
@@ -2730,36 +2764,7 @@ var
       end;
 
       repeat
-        if (processes[0].active) and (processes[0].suspend = 0) and
-          (processes[0].wakeup = 0) then
-          curpr := 0
-        else
-        if stepcount = 0 then
-          chooseproc
-        else
-          stepcount := stepcount - 1;
-        with processes[curpr] do
-        begin
-
-          ir := objrec.gencode[pc];
-
-          pc := pc + 1;
-
-        end;
-        if concflag then
-          curpr := npr;
-
-        RunStep(curpr);
-
-        checkclock;
-
-        if eventqueue.First <> nil then
-          if eventqueue.time <= sysclock then
-            alarmclock;
-        statcounter := statcounter + 1;
-        ;
-        if statcounter >= statmax then
-          ps := statchk
+        RunStep;
       until ps <> run;
 
     except
