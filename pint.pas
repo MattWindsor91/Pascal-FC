@@ -96,6 +96,10 @@ type
   UnixTimeType = longint;
 
 
+  { The internal state of a P-code interpreter. }
+  TPMachine = record
+    { TODO: move state into here. }
+  end;
 
 
 var
@@ -1633,6 +1637,56 @@ var
 
     { No RunCase2: interpreting Case2 is a case-check exception. }
 
+    { Executes a 'for1up' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pFor1up' in the 'Opcodes' unit for details. }
+    procedure RunFor1up(p: TProcessID; y: integer);
+    var
+      lcAddr: integer; { Address of loop counter }
+      lcFrom: integer; { Lowest value of loop counter, inclusive }
+      lcTo: integer; { Highest value of loop counter, inclusive }
+    begin
+      lcTo := PopInteger(p);
+      lcFrom := PopInteger(p);
+      lcAddr := PopInteger(p);
+
+      if lcFrom <= lcTo then
+      begin
+        stack[lcAddr].i := lcFrom;
+        PushInteger(p, lcAddr);
+        PushInteger(p, lcFrom);
+        PushInteger(p, lcTo);
+      end
+      else
+        Jump(p, y);
+    end;
+
+    { Executes a 'for2up' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pFor2up' in the 'Opcodes' unit for details. }
+    procedure RunFor2up(p: TProcessID; y: integer);
+    var
+      lcAddr: integer; { Address of loop counter }
+      lcFrom: integer; { Lowest value of loop counter, inclusive }
+      lcTo: integer; { Highest value of loop counter, inclusive }
+
+      lcNext: integer; { Loop counter on next iteration }
+    begin
+      lcTo := PopInteger(p);
+      lcFrom := PopInteger(p);
+      lcAddr := PopInteger(p);
+
+      lcNext := stack[lcAddr].i + 1;
+      if lcNext <= lcTo then
+      begin
+        stack[lcAddr].i := lcNext;
+        PushInteger(p, lcAddr);
+        PushInteger(p, lcFrom);
+        PushInteger(p, lcTo);
+        Jump(p, y);
+      end
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1651,31 +1705,8 @@ var
           pJmpiz: RunJmpiz(p, ir.y);
           pCase1: RunCase1(p, ir.y);
           pCase2: ps := casechk;
-
-          pFor1up:
-          begin
-            h1 := stack[t - 1].i;
-            if h1 <= stack[t].i then
-              stack[stack[t - 2].i].i := h1
-            else
-            begin
-              t := t - 3;
-              Jump(p, ir.y);
-            end;
-          end;
-
-          pFor2up:
-          begin
-            h2 := stack[t - 2].i;
-            h1 := stack[h2].i + 1;
-            if h1 <= stack[t].i then
-            begin
-              stack[h2].i := h1;
-              Jump(p, ir.y);
-            end
-            else
-              t := t - 3;
-          end;
+          pFor1up: RunFor1up(p, ir.y);
+          pFor2up: RunFor2up(p, ir.y);
 
           pMrkstk:
           begin

@@ -67,6 +67,10 @@ const
     y: The program counter to jump to, if the popped value is zero. }
   pJmpiz = 11;
 
+  {#
+   # 012 - 013:  Case statements
+   #}
+
   { 012 Case statement (branch)
 
     Top of stack must contain two integer values: the value 'caseValue' for this
@@ -92,12 +96,50 @@ const
     y: Unused. }
   pCase2 = 13;
 
-  { 014 For1up? }
+  {#
+   # 014 - 015:  Upwards for loops
+   #}
+
+  { 014 Upwards for loop (initial)
+
+    Top of stack must contain:
+
+    - a stack address 'lcAddr' pointing to storage for a loop counter;
+    - an integer 'lcFrom', the lowest inclusive value of the loop counter;
+    - an integer 'lcTo', the highest inclusive value of the loop counter.
+
+    Pop 'lcAddr', 'lcFrom', and 'lcTo'.  If 'lcFrom' is greater than 'lcTo'
+    (ie: the for loop will not iterate because the range of values is empty),
+    unconditionally jump to 'y'.  Else, push the three values back into their
+    original order, and set the integer at stack address 'lcAddr' to 'lcFrom'.
+
+    x: Unused.
+    y: The program counter to jump to (if 'lcFrom' > 'lcTo').
+       This should point to the end of the for loop. }
   pFor1up = 14;
-  { 015 For2up? }
+
+  { 015 Upwards for loop (iteration)
+
+    Top of stack must contain:
+
+    - a stack address 'lcAddr' pointing to storage for a loop counter;
+    - an integer 'lcFrom', the lowest inclusive value of the loop counter;
+    - an integer 'lcTo', the highest inclusive value of the loop counter.
+
+    Pop 'lcAddr', 'lcFrom', and 'lcTo'.  Read the loop counter stored in
+    stack address 'lcAddr' and increment by one.  If the result is less than
+    or equal to 'lcTo', push the three values back into their original order,
+    store the incremented value at stack address 'lcAddr', and unconditionally
+    jump to 'y'.
+
+    x: Unused.
+    y: The program counter to jump to (if the new loop counter <= 'lcTo').
+       This should point to the end of the for loop. }
   pFor2up = 15;
+
   { 016 UNUSED }
   { 017 UNUSED }
+
   { 018 Mark stack
 
     x: 1 if process; 0 otherwise
