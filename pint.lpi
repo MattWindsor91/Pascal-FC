@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="7">
+    <Units Count="9">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -60,6 +60,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="GTables"/>
       </Unit6>
+      <Unit7>
+        <Filename Value="istack.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="IStack"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="itypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ITypes"/>
+      </Unit8>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

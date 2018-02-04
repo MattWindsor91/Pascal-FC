@@ -19,27 +19,19 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ General: Miscellaneous base types }
+{ Interpreter: Miscellaneous base types }
 
-unit GTypes;
+unit ITypes;
 
 {$mode objfpc}{$H+}
 
 interface
 
-uses GConsts;
+uses
+  IConsts;
 
 type
-  TIndex = -xmax .. xmax;
-  TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
-    grdproc, xgrdproc);
-
-  TType = (notyp, ints, reals, bools, chars, arrays, records,
-    semafors, channels, monvars, condvars, synchros, adrs,
-    procs, entrys, enums, bitsets,
-    protvars, protq);
-
-  TTypeSet = set of TType;
+  powerset = set of 0..bsmsb;
 
 implementation
 

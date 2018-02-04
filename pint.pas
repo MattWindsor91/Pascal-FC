@@ -27,7 +27,9 @@ uses
   PCodeObj,
   GConsts,
   GTypes,
-  IConsts, GTables;
+  IConsts,
+  GTables,
+  IStack, itypes;
 
 (* Pascal-FC interpreter *)
 
@@ -49,7 +51,6 @@ type
 
 
   TProcessID = 0..pmax;
-  powerset = set of 0..bsmsb;
 
   qpointer = ^qnode;
 
@@ -58,18 +59,9 @@ type
     Next: qpointer
   end;
 
-  TStackRecord = record
-    case tp: TType of
-      ints: (i: integer);
-      bitsets: (bs: powerset);
-      reals: (r: real)
-  end;
-  TStackAddress = 1..stmax;
-
   { Record for a single Pascal-FC process. }
   TProcess = record
     { Stack pointers }
-
     t: integer;         { The current stack pointer. }
     stackbase: integer; { The start of this process's segment on the stack. }
     stacksize: integer; { The end of this process's segment on the stack. }
@@ -119,7 +111,7 @@ var
   h1r: real;
   foundcall: boolean;    (* used in select (code 64) *)
 
-  stack: array[TStackAddress] of TStackRecord;
+  stack: TStackZone;
 
   processes: array[TProcessID] of TProcess;
   npr, procmax, curpr: TProcessID;
@@ -1332,48 +1324,24 @@ var
       CheckStackOverflow(p);
     end;
 
-    { Reads an integer from the stack at address 'a'. }
-    function StackLoadInteger(a: TStackAddress): integer;
-    begin
-      Result := stack[a].i;
-    end;
-
-    { Reads a stack record from the stack at address 'a'. }
-    function StackLoadRecord(a: TStackAddress): TStackRecord;
-    begin
-      Result := stack[a];
-    end;
-
-    { Writes an integer 'i' to the stack at address 'a'. }
-    procedure StackStoreInteger(a: TStackAddress; i: integer);
-    begin
-      stack[a].i := i;
-    end;
-
-    { Writes a stack record 'r' to the stack at address 'a'. }
-    procedure StackStoreRecord(a: TStackAddress; r: TStackRecord);
-    begin
-      stack[a] := r;
-    end;
-
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
     procedure PushInteger(p: TProcessID; i: integer);
     begin
       IncStackPointer(p);
-      StackStoreInteger(processes[p].t, i);
+      StackStoreInteger(stack, processes[p].t, i);
     end;
 
     { Pushes a stack record 'r' onto the stack segment for process 'p'. }
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
       IncStackPointer(p);
-      StackStoreRecord(processes[p].t, r);
+      StackStoreRecord(stack, processes[p].t, r);
     end;
 
     { Pops an integer from the stack segment for process 'p'. }
     function PopInteger(p: TProcessID) : integer;
     begin
-      Result := stack[processes[p].t].i;
+      Result := StackLoadInteger(stack, processes[p].t);
       processes[p].t := processes[p].t - 1;
     end;
 
@@ -1392,7 +1360,7 @@ var
     var
       rec : TStackRecord;
     begin
-      rec := StackLoadRecord(LocalAddress(p, x, y));
+      rec := StackLoadRecord(stack, LocalAddress(p, x, y));
       PushRecord(p, rec);
     end;
 
@@ -1401,8 +1369,8 @@ var
       addr : integer;
       rec : TStackRecord;
     begin
-      addr := StackLoadInteger(LocalAddress(p, x, y));
-      rec := StackLoadRecord(addr);
+      addr := StackLoadInteger(stack, LocalAddress(p, x, y));
+      rec := StackLoadRecord(stack, addr);
       PushRecord(p, rec);
     end;
 
@@ -1414,7 +1382,7 @@ var
       repeat
         processes[p].display[h1] := h3;
         h1 := h1 - 1;
-        h3 := StackLoadInteger(h3 + 2)
+        h3 := StackLoadInteger(stack, h3 + 2)
       until h1 = h2;
     end;
 
@@ -1432,9 +1400,9 @@ var
     begin
       semAddr := PopInteger(p);
 
-      semVal := StackLoadInteger(semAddr);
+      semVal := StackLoadInteger(stack, semAddr);
       if semVal > 0 then
-        StackStoreInteger(semAddr, semVal - 1)
+        StackStoreInteger(stack, semAddr, semVal - 1)
       else
       begin
         processes[p].suspend := semAddr;
@@ -1474,7 +1442,7 @@ var
 
       toWake := FindWaitingProcess(semAddr);
       if toWake = nil then
-        stack[semAddr].i := stack[semAddr].i + 1
+        StackIncInteger(stack, semAddr)
       else
         toWake^.suspend := 0;
     end;
@@ -1703,10 +1671,10 @@ var
       lcFrom := PopInteger(p);
       lcAddr := PopInteger(p);
 
-      lcNext := stack[lcAddr].i + 1;
+      lcNext := StackLoadInteger(stack, lcAddr) + 1;
       if lcNext <= lcTo then
       begin
-        stack[lcAddr].i := lcNext;
+        StackStoreInteger(stack, lcAddr, lcNext);
         PushInteger(p, lcAddr);
         PushInteger(p, lcFrom);
         PushInteger(p, lcTo);
