@@ -64,6 +64,7 @@ type
       bitsets: (bs: powerset);
       reals: (r: real)
   end;
+  TStackAddress = 1..stmax;
 
   { Record for a single Pascal-FC process. }
   TProcess = record
@@ -118,7 +119,7 @@ var
   h1r: real;
   foundcall: boolean;    (* used in select (code 64) *)
 
-  stack: array[1..stmax] of TStackRecord;
+  stack: array[TStackAddress] of TStackRecord;
 
   processes: array[TProcessID] of TProcess;
   npr, procmax, curpr: TProcessID;
@@ -1331,18 +1332,42 @@ var
       CheckStackOverflow(p);
     end;
 
+    { Reads an integer from the stack at address 'a'. }
+    function StackLoadInteger(a: TStackAddress): integer;
+    begin
+      Result := stack[a].i;
+    end;
+
+    { Reads a stack record from the stack at address 'a'. }
+    function StackLoadRecord(a: TStackAddress): TStackRecord;
+    begin
+      Result := stack[a];
+    end;
+
+    { Writes an integer 'i' to the stack at address 'a'. }
+    procedure StackStoreInteger(a: TStackAddress; i: integer);
+    begin
+      stack[a].i := i;
+    end;
+
+    { Writes a stack record 'r' to the stack at address 'a'. }
+    procedure StackStoreRecord(a: TStackAddress; r: TStackRecord);
+    begin
+      stack[a] := r;
+    end;
+
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
     procedure PushInteger(p: TProcessID; i: integer);
     begin
       IncStackPointer(p);
-      stack[processes[p].t].i := i;
+      StackStoreInteger(processes[p].t, i);
     end;
 
     { Pushes a stack record 'r' onto the stack segment for process 'p'. }
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
       IncStackPointer(p);
-      stack[processes[p].t] := r;
+      StackStoreRecord(processes[p].t, r);
     end;
 
     { Pops an integer from the stack segment for process 'p'. }
@@ -1367,7 +1392,7 @@ var
     var
       rec : TStackRecord;
     begin
-      rec := stack[LocalAddress(p, x, y)];
+      rec := StackLoadRecord(LocalAddress(p, x, y));
       PushRecord(p, rec);
     end;
 
@@ -1376,8 +1401,8 @@ var
       addr : integer;
       rec : TStackRecord;
     begin
-      addr := stack[LocalAddress(p, x, y)].i;
-      rec := stack[addr];
+      addr := StackLoadInteger(LocalAddress(p, x, y));
+      rec := StackLoadRecord(addr);
       PushRecord(p, rec);
     end;
 
@@ -1389,7 +1414,7 @@ var
       repeat
         processes[p].display[h1] := h3;
         h1 := h1 - 1;
-        h3 := stack[h3 + 2].i
+        h3 := StackLoadInteger(h3 + 2)
       until h1 = h2;
     end;
 
@@ -1402,12 +1427,14 @@ var
 
     procedure RunWait(p: TProcessID);
     var
-      semAddr: integer;
+      semAddr: TStackAddress;
+      semVal: integer;
     begin
       semAddr := PopInteger(p);
 
-      if stack[semAddr].i > 0 then
-        stack[semAddr].i := stack[semAddr].i - 1
+      semVal := StackLoadInteger(semAddr);
+      if semVal > 0 then
+        StackStoreInteger(semAddr, semVal - 1)
       else
       begin
         processes[p].suspend := semAddr;
@@ -1588,7 +1615,7 @@ var
     { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'ixrec' in the 'Opcodes' unit for details. }
-    procedure RunIxrec(p: TProcessID; y: integer);
+    procedure RunIxrec(p: TProcessID; y: TYArgument);
     var
       ix: integer; { Unsure what this actually is. }
     begin
@@ -1609,7 +1636,7 @@ var
     { Executes a 'jmpiz' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pJmpiz' in the 'Opcodes' unit for details. }
-    procedure RunJmpiz(p: TProcessID; y: integer);
+    procedure RunJmpiz(p: TProcessID; y: TYArgument);
     var
       condition : integer;
     begin
@@ -1621,7 +1648,7 @@ var
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pCase1' in the 'Opcodes' unit for details. }
-    procedure RunCase1(p: TProcessID; y: integer);
+    procedure RunCase1(p: TProcessID; y: TYArgument);
     var
       caseValue: integer; { The value of this leg of the case (popped first). }
       testValue: integer; { The value tested by the cases (popped second). }
@@ -1640,7 +1667,7 @@ var
     { Executes a 'for1up' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pFor1up' in the 'Opcodes' unit for details. }
-    procedure RunFor1up(p: TProcessID; y: integer);
+    procedure RunFor1up(p: TProcessID; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
       lcFrom: integer; { Lowest value of loop counter, inclusive }
@@ -1664,7 +1691,7 @@ var
     { Executes a 'for2up' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pFor2up' in the 'Opcodes' unit for details. }
-    procedure RunFor2up(p: TProcessID; y: integer);
+    procedure RunFor2up(p: TProcessID; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
       lcFrom: integer; { Lowest value of loop counter, inclusive }
@@ -1687,6 +1714,68 @@ var
       end
     end;
 
+    procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
+    begin
+      with processes[p] do
+      begin
+        if x = 1 then
+        begin  (* process *)
+          if npr = pmax then
+          begin
+            ps := procnchk;
+            raise ProcNchkException.Create('process overflow');
+          end
+          else
+          begin
+            npr := npr + 1;
+            concflag := True;
+            curpr := npr;
+          end;
+        end;
+        h1 := objrec.genbtab[objrec.gentab[y].ref].vsize;
+        with processes[curpr] do
+        begin
+        { TODO: is this correct?
+          Hard to tell if it's an intentional overstatement of what the
+          stack space will grow to. }
+          CheckStackOverflowAfter(h1, p);
+          t := t + 5;
+          stack[t - 1].i := h1 - 1;
+          stack[t].i := y;
+        end;  (* with *)
+      end;
+    end;
+
+    procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+      newBase: integer;
+      tabAddr: integer;
+      i: integer;
+    begin
+      with processes[p] do
+      begin
+        newBase := t - y;
+        tabAddr := stack[newBase + 4].i; (*h2 points to tab*)
+        h3 := objrec.gentab[tabAddr].lev;
+        display[h3 + 1] := newBase;
+        h4 := stack[newBase + 3].i + newBase;
+        stack[newBase + 1].i := pc;
+        stack[newBase + 2].i := display[h3];
+        if x = 1 then
+        begin  (* process *)
+          active := True;
+          stack[newBase + 3].i := processes[0].b;
+          concflag := False;
+        end
+        else
+          stack[newBase + 3].i := processes[p].b;
+        for i := t + 1 to h4 do
+          PushInteger(p, 0);
+        b := newBase;
+        pc := objrec.gentab[tabAddr].taddr;
+      end;
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1707,59 +1796,8 @@ var
           pCase2: ps := casechk;
           pFor1up: RunFor1up(p, ir.y);
           pFor2up: RunFor2up(p, ir.y);
-
-          pMrkstk:
-          begin
-            if ir.x = 1 then
-            begin  (* process *)
-              if npr = pmax then
-              begin
-                ps := procnchk;
-                raise ProcNchkException.Create('process overflow');
-              end
-              else
-              begin
-                npr := npr + 1;
-                concflag := True;
-                curpr := npr;
-              end;
-            end;
-            h1 := objrec.genbtab[objrec.gentab[ir.y].ref].vsize;
-            with processes[curpr] do
-            begin
-            { TODO: is this correct?
-              Hard to tell if it's an intentional overstatement of what the
-              stack space will grow to. }
-              CheckStackOverflowAfter(h1, p);
-              t := t + 5;
-              stack[t - 1].i := h1 - 1;
-              stack[t].i := ir.y;
-            end;  (* with *)
-          end;
-
-          pCallsub:
-          begin
-            h1 := t - ir.y;
-            h2 := stack[h1 + 4].i; (*h2 points to tab*)
-            h3 := objrec.gentab[h2].lev;
-            display[h3 + 1] := h1;
-            h4 := stack[h1 + 3].i + h1;
-            stack[h1 + 1].i := pc;
-            stack[h1 + 2].i := display[h3];
-            if ir.x = 1 then
-            begin  (* process *)
-              active := True;
-              stack[h1 + 3].i := processes[0].b;
-              concflag := False;
-            end
-            else
-              stack[h1 + 3].i := b;
-            for h3 := t + 1 to h4 do
-              stack[h3].i := 0;
-            b := h1;
-            t := h4;
-            pc := objrec.gentab[h2].taddr;
-          end;
+          pMrkstk: RunMrkstk(p, ir.x, ir.y);
+          pCallsub: RunCallsub(p, ir.x, ir.y);
 
           pIxary:
             with objrec do
@@ -1806,10 +1844,7 @@ var
             end;
           end;
 
-          pLdconI:
-          begin
-            PushInteger(p, ir.y);
-          end;
+          pLdconI: PushInteger(p, ir.y);
 
           pLdconR:
           begin

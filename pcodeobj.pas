@@ -32,7 +32,6 @@ interface
 uses
   GConsts,
   GTables,
-  GTypes,
   PCodeOps;
 
 type
