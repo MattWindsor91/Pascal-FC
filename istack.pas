@@ -34,6 +34,7 @@ unit IStack;
 interface
 
 uses
+  SysUtils,
   IConsts,
   ITypes,
   GTypes;
@@ -60,7 +61,53 @@ type
     'TStack' type. }
   TStackZone = array[TStackAddress] of TStackRecord;
 
-  { TODO: add stack frames here. }
+  { Pointer to a stack zone. }
+  PStackZone = ^TStackZone;
+
+  { TODO: add segment tracking to TStackZone. }
+
+  EStackUnderflow = class(Exception);
+
+  { A single segment in the stack zone. }
+  TStackSegment = class(TObject)
+    { TODO: This isn't currently used }
+
+  private
+
+    zone: PStackZone; { Zone in which this segment is allocated. }
+
+    { Checks if this segment will go out of bounds if we push 'nItems' items. }
+    procedure CheckBoundsAfter(nItems: integer);
+
+    { Checks if the stack pointer is out of bounds. }
+    procedure CheckBounds;
+
+  public
+    { TODO: these should stop being public }
+
+    segBot: TStackAddress; { Lowest address of the segment. }
+    segTop: TStackAddress; { Highest address of the segment. }
+
+    frameBot: TStackAddress; { Lowest address of the current frame. }
+    frameTop: TStackAddress; { Highest address of the current frame. }
+
+    { End TODO }
+
+    constructor Create(z: PStackZone; bot, top: TStackAddress);
+
+    { Pops an integer to the current frame. }
+    procedure PushInteger(i: integer);
+
+    { Pushes a record to the current frame. }
+    procedure PushRecord(s: TStackRecord);
+
+    { Pops an integer from the current frame. }
+    function PopInteger: integer;
+
+    { Pops a record from the current frame. }
+    function PopRecord: TStackRecord;
+  end;
+
 
 { Reads an integer from the stack zone 's' at address 'a'. }
 function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
@@ -114,6 +161,59 @@ end;
 procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
 begin
   s[a].i := s[a].i + delta;
+end;
+
+constructor TStackSegment.Create(z: PStackZone; bot, top: TStackAddress);
+begin
+  segBot := bot;
+  segTop := top;
+  frameBot := bot;
+  frameTop := frameBot - 1;
+end;
+
+procedure TStackSegment.CheckBoundsAfter(nItems: integer);
+var
+  newFrameTop: integer;
+begin
+  newFrameTop := frameTop + nItems;
+
+  if newFrameTop < frameBot then
+     raise EStackUnderflow.Create('stack underflow');
+  if segTop < newFrameTop then
+     raise EStackOverflow.Create('stack overflow');
+end;
+
+procedure TStackSegment.CheckBounds;
+begin
+  CheckBoundsAfter(0);
+end;
+
+procedure TStackSegment.PushInteger(i: integer);
+begin
+  Inc(frameTop);
+  CheckBounds;
+  StackStoreInteger(zone^, frameTop, i);
+end;
+
+procedure TStackSegment.PushRecord(s: TStackRecord);
+begin
+  Inc(frameTop);
+  CheckBounds;
+  StackStoreRecord(zone^, frameTop, s);
+end;
+
+function TStackSegment.PopInteger: integer;
+begin
+  CheckBounds;
+  Result := StackLoadInteger(zone^, frameTop);
+  Dec(frameTop);
+end;
+
+function TStackSegment.PopRecord: TStackRecord;
+begin
+  CheckBounds;
+  Result := StackLoadRecord(zone^, frameTop);
+  Dec(frameTop);
 end;
 
 end.
