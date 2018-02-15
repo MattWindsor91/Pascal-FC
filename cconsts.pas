@@ -34,9 +34,7 @@ const
   chanmax = 20;          { maximum size of channel table - gld }
   etmax = 20;            { enumeration type upper bounds table }
 
-  llng = 121;            { max source input line length }
   tabstop = 3;           { for 1 implementation - gld }
-  tabchar = 9;
 
   monvarsize = 2;
   protvarsize = 3;

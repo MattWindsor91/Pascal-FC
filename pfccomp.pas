@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
+  StrUtils,
   SysUtils,
   GConsts,
   PCodeObj,
@@ -156,7 +157,7 @@ var
     inum: integer;
     sleng: integer;
     ch: char;
-    line: array[1..llng] of char;
+    line: ansistring;
     cc: integer;
     ll: integer;
     errs: set of er;
@@ -514,65 +515,67 @@ var
       raise FatalError.Create('compiler table is too small');
     end;  (* fatal *)
 
+    { Replaces all tabs in 's' with spaces, with each tab set as 'ts' spaces. }
+    function Untab(ts: integer; s: AnsiString): AnsiString;
+      var
+        rest: AnsiString; { Remainder of 's' }
+        len: integer;     { Length of string so far }
+        nlen: integer;    { Length to fill up to to hit next tabstop }
+    begin
+      { Make sure we can modify 's' safely.
+        TODO(@MattWindsor91): is this cargo-cult? }
+      rest := s;
+      UniqueString(rest);
 
+      Result := '';
 
+      while Length(rest) <> 0 do
+      begin
+        { Find next tab, delete it, move everything before it to Result. }
+        Result += Copy2SymbDel(rest, #9);
 
-    procedure nextch;
+        { Fill up to next tabstop. }
+        len := Length(Result);
+        nlen := len + tabstop - (len mod tabstop);
+        Result := PadRight(Result, nlen);
+      end;
+    end;
+
+    { Fetch the next line. }
+    procedure NextLine;
+    var
+      raw: AnsiString; { Raw, unprocessed line }
+    begin
+      if EOF(progfile) then
+        raise FatalError.Create('program incomplete');
+
+      if errpos <> 0 then
+      begin
+        if skipflag then
+          endskip;
+        writeln(listfile);
+        errpos := 0;
+      end;
+
+      Inc(linenum);
+      Write(listfile, linenum: 5, ' ', lc: 5, ' ');
+
+      Readln(progfile, raw);
+      line := Untab(tabstop, raw);
+
+      ll := Length(line);
+      cc := 0;
+
+      writeln(listfile, line);
+    end;
 
     (* read next character; process line end *)
-
-      procedure tabtospace;
-
-      (* replace tab character with sufficient spaces *)
-
-      begin
-        ch := ' ';
-        line[ll] := ch;
-        Write(listfile, ch);
-        while (ll mod tabstop) <> 0 do
-        begin
-          ll := ll + 1;
-          if ll <= llng then
-            line[ll] := ch;
-          Write(listfile, ch);
-        end;
-      end;  (* tabtospace *)
-
+    procedure nextch;
     begin  (* nextch *)
-      if cc = ll then
-      begin
-        if EOF(progfile) then
-          raise FatalError.Create('program incomplete');
-        if errpos <> 0 then
-        begin
-          if skipflag then
-            endskip;
-          writeln(listfile);
-          errpos := 0;
-        end;
-        linenum := linenum + 1;
-        Write(listfile, linenum: 5, ' ', lc: 5, ' ');
-        ll := 0;
-        cc := 0;
-        while (not eoln(progfile)) and (ll < (llng - 1)) do
-        begin
-          ll := ll + 1;
-          Read(progfile, ch);
-          if Ord(ch) = tabchar then
-            tabtospace
-          else
-          begin
-            Write(listfile, ch);
-            line[ll] := ch;
-          end;  (* else *)
-        end;   (* now eoln or line buffer overflowed *)
-        if not eoln(progfile) then
-          raise FatalError.Create('input line too long');
-        writeln(listfile);
-        ll := ll + 1;
-        Read(progfile, line[ll]);
-      end;   (* if cc = ll *)
-      cc := cc + 1;
+      while cc = ll do
+        NextLine;
+
+      Inc(cc);
       ch := line[cc];
     end; (*nextch*)
 
