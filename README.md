@@ -50,6 +50,10 @@ Optionally, you can use `sudo make install` to install Pascal-FC to `/usr/bin`.
 You can now build and run a program with `./pfc myprogram.pas` (or `pfc` if you installed it).
 
 
-# Licence
+## Why?
+
+For fun, mostly, but also in recognition of Pascal-FC still being, in 2018, a key part of the York CS degree's concurrent programming teaching :)
+
+## Licence
 
 Pascal FC is released under the GNU GPL, version 2 (or later).
