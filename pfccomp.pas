@@ -22,12 +22,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
-  StrUtils,
   SysUtils,
   GConsts,
   PCodeObj,
   PCodeOps,
-  CConsts, gtables, gtypes;
+  CConsts, GTables, GTypes, GStrUtil;
 
 type
   FatalError = class(Exception);
@@ -514,32 +513,6 @@ var
       success := False;
       raise FatalError.Create('compiler table is too small');
     end;  (* fatal *)
-
-    { Replaces all tabs in 's' with spaces, with each tab set as 'ts' spaces. }
-    function Untab(ts: integer; s: AnsiString): AnsiString;
-      var
-        rest: AnsiString; { Remainder of 's' }
-        len: integer;     { Length of string so far }
-        nlen: integer;    { Length to fill up to to hit next tabstop }
-    begin
-      { Make sure we can modify 's' safely.
-        TODO(@MattWindsor91): is this cargo-cult? }
-      rest := s;
-      UniqueString(rest);
-
-      Result := '';
-
-      while Length(rest) <> 0 do
-      begin
-        { Find next tab, delete it, move everything before it to Result. }
-        Result += Copy2SymbDel(rest, #9);
-
-        { Fill up to next tabstop. }
-        len := Length(Result);
-        nlen := len + tabstop - (len mod tabstop);
-        Result := PadRight(Result, nlen);
-      end;
-    end;
 
     { Fetch the next line. }
     procedure NextLine;
