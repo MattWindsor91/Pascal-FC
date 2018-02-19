@@ -14,6 +14,9 @@ type
   published
     procedure TestStoreInteger;
     procedure TestIncInteger;
+
+    procedure TestPushPopInteger;
+    procedure TestPopEmptyInteger;
   end;
 
 implementation
@@ -59,7 +62,36 @@ begin
   AssertEquals('1234th increment seems to have failed', 1234, readback);
 end;
 
+procedure TStackTestCase.TestPushPopInteger;
+var
+  seg: TStackSegment;
+begin
+  seg := TStackSegment.Create(@s, 1, 100);
 
+  seg.PushInteger(27);
+  seg.PushInteger(53);
+
+  AssertEquals('pop returned wrong integer', 53, seg.PopInteger);
+  AssertEquals('pop returned wrong integer', 27, seg.PopInteger);
+
+  seg.Destroy;
+end;
+
+procedure TStackTestCase.TestPopEmptyInteger;
+var
+  seg: TStackSegment;
+begin
+  seg := TStackSegment.Create(@s, 1, 100);
+
+  try
+     seg.PopInteger;
+  except
+    on E: EPfcStackUnderflow do
+       Exit;
+  end;
+
+  Fail('Expected a stack underflow');
+end;
 
 initialization
 

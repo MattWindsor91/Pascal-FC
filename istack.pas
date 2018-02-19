@@ -66,7 +66,9 @@ type
 
   { TODO: add segment tracking to TStackZone. }
 
-  EStackUnderflow = class(Exception);
+  EPfcStackError = class(Exception);
+  EPfcStackOverflow = class(EPfcStackError);
+  EPfcStackUnderflow = class(EPfcStackError);
 
   { A single segment in the stack zone. }
   TStackSegment = class(TObject)
@@ -165,6 +167,8 @@ end;
 
 constructor TStackSegment.Create(z: PStackZone; bot, top: TStackAddress);
 begin
+  zone := z;
+
   segBot := bot;
   segTop := top;
   frameBot := bot;
@@ -178,9 +182,9 @@ begin
   newFrameTop := frameTop + nItems;
 
   if newFrameTop < frameBot then
-     raise EStackUnderflow.Create('stack underflow');
+     raise EPfcStackUnderflow.Create('stack underflow');
   if segTop < newFrameTop then
-     raise EStackOverflow.Create('stack overflow');
+     raise EPfcStackOverflow.Create('stack overflow');
 end;
 
 procedure TStackSegment.CheckBounds;
