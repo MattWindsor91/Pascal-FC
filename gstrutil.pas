@@ -33,32 +33,39 @@ uses
 
 
 { Replaces all tabs in 's' with spaces, with each tab set as 'ts' spaces. }
-function Untab(ts: integer; s: ansistring): ansistring;
+function Untab(ts: integer; const s: ansistring): ansistring;
 
 implementation
 
-function Untab(ts: integer; s: ansistring): ansistring;
+function Untab(ts: integer; const s: ansistring): ansistring;
 var
   rest: ansistring; { Remainder of 's' }
   len: integer;     { Length of string so far }
-  nlen: integer;    { Length to fill up to to hit next tabstop }
 begin
-  { Make sure we can modify 's' safely.
-    TODO(@MattWindsor91): is this cargo-cult? }
-  rest := s;
-  UniqueString(rest);
-
-  Result := '';
-
-  while Length(rest) <> 0 do
+  if ts < 1 then
+    { Delete all tabs if tabstop is non-positive }
+    Result := DelChars(s, #9)
+  else if ts = 1 then
+    { If tabstop is 1, all tabs will become spaces, so we can optimise }
+    Result := Tab2Space(s, 1)
+  else
   begin
-    { Find next tab, delete it, move everything before it to Result. }
-    Result += Copy2SymbDel(rest, #9);
+    rest := s;
+    Result := '';
 
-    { Fill up to next tabstop. }
-    len := Length(Result);
-    nlen := len + ts - (len mod ts);
-    Result := PadRight(Result, nlen);
+    while Length(rest) <> 0 do
+    begin
+      { Find next tab, delete it, move everything before it to Result. }
+      Result += Copy2SymbDel(rest, #9);
+
+      { Only pad with tabs if we haven't reached the end of 'rest'! }
+      if Length(rest) <> 0 then
+      begin
+        { Fill up to next tabstop. }
+        len := Length(Result);
+        Result := PadRight(Result, len + ts - (len mod ts));
+      end;
+    end;
   end;
 end;
 

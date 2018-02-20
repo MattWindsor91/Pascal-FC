@@ -3,7 +3,7 @@ program pinttests;
 {$mode objfpc}{$H+}
 
 uses
-  Interfaces, Forms, GuiTestRunner, tstack, IStack;
+  Interfaces, Forms, GuiTestRunner, tstack, IStack, tstrutil;
 
 {$R *.res}
 
