@@ -552,6 +552,16 @@ var
       ch := line[cc];
     end; (*nextch*)
 
+    { Returns true if the next character on the line is 'c'.
+      If there is no next character, return false. }
+    function PeekCh(c: char): boolean;
+    begin
+      if cc = ll then
+         Result := false
+      else
+         Result := line[cc + 1] = c;
+    end;
+
     procedure error(n: er);
 
     begin
@@ -883,56 +893,61 @@ var
 
           ':':
           begin
-            nextch;
-            if ch = '=' then
+            if PeekCh('=') then
             begin
               sy := becomes;
               nextch;
             end
             else
               sy := colon;
+
+              nextch;
           end;
 
           '<':
           begin
             nextch;
-            if ch = '=' then
+            if PeekCh('=') then
             begin
               sy := leq;
               nextch;
             end
             else
-            if ch = '>' then
+            if PeekCh('>') then
             begin
               sy := neq;
               nextch;
             end
             else
               sy := lss;
+
+            nextch;
           end;
 
           '>':
           begin
-            nextch;
-            if ch = '=' then
+            if PeekCh('=') then
             begin
               sy := geq;
               nextch;
             end
             else
               sy := gtr;
+
+            nextch;
           end;
 
           '.':
           begin
-            nextch;
-            if ch = '.' then
+            if PeekCh('.') then
             begin
               sy := colon;
               nextch;
             end
             else
               sy := period;
+
+            nextch;
           end;
 
           '''':
@@ -1007,14 +1022,15 @@ var
 
           '=':
           begin
-            nextch;
-            if ch = '>' then
+            if PeekCh('>') then
             begin
               sy := arrow;
               nextch;
             end
             else
               sy := eql;
+
+            nextch;
           end;
 
           '+', '-', '*', '/', ')', ',', '[', ']', ';', '?', '!', '%':
