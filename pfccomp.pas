@@ -534,7 +534,7 @@ var
       Write(listfile, linenum: 5, ' ', lc: 5, ' ');
 
       Readln(progfile, raw);
-      line := Untab(tabstop, raw);
+      line := Untab(tabstop, raw) + ' ';
 
       ll := Length(line);
       cc := 0;
