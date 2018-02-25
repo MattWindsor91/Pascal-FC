@@ -580,6 +580,37 @@ var
 
     (*-----------------------------------------------------insymbol-*)
 
+    procedure InIdOrWordSymbol;
+    var
+      j: integer;
+      i: integer;
+      k: integer;
+    begin
+      (*identifier or wordsymbol*)k := 0;
+      id := '          ';
+      repeat
+        if k < alng then
+        begin
+          k := k + 1;
+          id[k] := ch;
+        end;
+        nextch
+      until not (ch in ['A'..'Z', 'a'..'z', '0'..'9']);
+      LowerCase(id);
+      i := 1;
+      j := nkw; (*binary search*)
+      repeat
+        k := (i + j) div 2;
+        if id <= keywords[k].key then
+          j := k - 1;
+        if id >= keywords[k].key then
+          i := k + 1
+      until i > j;
+      if i - 1 > j then
+        sy := keywords[k].ksy
+      else
+        sy := ident;
+    end;
 
     procedure insymbol;
 
@@ -592,7 +623,7 @@ var
       maxdigits = 80;  (* maximum digits in real constant before point or e *)
 
     var
-      i, j, k, l: integer;
+      k, l: integer;
       digitbuff: array[1..maxdigits] of char;
 
 
@@ -743,32 +774,7 @@ var
           'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i',
           'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r',
           's', 't', 'u', 'v', 'w', 'x', 'y', 'z':
-          begin
-            (*identifier or wordsymbol*)k := 0;
-            id := '          ';
-            repeat
-              if k < alng then
-              begin
-                k := k + 1;
-                id[k] := ch;
-              end;
-              nextch
-            until not (ch in ['A'..'Z', 'a'..'z', '0'..'9']);
-            LowerCase(id);
-            i := 1;
-            j := nkw; (*binary search*)
-            repeat
-              k := (i + j) div 2;
-              if id <= keywords[k].key then
-                j := k - 1;
-              if id >= keywords[k].key then
-                i := k + 1
-            until i > j;
-            if i - 1 > j then
-              sy := keywords[k].ksy
-            else
-              sy := ident;
-          end;
+          InIdOrWordSymbol;
 
           '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
           begin
