@@ -265,57 +265,57 @@ var
 
     begin  (* initkeytab *)
       i := 1;
-      install('and       ', andsy);
-      install('array     ', arraysy);
-      install('begin     ', beginsy);
-      install('channel   ', channelsy);
-      install('cobegin   ', beginsy);
-      install('coend     ', endsy);
-      install('const     ', constsy);
-      install('div       ', idiv);
-      install('do        ', dosy);
-      install('else      ', elsesy);
-      install('end       ', endsy);
-      install('export    ', exportsy);
-      install('for       ', forsy);
-      install('forever   ', foreversy);
-      install('function  ', functionsy);
-      install('if        ', ifsy);
-      install('mod       ', imod);
-      install('monitor   ', monitorsy);
-      install('not       ', notsy);
-      install('null      ', nullsy);
-      install('of        ', ofsy);
-      install('or        ', orsy);
-      install('pri       ', prisy);
-      install('procedure ', proceduresy);
-      install('process   ', processsy);
-      install('program   ', programsy);
-      install('record    ', recordsy);
-      install('repeat    ', repeatsy);
-      install('select    ', selectsy);
-      install('terminate ', termsy);
-      install('then      ', thensy);
-      install('to        ', tosy);
-      install('type      ', typesy);
-      install('until     ', untilsy);
-      install('var       ', varsy);
-      install('when      ', whensy);
-      install('while     ', whilesy);
-      install('at        ', atsy);
-      install('offset    ', offsetsy);
-      install('address   ', adrsy);
-      install('timeout   ', timeoutsy);
-      install('forward   ', forwardsy);
-      install('entry     ', entrysy);
-      install('accept    ', acceptsy);
-      install('provides  ', providessy);
-      install('replicate ', replicatesy);
-      install('in        ', insy);
-      install('case      ', casesy);
-      install('resource  ', resourcesy);
-      install('guarded   ', guardedsy);
-      install('requeue   ', requeuesy);
+      install('and'       , andsy);
+      install('array'     , arraysy);
+      install('begin'     , beginsy);
+      install('channel'   , channelsy);
+      install('cobegin'   , beginsy);
+      install('coend'     , endsy);
+      install('const'     , constsy);
+      install('div'       , idiv);
+      install('do'        , dosy);
+      install('else'      , elsesy);
+      install('end'       , endsy);
+      install('export'    , exportsy);
+      install('for'       , forsy);
+      install('forever'   , foreversy);
+      install('function'  , functionsy);
+      install('if'        , ifsy);
+      install('mod'       , imod);
+      install('monitor'   , monitorsy);
+      install('not'       , notsy);
+      install('null'      , nullsy);
+      install('of'        , ofsy);
+      install('or'        , orsy);
+      install('pri'       , prisy);
+      install('procedure' , proceduresy);
+      install('process'   , processsy);
+      install('program'   , programsy);
+      install('record'    , recordsy);
+      install('repeat'    , repeatsy);
+      install('select'    , selectsy);
+      install('terminate' , termsy);
+      install('then'      , thensy);
+      install('to'        , tosy);
+      install('type'      , typesy);
+      install('until'     , untilsy);
+      install('var'       , varsy);
+      install('when'      , whensy);
+      install('while'     , whilesy);
+      install('at'        , atsy);
+      install('offset'    , offsetsy);
+      install('address'   , adrsy);
+      install('timeout'   , timeoutsy);
+      install('forward'   , forwardsy);
+      install('entry'     , entrysy);
+      install('accept'    , acceptsy);
+      install('provides'  , providessy);
+      install('replicate' , replicatesy);
+      install('in'        , insy);
+      install('case'      , casesy);
+      install('resource'  , resourcesy);
+      install('guarded'   , guardedsy);
+      install('requeue'   , requeuesy);
 
       sort;
     end;  (* initkeytab *)
@@ -587,12 +587,12 @@ var
       k: integer;
     begin
       (*identifier or wordsymbol*)k := 0;
-      id := '          ';
+      id := '';
       repeat
         if k < alng then
         begin
           k := k + 1;
-          id[k] := ch;
+          id += ch;
         end;
         nextch
       until not (ch in ['A'..'Z', 'a'..'z', '0'..'9']);
@@ -1299,7 +1299,7 @@ var
         else
         begin
           l := btab[display[level]].last;
-          if id = '          ' then
+          if id = '' then
             j := 0
           else
             j := searchblock(l, id);
@@ -2358,7 +2358,7 @@ var
         if sy <> ident then
         begin
           error(erident);
-          id := '          ';
+          id := '';
           i := 0;
         end
         else
@@ -2421,9 +2421,9 @@ var
         if sy <> ident then
         begin
           error(erident);
-          id := '          ';
+          id := '';
         end;
-        if id = '          ' then
+        if id = '' then
           i := 0
         else
           i := find(id);
@@ -4677,7 +4677,7 @@ var
             end;  (* ident case *)
 
             beginsy:
-              if id = 'cobegin   ' then
+              if id = 'cobegin' then
               begin
                 if wascobegin or inaloop then
                   error(ercob);
@@ -5291,7 +5291,7 @@ var
           tab[prt].normal := True;
           if level = 1 then
           begin
-            enter('any       ', variable);
+            enter('any', variable);
             with tab[t] do
             begin
               typ := synchros;
@@ -5454,54 +5454,54 @@ var
     writeln('Compiling ', progname, ' ...');
 
 
-    enter('          ', variable, notyp, 0); (*sentinel*)
-    enter('maxint    ', konstant, ints, intmax);
-    enter('false     ', konstant, bools, fals);
-    enter('true      ', konstant, bools, tru);
-    enter('char      ', type1, chars, charsize);
-    enter('boolean   ', type1, bools, boolsize);
-    enter('integer   ', type1, ints, intsize);
-    enter('real      ', type1, reals, realsize);
-    enter('semaphore ', type1, semafors, semasize);
-    enter('condition ', type1, condvars, condvarsize);
-    enter('synchronou', type1, synchros, synchrosize);
-    enter('bitset    ', type1, bitsets, bitsetsize);
+    enter(''           , variable, notyp, 0); (*sentinel*)
+    enter('maxint'     , konstant, ints, intmax);
+    enter('false'      , konstant, bools, fals);
+    enter('true'       , konstant, bools, tru);
+    enter('char'       , type1, chars, charsize);
+    enter('boolean'    , type1, bools, boolsize);
+    enter('integer'    , type1, ints, intsize);
+    enter('real'       , type1, reals, realsize);
+    enter('semaphore'  , type1, semafors, semasize);
+    enter('condition'  , type1, condvars, condvarsize);
+    enter('synchronous', type1, synchros, synchrosize);
+    enter('bitset'     , type1, bitsets, bitsetsize);
 
-    enter('abs       ', funktion, notyp, 0);
-    enter('sqr       ', funktion, notyp, 2);
-    enter('odd       ', funktion, bools, 4);
-    enter('chr       ', funktion, chars, 5);
-    enter('ord       ', funktion, ints, 6);
-    enter('succ      ', funktion, notyp, 7);
-    enter('pred      ', funktion, notyp, 8);
-    enter('round     ', funktion, ints, 9);
-    enter('trunc     ', funktion, ints, 10);
-    enter('sin       ', funktion, reals, 11);
-    enter('cos       ', funktion, reals, 12);
-    enter('exp       ', funktion, reals, 13);
-    enter('ln        ', funktion, reals, 14);
-    enter('sqrt      ', funktion, reals, 15);
-    enter('arctan    ', funktion, reals, 16);
-    enter('eof       ', funktion, bools, 17);
-    enter('eoln      ', funktion, bools, 18);
-    enter('random    ', funktion, ints, 19);
-    enter('empty     ', funktion, bools, 20);
-    enter('bits      ', funktion, bitsets, 21);
-    enter('int       ', funktion, ints, 24);
-    enter('clock     ', funktion, ints, 25);
-    enter('read      ', prozedure, notyp, 1);
-    enter('readln    ', prozedure, notyp, 2);
-    enter('write     ', prozedure, notyp, 3);
-    enter('writeln   ', prozedure, notyp, 4);
-    enter('wait      ', prozedure, notyp, 5);
-    enter('signal    ', prozedure, notyp, 6);
-    enter('delay     ', prozedure, notyp, 7);
-    enter('resume    ', prozedure, notyp, 8);
-    enter('initial   ', prozedure, notyp, 9);
-    enter('priority  ', prozedure, notyp, 10);
-    enter('sleep     ', prozedure, notyp, 11);
+    enter('abs'       , funktion, notyp, 0);
+    enter('sqr'       , funktion, notyp, 2);
+    enter('odd'       , funktion, bools, 4);
+    enter('chr'       , funktion, chars, 5);
+    enter('ord'       , funktion, ints, 6);
+    enter('succ'      , funktion, notyp, 7);
+    enter('pred'      , funktion, notyp, 8);
+    enter('round'     , funktion, ints, 9);
+    enter('trunc'     , funktion, ints, 10);
+    enter('sin'       , funktion, reals, 11);
+    enter('cos'       , funktion, reals, 12);
+    enter('exp'       , funktion, reals, 13);
+    enter('ln'        , funktion, reals, 14);
+    enter('sqrt'      , funktion, reals, 15);
+    enter('arctan'    , funktion, reals, 16);
+    enter('eof'       , funktion, bools, 17);
+    enter('eoln'      , funktion, bools, 18);
+    enter('random'    , funktion, ints, 19);
+    enter('empty'     , funktion, bools, 20);
+    enter('bits'      , funktion, bitsets, 21);
+    enter('int'       , funktion, ints, 24);
+    enter('clock'     , funktion, ints, 25);
+    enter('read'      , prozedure, notyp, 1);
+    enter('readln'    , prozedure, notyp, 2);
+    enter('write'     , prozedure, notyp, 3);
+    enter('writeln'   , prozedure, notyp, 4);
+    enter('wait'      , prozedure, notyp, 5);
+    enter('signal'    , prozedure, notyp, 6);
+    enter('delay'     , prozedure, notyp, 7);
+    enter('resume'    , prozedure, notyp, 8);
+    enter('initial'   , prozedure, notyp, 9);
+    enter('priority'  , prozedure, notyp, 10);
+    enter('sleep'     , prozedure, notyp, 11);
 
-    enter('_main     ', prozedure, notyp, 0);
+    enter('_main'     , prozedure, notyp, 0);
 
     useridstart := t;
 
