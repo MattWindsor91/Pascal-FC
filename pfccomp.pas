@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 program pfccomp;
 
 uses
+  FGL,
   SysUtils,
   GConsts,
   PCodeObj,
@@ -103,10 +104,6 @@ var
 
   (* "Universal" Pascal-FC compiler front end *)
 
-  const
-
-    nkw = 51;             (* number of reserved words recognised *)
-
   type
 
     symbol =
@@ -142,10 +139,7 @@ var
       ref: TIndex;
     end;
 
-    keytabrec = record
-      key: ShortString;
-      ksy: symbol
-    end;
+    TKeywordTable = specialize TFPGMap<shortstring, Symbol>;
 
   var
 
@@ -163,7 +157,7 @@ var
     errpos: integer;
     skipflag: boolean;
     constbegsys, typebegsys, blockbegsys, facbegsys, statbegsys: symset;
-    keywords: array[1..nkw] of keytabrec;
+    keywords: TKeywordTable;
     sps: array[char] of symbol;
 
     chantab: array[1..chanmax] of packed  record
@@ -213,111 +207,60 @@ var
 
 
     procedure initkeytab;
-
-    (* set up table of keywords and sort *)
-
-    var
-      i: integer;
-
-      procedure sort;
-
-      (* sort table of keywords *)
-
-      var
-        swap: boolean;
-        pass, j: integer;
-        temp: keytabrec;
-
-      begin  (* sort *)
-
-        swap := True;
-        pass := 1;
-
-        while swap and (pass < nkw) do
-        begin
-          swap := False;
-
-          for j := 1 to nkw - pass do
-            if keywords[j].key > keywords[j + 1].key then
-            begin
-              swap := True;
-              temp := keywords[j];
-              keywords[j] := keywords[j + 1];
-              keywords[j + 1] := temp;
-            end;
-
-          pass := pass + 1;
-        end;  (*while loop*)
-
-      end;  (*procedure sort*)
-
-
-      procedure install(Name: ShortString; sym: symbol);
-
-      begin
-        with keywords[i] do
-        begin
-          key := Name;
-          ksy := sym;
-        end;
-        i := i + 1;
-      end;  (* install *)
-
     begin  (* initkeytab *)
-      i := 1;
-      install('and'       , andsy);
-      install('array'     , arraysy);
-      install('begin'     , beginsy);
-      install('channel'   , channelsy);
-      install('cobegin'   , beginsy);
-      install('coend'     , endsy);
-      install('const'     , constsy);
-      install('div'       , idiv);
-      install('do'        , dosy);
-      install('else'      , elsesy);
-      install('end'       , endsy);
-      install('export'    , exportsy);
-      install('for'       , forsy);
-      install('forever'   , foreversy);
-      install('function'  , functionsy);
-      install('if'        , ifsy);
-      install('mod'       , imod);
-      install('monitor'   , monitorsy);
-      install('not'       , notsy);
-      install('null'      , nullsy);
-      install('of'        , ofsy);
-      install('or'        , orsy);
-      install('pri'       , prisy);
-      install('procedure' , proceduresy);
-      install('process'   , processsy);
-      install('program'   , programsy);
-      install('record'    , recordsy);
-      install('repeat'    , repeatsy);
-      install('select'    , selectsy);
-      install('terminate' , termsy);
-      install('then'      , thensy);
-      install('to'        , tosy);
-      install('type'      , typesy);
-      install('until'     , untilsy);
-      install('var'       , varsy);
-      install('when'      , whensy);
-      install('while'     , whilesy);
-      install('at'        , atsy);
-      install('offset'    , offsetsy);
-      install('address'   , adrsy);
-      install('timeout'   , timeoutsy);
-      install('forward'   , forwardsy);
-      install('entry'     , entrysy);
-      install('accept'    , acceptsy);
-      install('provides'  , providessy);
-      install('replicate' , replicatesy);
-      install('in'        , insy);
-      install('case'      , casesy);
-      install('resource'  , resourcesy);
-      install('guarded'   , guardedsy);
-      install('requeue'   , requeuesy);
-
-      sort;
+      keywords := TKeywordTable.Create;
+      keywords.Sorted := true;
+      keywords.Add('and'       , andsy);
+      keywords.Add('array'     , arraysy);
+      keywords.Add('begin'     , beginsy);
+      keywords.Add('channel'   , channelsy);
+      keywords.Add('cobegin'   , beginsy);
+      keywords.Add('coend'     , endsy);
+      keywords.Add('const'     , constsy);
+      keywords.Add('div'       , idiv);
+      keywords.Add('do'        , dosy);
+      keywords.Add('else'      , elsesy);
+      keywords.Add('end'       , endsy);
+      keywords.Add('export'    , exportsy);
+      keywords.Add('for'       , forsy);
+      keywords.Add('forever'   , foreversy);
+      keywords.Add('function'  , functionsy);
+      keywords.Add('if'        , ifsy);
+      keywords.Add('mod'       , imod);
+      keywords.Add('monitor'   , monitorsy);
+      keywords.Add('not'       , notsy);
+      keywords.Add('null'      , nullsy);
+      keywords.Add('of'        , ofsy);
+      keywords.Add('or'        , orsy);
+      keywords.Add('pri'       , prisy);
+      keywords.Add('procedure' , proceduresy);
+      keywords.Add('process'   , processsy);
+      keywords.Add('program'   , programsy);
+      keywords.Add('record'    , recordsy);
+      keywords.Add('repeat'    , repeatsy);
+      keywords.Add('select'    , selectsy);
+      keywords.Add('terminate' , termsy);
+      keywords.Add('then'      , thensy);
+      keywords.Add('to'        , tosy);
+      keywords.Add('type'      , typesy);
+      keywords.Add('until'     , untilsy);
+      keywords.Add('var'       , varsy);
+      keywords.Add('when'      , whensy);
+      keywords.Add('while'     , whilesy);
+      keywords.Add('at'        , atsy);
+      keywords.Add('offset'    , offsetsy);
+      keywords.Add('address'   , adrsy);
+      keywords.Add('timeout'   , timeoutsy);
+      keywords.Add('forward'   , forwardsy);
+      keywords.Add('entry'     , entrysy);
+      keywords.Add('accept'    , acceptsy);
+      keywords.Add('provides'  , providessy);
+      keywords.Add('replicate' , replicatesy);
+      keywords.Add('in'        , insy);
+      keywords.Add('case'      , casesy);
+      keywords.Add('resource'  , resourcesy);
+      keywords.Add('guarded'   , guardedsy);
+      keywords.Add('requeue'   , requeuesy);
     end;  (* initkeytab *)
 
 
@@ -582,7 +525,6 @@ var
 
     procedure InIdOrWordSymbol;
     var
-      j: integer;
       i: integer;
       k: integer;
     begin
@@ -597,17 +539,9 @@ var
         nextch
       until not (ch in ['A'..'Z', 'a'..'z', '0'..'9']);
       LowerCase(id);
-      i := 1;
-      j := nkw; (*binary search*)
-      repeat
-        k := (i + j) div 2;
-        if id <= keywords[k].key then
-          j := k - 1;
-        if id >= keywords[k].key then
-          i := k + 1
-      until i > j;
-      if i - 1 > j then
-        sy := keywords[k].ksy
+
+      if keywords.Find(id, i) then
+        sy := keywords.Data[i]
       else
         sy := ident;
     end;
