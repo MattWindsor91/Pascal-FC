@@ -109,7 +109,6 @@ var
     guardchk, queuechk, procnchk, statchk, nexistchk, namechk, casechk,
     bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
 
-  lncnt, chrcnt: integer;
   h1, h2, h3, h4: integer;
   h1r: real;
   foundcall: boolean;    (* used in select (code 64) *)
@@ -1930,7 +1929,6 @@ var
             h1 := stack[t].i;
             h2 := ir.y;
             t := t - 1;
-            chrcnt := chrcnt + h1 + h3;
             while h3 > h1 do
             begin
               Write(' ');
@@ -2171,11 +2169,7 @@ var
             else
               readln;
 
-          pWrlin:
-          begin
-            writeln;
-            chrcnt := 0;
-          end;
+          pWrlin: WriteLn;
 
           pSelec0:
           begin
@@ -2796,8 +2790,6 @@ var
       curpr := 0;
       stepcount := 0;
       ps := run;
-      lncnt := 0;
-      chrcnt := 0;
       concflag := False;
       statcounter := 0;
       initclock;
