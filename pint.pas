@@ -1475,51 +1475,54 @@ var
         toWake^.suspend := 0;
     end;
 
+    { Returns the result of a relational operation on integers 'l' and 'r'. }
+    function IntRelOp(ro: TRelOp; l, r: integer): boolean;
+    begin
+      case ro of
+        roEq: Result := l = r;
+        roNe: Result := l <> r;
+        roLt: Result := l < r;
+        roLe: Result := l <= r;
+        roGe: Result := l >= r;
+        roGt: Result := l > r;
+      end;
+    end;
+
+    { Returns the result of a relational operation on reals 'l' and 'r'. }
+    function RealRelOp(ro: TRelOp; l, r: real): boolean;
+    begin
+      case ro of
+        roEq: Result := l = r;
+        roNe: Result := l <> r;
+        roLt: Result := l < r;
+        roLe: Result := l <= r;
+        roGe: Result := l >= r;
+        roGt: Result := l > r;
+      end;
+    end;
+
     { Runs an integer relational operation 'ro'. }
     procedure RunIntRelOp(p: TProcessID; ro: TRelOp);
     var
       l: integer;    { LHS of relational operation }
       r: integer;    { RHS of relational operation }
-      cond: boolean; { Result of relational operation }
     begin
       { Operands are pushed in reverse order }
       r := PopInteger(p);
       l := PopInteger(p);
-
-      case ro of
-        roEq: cond := l = r;
-        roNe: cond := l <> r;
-        roLt: cond := l < r;
-        roLe: cond := l <= r;
-        roGe: cond := l >= r;
-        roGt: cond := l > r;
-      end;
-
-      PushBoolean(p, cond);
+      PushBoolean(p, IntRelOp(ro, l, r));
     end;
-
 
     { Runs an real relational operation 'ro'. }
     procedure RunRealRelOp(p: TProcessID; ro: TRelOp);
     var
       l: real;       { LHS of relational operation }
       r: real;       { RHS of relational operation }
-      cond: boolean; { Result of relational operation }
     begin
       { Operands are pushed in reverse order }
       r := PopReal(p);
       l := PopReal(p);
-
-      case ro of
-        roEq: cond := l = r;
-        roNe: cond := l <> r;
-        roLt: cond := l < r;
-        roLe: cond := l <= r;
-        roGe: cond := l >= r;
-        roGt: cond := l > r;
-      end;
-
-      PushBoolean(p, cond);
+      PushBoolean(p, RealRelOp(ro, l, r));
     end;
 
     procedure RunStfun(p: TProcessID; y: integer);
