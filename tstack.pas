@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 { Test cases: Stack
 
   This test case tests the IStack unit. }
-unit tstack;
+unit TStack;
 
 {$mode objfpc}{$H+}
 
@@ -39,8 +39,9 @@ type
     procedure TestStoreInteger;
     procedure TestIncInteger;
 
-    procedure TestPushPopInteger;
+    procedure TestPushIntegerPopInteger;
     procedure TestPopEmptyInteger;
+    procedure TestPushRealPopInteger;
   end;
 
 implementation
@@ -86,7 +87,7 @@ begin
   AssertEquals('1234th increment seems to have failed', 1234, readback);
 end;
 
-procedure TStackTestCase.TestPushPopInteger;
+procedure TStackTestCase.TestPushIntegerPopInteger;
 var
   seg: TStackSegment;
 begin
@@ -111,10 +112,34 @@ begin
      seg.PopInteger;
   except
     on E: EPfcStackUnderflow do
+    begin
+       seg.Destroy;
        Exit;
+    end;
   end;
 
   Fail('Expected a stack underflow');
+end;
+
+
+procedure TStackTestCase.TestPushRealPopInteger;
+var
+  seg: TStackSegment;
+begin
+  seg := TStackSegment.Create(@s, 1, 100);
+  seg.PushReal(2.5);
+
+  try
+     seg.PopInteger;
+  except
+    on E: EPfcStackTypeError do
+    begin
+       seg.Destroy;
+       Exit;
+    end;
+  end;
+
+  Fail('Expected a type error');
 end;
 
 initialization

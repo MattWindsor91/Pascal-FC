@@ -67,7 +67,14 @@ type
   { TODO: add segment tracking to TStackZone. }
 
   EPfcStackError = class(Exception);
+
+  { A stack operation tried to pop a value of the wrong type. }
+  EPfcStackTypeError = class(EPfcStackError);
+
+  { A stack segment overflowed. }
   EPfcStackOverflow = class(EPfcStackError);
+
+  { A stack segment underflowed. }
   EPfcStackUnderflow = class(EPfcStackError);
 
   { A single segment in the stack zone. }
@@ -100,11 +107,17 @@ type
     { Pops an integer to the current frame. }
     procedure PushInteger(i: integer);
 
+    { Pushes a real to the current frame. }
+    procedure PushReal(r: real);
+
     { Pushes a record to the current frame. }
     procedure PushRecord(s: TStackRecord);
 
     { Pops an integer from the current frame. }
     function PopInteger: integer;
+
+    { Pops a real from the current frame. }
+    function PopReal: real;
 
     { Pops a record from the current frame. }
     function PopRecord: TStackRecord;
@@ -113,6 +126,9 @@ type
 
 { Reads an integer from the stack zone 's' at address 'a'. }
 function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
+
+{ Reads an real from the stack zone 's' at address 'a'. }
+function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
 
 { Reads a stack record from the stack zone 's' at address 'a'. }
 function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
@@ -137,7 +153,18 @@ implementation
 
 function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
 begin
+  if s[a].tp <> ints then
+    raise EPfcStackTypeError.Create('expected integer');
+
   Result := s[a].i;
+end;
+
+function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
+begin
+  if s[a].tp <> reals then
+    raise EPfcStackTypeError.Create('expected real');
+
+  Result := s[a].r;
 end;
 
 function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
@@ -147,7 +174,14 @@ end;
 
 procedure StackStoreInteger(var s: TStackZone; a: TStackAddress; i: integer);
 begin
+  s[a].tp := ints;
   s[a].i := i;
+end;
+
+procedure StackStoreReal(var s: TStackZone; a: TStackAddress; r: real);
+begin
+  s[a].tp := reals;
+  s[a].r := r;
 end;
 
 procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
@@ -157,11 +191,17 @@ end;
 
 procedure StackIncInteger(var s: TStackZone; a: TStackAddress);
 begin
+  if s[a].tp <> ints then
+    raise EPfcStackTypeError.Create('expected integer');
+
   Inc(s[a].i);
 end;
 
 procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
 begin
+  if s[a].tp <> ints then
+    raise EPfcStackTypeError.Create('expected integer');
+
   s[a].i := s[a].i + delta;
 end;
 
@@ -199,6 +239,13 @@ begin
   StackStoreInteger(zone^, frameTop, i);
 end;
 
+procedure TStackSegment.PushReal(r: real);
+begin
+  Inc(frameTop);
+  CheckBounds;
+  StackStoreReal(zone^, frameTop, r);
+end;
+
 procedure TStackSegment.PushRecord(s: TStackRecord);
 begin
   Inc(frameTop);
@@ -210,6 +257,13 @@ function TStackSegment.PopInteger: integer;
 begin
   CheckBounds;
   Result := StackLoadInteger(zone^, frameTop);
+  Dec(frameTop);
+end;
+
+function TStackSegment.PopReal: real;
+begin
+  CheckBounds;
+  Result := StackLoadReal(zone^, frameTop);
   Dec(frameTop);
 end;
 

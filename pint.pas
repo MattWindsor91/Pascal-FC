@@ -1331,6 +1331,12 @@ var
       StackStoreInteger(stack, processes[p].t, i);
     end;
 
+    { Pushes a Boolean 'i' onto the stack segment for process 'p'. }
+    procedure PushBoolean(p: TProcessID; b: boolean);
+    begin
+      PushInteger(p, btoi(b));
+    end;
+
     { Pushes a stack record 'r' onto the stack segment for process 'p'. }
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
@@ -1339,10 +1345,23 @@ var
     end;
 
     { Pops an integer from the stack segment for process 'p'. }
-    function PopInteger(p: TProcessID) : integer;
+    function PopInteger(p: TProcessID): integer;
     begin
       Result := StackLoadInteger(stack, processes[p].t);
       processes[p].t := processes[p].t - 1;
+    end;
+
+    { Pops a real from the stack segment for process 'p'. }
+    function PopReal(p: TProcessID): real;
+    begin
+      Result := StackLoadReal(stack, processes[p].t);
+      processes[p].t := processes[p].t - 1;
+    end;
+
+    { Pops a Boolean from the stack segment for process 'p'. }
+    function PopBoolean(p: TProcessID): boolean;
+    begin
+      Result := itob(PopInteger(p));
     end;
 
     { TODO: work out precisely what this function does }
@@ -1505,12 +1524,12 @@ var
 
         17:
         begin
-          PushInteger(p, btoi(EOF(input)));
+          PushBoolean(p, EOF(input));
         end;
 
         18:
         begin
-          PushInteger(p, btoi(eoln(input)));
+          PushBoolean(p, eoln(input));
         end;
         19:
         begin
@@ -1647,7 +1666,7 @@ var
 
       if lcFrom <= lcTo then
       begin
-        stack[lcAddr].i := lcFrom;
+        StackStoreInteger(stack, lcAddr, lcFrom);
         PushInteger(p, lcAddr);
         PushInteger(p, lcFrom);
         PushInteger(p, lcTo);
