@@ -94,6 +94,9 @@ type
     { TODO: move state into here. }
   end;
 
+  { Type of relational operations. }
+  TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
+
 
 var
   objrec: TPCodeObject;
@@ -1466,6 +1469,53 @@ var
         toWake^.suspend := 0;
     end;
 
+    { Runs an integer relational operation 'ro'. }
+    procedure RunIntRelOp(p: TProcessID; ro: TRelOp);
+    var
+      l: integer;    { LHS of relational operation }
+      r: integer;    { RHS of relational operation }
+      cond: boolean; { Result of relational operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopInteger(p);
+      l := PopInteger(p);
+
+      case ro of
+        roEq: cond := l = r;
+        roNe: cond := l <> r;
+        roLt: cond := l < r;
+        roLe: cond := l <= r;
+        roGe: cond := l >= r;
+        roGt: cond := l > r;
+      end;
+
+      PushBoolean(p, cond);
+    end;
+
+
+    { Runs an real relational operation 'ro'. }
+    procedure RunRealRelOp(p: TProcessID; ro: TRelOp);
+    var
+      l: real;       { LHS of relational operation }
+      r: real;       { RHS of relational operation }
+      cond: boolean; { Result of relational operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopReal(p);
+      l := PopReal(p);
+
+      case ro of
+        roEq: cond := l = r;
+        roNe: cond := l <> r;
+        roLt: cond := l < r;
+        roLe: cond := l <= r;
+        roGe: cond := l >= r;
+        roGt: cond := l > r;
+      end;
+
+      PushBoolean(p, cond);
+    end;
+
     procedure RunStfun(p: TProcessID; y: integer);
     begin
       with processes[p] do
@@ -1998,77 +2048,19 @@ var
             t := t - 2;
           end;
 
-          pRelequR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r = stack[t + 1].r);
-          end;
+          pRelequR: RunRealRelOp(p, roEq);
+          pRelneqR: RunRealRelOp(p, roNe);
+          pRelltR: RunRealRelOp(p, roLt);
+          pRelleR: RunRealRelOp(p, roLe);
+          pRelgtR: RunRealRelOp(p, roGt);
+          pRelgeR: RunRealRelOp(p, roGe);
 
-          pRelneqR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r <> stack[t + 1].r);
-          end;
-
-          pRelltR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r < stack[t + 1].r);
-          end;
-
-          pRelleR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r <= stack[t + 1].r);
-          end;
-
-          pRelgtR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r > stack[t + 1].r);
-          end;
-
-          pRelgeR:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].r >= stack[t + 1].r);
-          end;
-
-          pRelequI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i = stack[t + 1].i);
-          end;
-
-          pRelneqI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i <> stack[t + 1].i);
-          end;
-
-          pRelltI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i < stack[t + 1].i);
-          end;
-
-          pRelleI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i <= stack[t + 1].i);
-          end;
-
-          pRelgtI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i > stack[t + 1].i);
-          end;
-
-          pRelgeI:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].i >= stack[t + 1].i);
-          end;
+          pRelequI: RunIntRelOp(p, roEq);
+          pRelneqI: RunIntRelOp(p, roNe);
+          pRelltI: RunIntRelOp(p, roLt);
+          pRelleI: RunIntRelOp(p, roLe);
+          pRelgtI: RunIntRelOp(p, roGt);
+          pRelgeI: RunIntRelOp(p, roGe);
 
           pOropB:
           begin
