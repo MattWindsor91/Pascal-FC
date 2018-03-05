@@ -482,7 +482,7 @@ var
       ll := Length(line);
       cc := 0;
 
-      writeln(listfile, line);
+      write(listfile, line);
     end;
 
     (* read next character; process line end *)
