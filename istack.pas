@@ -136,6 +136,9 @@ function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
 { Writes an integer 'i' to the stack zone 's' at address 'a'. }
 procedure StackStoreInteger(var s: TStackZone; a: TStackAddress; i: integer);
 
+{ Writes a real 'r' to the stack zone 's' at address 'a'. }
+procedure StackStoreReal(var s: TStackZone; a: TStackAddress; r: real);
+
 { Writes a stack record 'r' to the stack 's' at address 'a'. }
 procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
 

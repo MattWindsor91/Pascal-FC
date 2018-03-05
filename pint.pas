@@ -1333,6 +1333,13 @@ var
       StackStoreInteger(stack, processes[p].t, i);
     end;
 
+    { Pushes a real 'r' onto the stack segment for process 'p'. }
+    procedure PushReal(p: TProcessID; r: real);
+    begin
+      IncStackPointer(p);
+      StackStoreReal(stack, processes[p].t, r);
+    end;
+
     { Pushes a Boolean 'i' onto the stack segment for process 'p'. }
     procedure PushBoolean(p: TProcessID; b: boolean);
     begin
@@ -1812,6 +1819,34 @@ var
       end;
     end;
 
+    procedure RunIxary(p: TProcessID; y: TYArgument);
+    var
+      arrTypeID: integer;
+      arrbaseAddr: TStackAddress;
+      index: integer;
+      lbound: integer;
+      hbound: integer;
+      elsize: integer;
+    begin
+      index := PopInteger(p);
+
+      arrTypeID := y;
+      lbound := objrec.genatab[arrTypeID].low;
+      hbound := objrec.genatab[arrTypeID].high;
+      elsize := objrec.genatab[arrTypeId].elsize;
+
+      if index < lbound then
+        ps := inxchk
+      else
+      if index > hbound then
+        ps := inxchk
+      else
+      begin
+        arrbaseAddr := PopInteger(p);
+        PushInteger(p, arrBaseAddr + (index - lbound) * elsize);
+      end;
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1834,24 +1869,7 @@ var
           pFor2up: RunFor2up(p, ir.y);
           pMrkstk: RunMrkstk(p, ir.x, ir.y);
           pCallsub: RunCallsub(p, ir.x, ir.y);
-
-          pIxary:
-            with objrec do
-            begin
-              (*index*) h1 := ir.y; (*h1 points to genatab*)
-              h2 := genatab[h1].low;
-              h3 := stack[t].i;
-              if h3 < h2 then
-                ps := inxchk
-              else
-              if h3 > genatab[h1].high then
-                ps := inxchk
-              else
-              begin
-                t := t - 1;
-                stack[t].i := stack[t].i + (h3 - h2) * genatab[h1].elsize;
-              end;
-            end;
+          pIxary: RunIxary(p, ir.y);
 
           pLdblk:
           begin
@@ -1881,13 +1899,7 @@ var
           end;
 
           pLdconI: PushInteger(p, ir.y);
-
-          pLdconR:
-          begin
-            t := t + 1;
-            CheckStackOverflow(p);
-            stack[t].r := objrec.genrconst[ir.y];
-          end;
+          pLdconR: PushReal(p, objrec.genrconst[ir.y]);
 
           pIfloat:
           begin
