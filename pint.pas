@@ -89,11 +89,6 @@ type
   UnixTimeType = longint;
 
 
-  { The internal state of a P-code interpreter. }
-  TPMachine = record
-    { TODO: move state into here. }
-  end;
-
   { Type of relational operations. }
   TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
 
