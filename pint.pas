@@ -144,19 +144,16 @@ var
 
   function itob(i: integer): boolean;
   begin
-    if i = tru then
-      itob := True
-    else
-      itob := False;
+    Result := i = tru;
   end;
 
 
   function btoi(b: boolean): integer;
   begin
     if b then
-      btoi := tru
+      Result := tru
     else
-      btoi := fals;
+      Result := fals;
   end;
 
 
