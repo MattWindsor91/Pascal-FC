@@ -34,13 +34,15 @@ uses
 (* Pascal-FC interpreter *)
 
 type
-
-  (* @(#)globtypes.i  4.7 11/8/91 *)
+  EInterpreterFault = class(Exception);
 
   { These replace GOTOs in the original. }
-  StkChkException = class(Exception);
-  ProcNchkException = class(Exception);
-  DeadlockException = class(Exception);
+  EStkChk = class(EInterpreterFault);
+  EProcNchk = class(EInterpreterFault);
+  EDeadlock = class(EInterpreterFault);
+  EInpChk = class(EInterpreterFault);
+  ERedChk = class(EInterpreterFault);
+
 
   (* unixtypes.i *)
 
@@ -88,7 +90,6 @@ type
   (* This type is declared within the GCP Run Time System *)
   UnixTimeType = longint;
 
-
   { Type of relational operations. }
   TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
 
@@ -100,9 +101,9 @@ var
   stantyps: TTypeSet;
   ch: char;
 
-  ps: (run, fin, divchk, inxchk, charchk, redchk, deadlock, channerror,
-    guardchk, queuechk, procnchk, statchk, nexistchk, namechk, casechk,
-    bndchk, instchk, inpchk, setchk, ovchk, seminitchk);
+  ps: (run, fin, divchk, inxchk, charchk, channerror,
+    guardchk, queuechk, statchk, nexistchk, namechk, casechk,
+    bndchk, instchk, setchk, ovchk, seminitchk);
 
   h1, h2, h3, h4: integer;
   h1r: real;
@@ -380,22 +381,16 @@ var
     Write(tofile, 'Reason:   ');
 
     case ps of
-      deadlock:
-        writeln(tofile, 'deadlock');
       divchk:
         writeln(tofile, 'division by 0');
       inxchk:
         writeln(tofile, 'invalid index ');
       charchk:
         writeln(tofile, 'illegal or uninitialised character');
-      redchk:
-        writeln(tofile, 'reading past end of file');
       channerror:
         writeln(tofile, 'channel error');
       guardchk:
         writeln(tofile, 'closed guards');
-      procnchk:
-        writeln(tofile, 'more than ', pmax: 1, ' processes');
       statchk:
         writeln
         (tofile, 'statement limit of ', statmax: 1,
@@ -413,8 +408,6 @@ var
         writeln(tofile, 'ordinal value out of range');
       instchk:
         writeln(tofile, 'multiple activation of a process');
-      inpchk:
-        writeln(tofile, 'error in numeric input');
       setchk:
         writeln(tofile, 'bitset value out of bounds');
       ovchk:
@@ -813,8 +806,7 @@ var
             end
             else
             begin
-              ps := deadlock;
-              raise DeadlockException.Create('deadlock');
+              raise EDeadlock.Create('deadlock');
             end
           else
             processes[0].active := True
@@ -1015,38 +1007,36 @@ var
 
     procedure skipblanks;
     begin
-      while not EOF and (inchar = ' ') do
+      while not EOF and (inchar in [#0, #9, ' ']) do
         Read(input, inchar);
     end;
 
 
-    procedure readunsignedint(var inum: integer; var numerror: boolean);
+    procedure readunsignedint(var inum: integer);
     var
       digit: integer;
     begin
       inum := 0;
-      numerror := False;
       repeat
-        if inum > (intmax div 10) then
-          numerror := True
-        else
         begin
+          if inum > (intmax div 10) then
+            raise EInpChk.Create('error in unsigned integer input: number too big');
+
           inum := inum * 10;
           digit := Ord(inchar) - Ord('0');
+
           if digit > (intmax - inum) then
-            numerror := True
-          else
-            inum := inum + digit;
+            raise EInpChk.Create('error in unsigned integer input: number too big');
+
+          inum := inum + digit;
         end;
         Read(input, inchar)
       until not (inchar in ['0'..'9']);
-      if numerror then
-        inum := 0;
     end;
 
 
     (* on entry inum has been set by unsignedint *)
-    procedure readbasedint(var inum: integer; var numerror: boolean);
+    procedure readbasedint(var inum: integer);
     var
       digit, base: integer;
       negative: boolean;
@@ -1056,23 +1046,19 @@ var
       if (inum in [2, 8, 16]) then
         base := inum
       else
-      begin
-        base := 16;
-        numerror := True;
-      end;
+        raise EInpChk.Create('error in based integer input: invalid base');
       inum := 0;
       negative := False;
       repeat
-        if negative then
-          numerror := True
-        else
         begin
+          if negative then
+            raise EInpChk.Create('error in based integer input');
           if inum > (intmax div base) then
           begin
             if inum <= (intmax div (base div 2)) then
               negative := True
             else
-              numerror := True;
+              raise EInpChk.Create('error in based integer input');
             inum := inum mod (intmax div base + 1);
           end;
           inum := inum * base;
@@ -1085,69 +1071,59 @@ var
           if inchar in ['a'..'z'] then
             digit := Ord(inchar) - Ord('a') + 10
           else
-            numerror := True;
+            raise EInpChk.Create('error in based integer input: invalid digit');
           if digit >= base then
-            numerror := True
-          else
-            inum := inum + digit;
+            raise EInpChk.Create('error in based integer input: digit not allowed in base');
+          inum := inum + digit;
         end;
         Read(input, inchar)
       until not (inchar in ['0'..'9', 'A'..'Z', 'a'..'z']);
       if negative then
-        if inum = 0 then
-          numerror := True
-        else
-          inum := (-maxint + inum) - 1;
-      if numerror then
-        inum := 0;
+      begin
+        if inum = 0 then raise EInpChk.Create('error in based integer input: read negative zero');
+        inum := (-maxint + inum) - 1;
+      end;
     end;  (* readbasedint *)
 
 
     (* find start of integer or real *)
     procedure findstart(var sign: integer);
     begin
+      inchar := #0;
       skipblanks;
-      if EOF then
-        ps := redchk
+      if EOF then raise ERedChk.Create('reading past end of file');
+
+      sign := 1;
+      if inchar = '+' then
+        Read(input, inchar)
       else
+      if inchar = '-' then
       begin
-        sign := 1;
-        if inchar = '+' then
-          Read(input, inchar)
-        else
-        if inchar = '-' then
-        begin
-          Read(input, inchar);
-          sign := -1;
-        end;
+        Read(input, inchar);
+        sign := -1;
       end;
     end;
 
-
-    procedure readint(var inum: integer);
+    function readint: integer;
     var
       sign: integer;
-      numerror: boolean;
     begin
+      Result := 0;
+
       findstart(sign);
       if not EOF then
       begin
-        if inchar in ['0'..'9'] then
-        begin
-          readunsignedint(inum, numerror);
-          inum := inum * sign;
-          if inchar = '#' then
-            readbasedint(inum, numerror);
-        end
-        else
-          numerror := True;
-        if numerror then
-          ps := inpchk;
+        if not (inchar in ['0'..'9']) then
+          raise EInpChk.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [inchar, Ord(inchar)]);
+
+        readunsignedint(Result);
+        Result := Result * sign;
+        if inchar = '#' then
+          readbasedint(Result);
       end;
     end;
 
-
-    procedure readscale(var e: integer; var numerror: boolean);
+    procedure readscale(var e: integer);
     var
       s, sign, digit: integer;
     begin
@@ -1163,135 +1139,127 @@ var
         sign := -1;
       end;
       if not (inchar in ['0'..'9']) then
-        numerror := True
-      else
-        repeat
+        raise EInpChk.Create('error in numeric input');
+      repeat
+        begin
           if s > (intmax div 10) then
-            numerror := True
-          else
-          begin
-            s := 10 * s;
-            digit := Ord(inchar) - Ord('0');
-            if digit > (intmax - s) then
-              numerror := True
-            else
-              s := s + digit;
-          end;
-          Read(input, inchar)
-        until not (inchar in ['0'..'9']);
-      if numerror then
-        e := 0
-      else
-        e := s * sign + e;
+            raise EInpChk.Create('error in numeric input');
+          s := 10 * s;
+          digit := Ord(inchar) - Ord('0');
+
+          if digit > (intmax - s) then
+            raise EInpChk.Create('error in numeric input');
+
+          s := s + digit;
+        end;
+        Read(input, inchar)
+      until not (inchar in ['0'..'9']);
+
+      e := s * sign + e;
     end;
 
 
-    procedure adjustscale(var rnum: real; k, e: integer; var numerror: boolean);
+    procedure adjustscale(var rnum: real; k, e: integer);
     var
       s: integer;
       d, t: real;
     begin
       if (k + e) > emax then
-        numerror := True
-      else
+        raise EInpChk.Create('error in numeric input');
+
+      while e < emin do
       begin
-        while e < emin do
-        begin
-          rnum := rnum / 10.0;
-          e := e + 1;
-        end;
-        s := abs(e);
-        t := 1.0;
-        d := 10.0;
-        repeat
-          while not odd(s) do
-          begin
-            s := s div 2;
-            d := sqr(d);
-          end;
-          s := s - 1;
-          t := d * t
-        until s = 0;
-        if e >= 0 then
-          if rnum > (realmax / t) then
-            numerror := True
-          else
-            rnum := rnum * t
-        else
-          rnum := rnum / t;
+        rnum := rnum / 10.0;
+        e := e + 1;
       end;
+      s := abs(e);
+      t := 1.0;
+      d := 10.0;
+      repeat
+        while not odd(s) do
+        begin
+          s := s div 2;
+          d := sqr(d);
+        end;
+        s := s - 1;
+        t := d * t
+      until s = 0;
+      if e >= 0 then
+        begin
+          if rnum > (realmax / t) then
+            raise EInpChk.Create('error in numeric input');
+          rnum := rnum * t
+        end
+      else
+        rnum := rnum / t;
     end;
 
 
-    procedure readreal(var rnum: real);
+    function readreal: real;
     var
       k, e, sign, digit: integer;
-      numerror: boolean;
     begin
-      numerror := False;
       findstart(sign);
       if not EOF then
-        if inchar in ['0'..'9'] then
+      begin
+        if not (inchar in ['0'..'9']) then
+          raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [inchar, Ord(inchar)]);
+
+        while inchar = '0' do
+          Read(input, inchar);
+        Result := 0.0;
+        k := 0;
+        e := 0;
+        while inchar in ['0'..'9'] do
         begin
-          while inchar = '0' do
-            Read(input, inchar);
-          rnum := 0.0;
-          k := 0;
-          e := 0;
-          while inchar in ['0'..'9'] do
+          if Result > (realmax / 10.0) then
+            e := e + 1
+          else
           begin
-            if rnum > (realmax / 10.0) then
-              e := e + 1
-            else
-            begin
-              k := k + 1;
-              rnum := rnum * 10.0;
-              digit := Ord(inchar) - Ord('0');
-              if digit <= (realmax - rnum) then
-                rnum := rnum + digit;
-            end;
-            Read(input, inchar);
+            k := k + 1;
+            Result := Result * 10.0;
+            digit := Ord(inchar) - Ord('0');
+            if digit <= (realmax - Result) then
+              Result := Result + digit;
           end;
-          if inchar = '.' then
-          begin  (* fractional part *)
-            Read(input, inchar);
-            repeat
-              if inchar in ['0'..'9'] then
+          Read(input, inchar);
+        end;
+        if inchar = '.' then
+        begin  (* fractional part *)
+          Read(input, inchar);
+          repeat
+            if inchar in ['0'..'9'] then
+            begin
+              if Result <= (realmax / 10.0) then
               begin
-                if rnum <= (realmax / 10.0) then
-                begin
-                  e := e - 1;
-                  rnum := 10.0 * rnum;
-                  digit := Ord(inchar) - Ord('0');
-                  if digit <= (realmax - rnum) then
-                    rnum := rnum + digit;
-                end;
-                Read(input, inchar);
-              end
-              else
-                numerror := True
-            until not (inchar in ['0'..'9']);
-            if inchar in ['e', 'E'] then
-              readscale(e, numerror);
-            if e <> 0 then
-              adjustscale(rnum, k, e, numerror);
-          end  (* fractional part *)
-          else
+                e := e - 1;
+                Result := 10.0 * Result;
+                digit := Ord(inchar) - Ord('0');
+                if digit <= (realmax - Result) then
+                  Result := Result + digit;
+              end;
+              Read(input, inchar);
+            end
+            else
+              raise EInpChk.Create('error in numeric input');
+          until not (inchar in ['0'..'9']);
           if inchar in ['e', 'E'] then
-          begin
-            readscale(e, numerror);
-            if e <> 0 then
-              adjustscale(rnum, k, e, numerror);
-          end
-          else
+            readscale(e);
           if e <> 0 then
-            numerror := True;
-          rnum := rnum * sign;
+            adjustscale(Result, k, e);
+        end  (* fractional part *)
+        else
+        if inchar in ['e', 'E'] then
+        begin
+          readscale(e);
+          if e <> 0 then
+            adjustscale(Result, k, e);
         end
         else
-          numerror := True;
-      if numerror then
-        ps := inpchk;
+        if e <> 0 then
+          raise EInpChk.Create('error in numeric input');
+        Result := Result * sign;
+      end;
     end;  (* readreal *)
 
 
@@ -1301,7 +1269,7 @@ var
     begin
       with processes[p] do
         if (t + nItems) > stacksize then
-          raise StkChkException.Create('stack overflow');
+          raise EStkChk.Create('stack overflow');
     end;
 
 
@@ -1758,17 +1726,11 @@ var
       begin
         if x = 1 then
         begin  (* process *)
-          if npr = pmax then
-          begin
-            ps := procnchk;
-            raise ProcNchkException.Create('process overflow');
-          end
-          else
-          begin
-            npr := npr + 1;
-            concflag := True;
-            curpr := npr;
-          end;
+          if npr = pmax then raise EProcNchk.CreateFmt('more than %D processes', [pmax]);
+
+          npr := npr + 1;
+          concflag := True;
+          curpr := npr;
         end;
         h1 := objrec.genbtab[objrec.gentab[y].ref].vsize;
         with processes[curpr] do
@@ -1842,6 +1804,65 @@ var
       end;
     end;
 
+    procedure RunLdblk(p: TProcessID; y: TYArgument);
+    var
+      srcStart: TStackAddress;  { Start of block to copy. }
+      off: cardinal;            { Current offset in block to copy. }
+    begin
+      { TODO(@MattWindsor91):
+        If we had a way of pre-allocating a space on a process's stack, then
+        we could implement this as a special case of Cpblk. }
+      srcStart := PopInteger(p);
+      for off := 0 to y - 1 do
+        PushRecord(p, StackLoadRecord(stack, srcStart + off));
+    end;
+
+    procedure RunCpblk(p: TProcessID; y: TYArgument);
+    var
+      srcStart: TStackAddress;  { Start of source block. }
+      dstStart: TStackAddress;  { Start of destination block. }
+      off: cardinal;            { Current offset in block to copy. }
+    begin
+      dstStart := PopInteger(p);
+      srcStart := PopInteger(p);
+      for off := 0 to y - 1 do
+        StackStoreRecord(stack, dstStart + off, StackLoadRecord(stack, srcStart + off));
+    end;
+
+    procedure RunIfloat(p: TProcessID; y: TYArgument);
+    var
+      loc: TStackAddress;  { Location to convert to float. }
+      i: integer;          { The integer to convert. }
+    begin
+      loc := processes[p].t - y;
+      i := StackLoadInteger(stack, loc);
+      StackStoreReal(stack, loc, i);
+    end;
+
+    procedure RunReadip(p: TProcessID; y: TYArgument);
+    var
+      dest: TStackAddress; { Destination of item being read. }
+    begin
+      { TODO(@MattWindsor91): needs refactoring. }
+      if EOF(input) then raise ERedChk.Create('reading past end of file');
+
+      dest := PopInteger(p);
+
+      case y of
+        1:    (* integer *)
+          StackStoreInteger(stack, dest, readint);
+        3:    (* char *)
+          begin
+            if EOF then
+              raise ERedChk.Create('reading past end of file');
+            Read(ch);
+            StackStoreInteger(stack, dest, Ord(ch));
+          end;
+        4:  (* real *)
+          StackStoreReal(stack, dest, readreal);
+      end;
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1865,66 +1886,12 @@ var
           pMrkstk: RunMrkstk(p, ir.x, ir.y);
           pCallsub: RunCallsub(p, ir.x, ir.y);
           pIxary: RunIxary(p, ir.y);
-
-          pLdblk:
-          begin
-            h1 := PopInteger(p);
-            CheckStackOverflowAfter(ir.y, p);
-            h2 := ir.y + t;
-            while t < h2 do
-            begin
-              t := t + 1;
-              stack[t] := stack[h1];
-              h1 := h1 + 1;
-            end;
-          end;
-
-          pCpblk:
-          begin
-            h2 := PopInteger(p);
-            h1 := PopInteger(p);
-
-            h3 := h1 + ir.y;
-            while h1 < h3 do
-            begin
-              stack[h1] := stack[h2];
-              h1 := h1 + 1;
-              h2 := h2 + 1;
-            end;
-          end;
-
+          pLdblk: RunLdblk(p, ir.y);
+          pCpblk: RunCpblk(p, ir.y);
           pLdconI: PushInteger(p, ir.y);
           pLdconR: PushReal(p, objrec.genrconst[ir.y]);
-
-          pIfloat:
-          begin
-            h1 := t - ir.y;
-            stack[h1].r := stack[h1].i;
-          end;
-
-          pReadip:
-          begin
-            if EOF(input) then
-              ps := redchk
-            else
-              case ir.y of
-                1:    (* integer *)
-                  readint(stack[stack[t].i].i);
-
-                3:    (* char *)
-                  if EOF then
-                    ps := redchk
-                  else
-                  begin
-                    Read(ch);
-                    stack[stack[t].i].i := Ord(ch);
-                  end;
-                4:  (* real *)
-                  readreal(stack[stack[t].i].r)
-              end;
-            t := t - 1;
-          end;
-
+          pIfloat: RunIfloat(p, ir.y);
+          pReadip: RunReadip(p, ir.y);
           pWrstr:
           begin
             if ir.x = 1 then
@@ -2003,8 +1970,7 @@ var
             t := t - 1;
           end;  (* 30 *)
 
-          pStop:
-            ps := fin;
+          pStop: ps := fin;
 
           pRetproc:
           begin
@@ -2171,10 +2137,11 @@ var
           end;
 
           pRdlin:
-            if EOF(input) then
-              ps := redchk
-            else
+            begin
+              if EOF(input) then
+                raise ERedChk.Create('reading past end of file');
               readln;
+            end;
 
           pWrlin: WriteLn;
 
@@ -2811,16 +2778,9 @@ var
         RunStep;
       until ps <> run;
 
-    except
-      on E: ProcNchkException do ;
-      on E: StkChkException do ;
-      on E: DeadlockException do ;
-    end;
-
     98:
       writeln;
     if ps <> fin then
-
       expmd
 
     else
@@ -2830,6 +2790,16 @@ var
     end;
     97:
       writeln;
+
+    except
+      on E: EInterpreterFault do begin
+        writeln('Interpreter error.');
+        writeln('Cause: ', E.Message);
+        expmd;
+      end;
+    end;
+
+
   end;  (* runprog *)
 
 
