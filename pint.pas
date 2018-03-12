@@ -1013,10 +1013,15 @@ var
       Result := c in [#0, #9, #10, ' ']
     end;
 
+    procedure NextCh;
+    begin
+      Read(input, inchar);
+    end;
+
     procedure skipblanks;
     begin
       while not EOF and ShouldSkip(inchar) do
-        Read(input, inchar);
+        NextCh;
     end;
 
     procedure readunsignedint(var inum: integer);
@@ -1037,7 +1042,7 @@ var
 
           inum := inum + digit;
         end;
-        Read(input, inchar)
+        NextCh;
       until not (inchar in ['0'..'9']);
     end;
 
@@ -1049,7 +1054,7 @@ var
       negative: boolean;
       inchar: char;
     begin
-      Read(input, inchar);
+      NextCh;
       if (inum in [2, 8, 16]) then
         base := inum
       else
@@ -1083,7 +1088,7 @@ var
             raise EInpChk.Create('error in based integer input: digit not allowed in base');
           inum := inum + digit;
         end;
-        Read(input, inchar)
+        NextCh
       until not (inchar in ['0'..'9', 'A'..'Z', 'a'..'z']);
       if negative then
       begin
@@ -1101,11 +1106,11 @@ var
 
       sign := 1;
       if inchar = '+' then
-        Read(input, inchar)
+        NextCh
       else
       if inchar = '-' then
       begin
-        Read(input, inchar);
+        NextCh;
         sign := -1;
       end;
     end;
@@ -1133,15 +1138,15 @@ var
     var
       s, sign, digit: integer;
     begin
-      Read(input, inchar);
+      NextCh;
       sign := 1;
       s := 0;
       if inchar = '+' then
-        Read(input, inchar)
+        NextCh
       else
       if inchar = '-' then
       begin
-        Read(input, inchar);
+        NextCh;
         sign := -1;
       end;
       if not (inchar in ['0'..'9']) then
@@ -1158,7 +1163,7 @@ var
 
           s := s + digit;
         end;
-        Read(input, inchar)
+        NextCh
       until not (inchar in ['0'..'9']);
 
       e := s * sign + e;
@@ -1212,7 +1217,7 @@ var
           raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [inchar, Ord(inchar)]);
 
         while inchar = '0' do
-          Read(input, inchar);
+          NextCh;
         Result := 0.0;
         k := 0;
         e := 0;
@@ -1228,11 +1233,11 @@ var
             if digit <= (realmax - Result) then
               Result := Result + digit;
           end;
-          Read(input, inchar);
+          NextCh;
         end;
         if inchar = '.' then
         begin  (* fractional part *)
-          Read(input, inchar);
+          NextCh;
           repeat
             if inchar in ['0'..'9'] then
             begin
@@ -1244,7 +1249,7 @@ var
                 if digit <= (realmax - Result) then
                   Result := Result + digit;
               end;
-              Read(input, inchar);
+              NextCh;
             end
             else
               raise EInpChk.Create('error in numeric input');
