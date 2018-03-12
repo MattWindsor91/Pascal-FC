@@ -29,70 +29,9 @@ uses
   GTypes,
   IConsts,
   GTables,
-  IStack, itypes;
+  IStack, itypes, ireader;
 
 (* Pascal-FC interpreter *)
-
-type
-  EInterpreterFault = class(Exception);
-
-  { These replace GOTOs in the original. }
-  EStkChk = class(EInterpreterFault);
-  EProcNchk = class(EInterpreterFault);
-  EDeadlock = class(EInterpreterFault);
-  EInpChk = class(EInterpreterFault);
-  ERedChk = class(EInterpreterFault);
-
-
-  (* unixtypes.i *)
-
-  (* Pascal-FC "universal" compiler system *)
-  (* implementation-dependent type declaration for Unix *)
-
-
-
-
-  TProcessID = 0..pmax;
-
-  qpointer = ^qnode;
-
-  qnode = record
-    proc: TProcessID;
-    Next: qpointer
-  end;
-
-  { Record for a single Pascal-FC process. }
-  TProcess = record
-    { Stack pointers }
-    t: integer;         { The current stack pointer. }
-    stackbase: integer; { The start of this process's segment on the stack. }
-    stacksize: integer; { The end of this process's segment on the stack. }
-    b: integer;
-
-    pc: integer;        { Program counter. }
-    display: array[1..lmax] of integer;
-    suspend: integer;   { The address of the semaphore being awaited, if <>0. }
-    chans: integer;
-    repindex: integer;
-    onselect: boolean;
-    active, termstate: boolean;
-    curmon: integer;
-    wakeup, wakestart: integer;
-    clearresource: boolean;
-
-    varptr: 0..tmax
-  end;
-
-  { Pointer to a TProcess. }
-  PProcess = ^TProcess;
-
-
-  (* This type is declared within the GCP Run Time System *)
-  UnixTimeType = longint;
-
-  { Type of relational operations. }
-  TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
-
 
 var
   objrec: TPCodeObject;
