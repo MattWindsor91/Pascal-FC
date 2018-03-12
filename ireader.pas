@@ -11,6 +11,10 @@ uses
   SysUtils;
 
 type
+  { Type of sign coefficients. }
+  TSign = -1..1;
+
+  { TReader reads integers and reals from an input source. }
   TReader = class(TObject)
     private
       inchar: char;
@@ -21,14 +25,16 @@ type
       { Skips to the next non-whitespace character. }
       procedure SkipBlanks;
 
+      { If the current character is a sign (+/-), consume it.
+
+        Returns the sign as a coefficient: 1 if missing or '+'; -1 if '-'. }
+      function ReadSign: TSign;
+
       { Reads an unsigned integer. }
       procedure ReadUnsignedInt(var inum: integer);
 
       { Reads a based integer. }
       procedure ReadBasedInt(var inum: integer);
-
-      { Finds the start of an integer or real, and consumes any sign. }
-      procedure FindStart(var sign: integer);
 
       { Reads a scale. }
       procedure ReadScale(var e: integer);
@@ -56,10 +62,29 @@ implementation
     Read(input, inchar);
   end;
 
+function TReader.ReadSign: TSign;
+var
+  sign: TSign;
+begin
+  sign := 1;
+
+  if inchar = '+' then
+    NextCh
+  else if inchar = '-' then
+  begin
+    NextCh;
+    sign := -1;
+  end;
+
+  Result := sign;
+end;
+
   procedure TReader.SkipBlanks;
   begin
     while not EOF and ShouldSkip(inchar) do
       NextCh;
+
+    if EOF then raise ERedChk.Create('reading past end of file');
   end;
 
   procedure TReader.ReadUnsignedInt(var inum: integer);
@@ -134,30 +159,13 @@ implementation
     end;
   end;  (* readbasedint *)
 
-  procedure TReader.FindStart(var sign: integer);
-  begin
-    skipblanks;
-    if EOF then raise ERedChk.Create('reading past end of file');
-
-    { TODO(@MattWindsor91): pull this out }
-    sign := 1;
-    if inchar = '+' then
-      NextCh
-    else
-    if inchar = '-' then
-    begin
-      NextCh;
-      sign := -1;
-    end;
-  end;
-
   function TReader.ReadInt: integer;
   var
-    sign: integer;
+    sign: TSign;
   begin
-    Result := 0;
+    SkipBlanks;
+    sign := ReadSign;
 
-    findstart(sign);
     if not EOF then
     begin
       if not (inchar in ['0'..'9']) then
@@ -172,21 +180,13 @@ implementation
 
   procedure TReader.ReadScale(var e: integer);
   var
-    s, sign, digit: integer;
+    sign: TSign;
+    s, digit: integer;
   begin
     { TODO(@MattWindsor91): refactor to remove 'var' }
 
     NextCh;
-    sign := 1;
-    s := 0;
-    if inchar = '+' then
-      NextCh
-    else
-    if inchar = '-' then
-    begin
-      NextCh;
-      sign := -1;
-    end;
+    sign := ReadSign;
     if not (inchar in ['0'..'9']) then
       raise EInpChk.Create('error in numeric input');
     repeat
@@ -246,9 +246,12 @@ implementation
 
   function TReader.ReadReal: real;
   var
-    k, e, sign, digit: integer;
+    sign: TSign;
+    k, e, digit: integer;
   begin
-    findstart(sign);
+    SkipBlanks;
+    sign := ReadSign;
+
     if not EOF then
     begin
       if not (inchar in ['0'..'9']) then
