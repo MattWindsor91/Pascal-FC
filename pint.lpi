@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="9">
+    <Units Count="10">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -70,6 +70,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ITypes"/>
       </Unit8>
+      <Unit9>
+        <Filename Value="ireader.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="IReader"/>
+      </Unit9>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
