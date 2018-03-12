@@ -1004,13 +1004,20 @@ var
         stack[curmon].i := 0;
     end;
 
+    { Should 'c' be skipped if reading a number?
+
+      We skip 'c' blank if it is null (#0), or it's an
+      (ASCII) whitespace character. }
+    function ShouldSkip(const c: char): boolean;
+    begin
+      Result := c in [#0, #9, #10, ' ']
+    end;
 
     procedure skipblanks;
     begin
-      while not EOF and (inchar in [#0, #9, ' ']) do
+      while not EOF and ShouldSkip(inchar) do
         Read(input, inchar);
     end;
-
 
     procedure readunsignedint(var inum: integer);
     var
@@ -1089,7 +1096,6 @@ var
     (* find start of integer or real *)
     procedure findstart(var sign: integer);
     begin
-      inchar := #0;
       skipblanks;
       if EOF then raise ERedChk.Create('reading past end of file');
 
