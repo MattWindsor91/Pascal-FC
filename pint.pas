@@ -605,10 +605,6 @@ var
 
 
   procedure runprog;
-  label
-    97, 98;
-
-
     (* place pnum in a dynamic queue node *)
     procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
     begin
@@ -2454,8 +2450,8 @@ var
         RunStep;
       until ps <> run;
 
-    98:
-      writeln;
+    writeln;
+
     if ps <> fin then
       expmd
 
@@ -2464,8 +2460,8 @@ var
       writeln;
       writeln('Program terminated normally');
     end;
-    97:
-      writeln;
+
+    writeln;
 
     except
       on E: EInterpreterFault do begin
