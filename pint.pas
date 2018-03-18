@@ -605,11 +605,6 @@ var
 
 
   procedure runprog;
-  var
-    inchar: char; { Replaces inchar }
-
-    (* execute program once *)
-
   label
     97, 98;
 
