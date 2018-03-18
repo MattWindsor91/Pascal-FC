@@ -33,7 +33,7 @@ uses
 
 type
 
-  TStrUtilTestCase= class(TTestCase)
+  TStrUtilTestCase = class(TTestCase)
   published
     procedure TestUntab;
   end;
@@ -55,8 +55,8 @@ const
 
 procedure TStrUtilTestCase.TestUntab;
 var
-  original: AnsiString;
-  return: AnsiString;
+  original: ansistring;
+  return: ansistring;
 begin
   original := untabTabs;
 

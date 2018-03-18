@@ -32,7 +32,7 @@ uses
   Classes, SysUtils, fpcunit, testregistry, IStack;
 
 type
-  TStackTestCase= class(TTestCase)
+  TStackTestCase = class(TTestCase)
   private
     s: TStackZone;
   published
@@ -99,7 +99,7 @@ begin
   AssertEquals('pop returned wrong integer', 53, seg.PopInteger);
   AssertEquals('pop returned wrong integer', 27, seg.PopInteger);
 
-  seg.Destroy;
+  FreeAndNil(seg);
 end;
 
 procedure TStackTestCase.TestPopEmptyInteger;
@@ -109,18 +109,17 @@ begin
   seg := TStackSegment.Create(@s, 1, 100);
 
   try
-     seg.PopInteger;
+    seg.PopInteger;
   except
     on E: EPfcStackUnderflow do
     begin
-       seg.Destroy;
-       Exit;
+      FreeAndNil(seg);
+      Exit;
     end;
   end;
 
   Fail('Expected a stack underflow');
 end;
-
 
 procedure TStackTestCase.TestPushRealPopInteger;
 var
@@ -130,12 +129,12 @@ begin
   seg.PushReal(2.5);
 
   try
-     seg.PopInteger;
+    seg.PopInteger;
   except
     on E: EPfcStackTypeError do
     begin
-       seg.Destroy;
-       Exit;
+      FreeAndNil(seg);
+      Exit;
     end;
   end;
 
@@ -143,7 +142,6 @@ begin
 end;
 
 initialization
-
   RegisterTest(TStackTestCase);
 end.
 
