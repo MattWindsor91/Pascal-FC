@@ -32,13 +32,12 @@ type
     property Ch: char read GetCh;
   end;
 
-  { TFileCharReader is an ICharReader that reads from a file. }
-  TFileCharReader = class(TInterfacedObject, ICharReader)
+  { TStdinCharReader is an ICharReader that reads from input. }
+  TStdinCharReader = class(TInterfacedObject, ICharReader)
   private
-    FFile: text;
     FCh: char;
   public
-    constructor Create(var f: Text);
+    constructor Create;
 
     procedure NextCh;
     function GetCh: char;
@@ -93,30 +92,29 @@ implementation
     Result := c in [#0, #9, #10, ' ']
   end;
 
-  constructor TFileCharReader.Create(var f: Text);
+  constructor TStdinCharReader.Create;
   begin
-    FFile := f;
     FCh := #0;
   end;
 
-  procedure TFileCharReader.NextCh;
+  procedure TStdinCharReader.NextCh;
   begin
-    Read(FFile, FCh);
+    Read(FCh);
   end;
 
-  function TFileCharReader.GetCh: char;
+  function TStdinCharReader.GetCh: char;
   begin
     Result := FCh;
   end;
 
-  function TFileCharReader.HasNextCh: boolean;
+  function TStdinCharReader.HasNextCh: boolean;
   begin
     Result := not EOF;
   end;
 
   constructor TReader.Create;
   begin
-    FChar := TFileCharReader.Create(input);
+    FChar := TStdinCharReader.Create;
   end;
 
   constructor TReader.Create(cr: ICharReader);
