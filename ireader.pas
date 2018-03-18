@@ -125,12 +125,13 @@ end;
   begin
     { TODO(@MattWindsor91): refactor to remove 'var' }
     NextCh;
-    if (inum in [2, 8, 16]) then
-      base := inum
-    else
-      raise EInpChk.Create('error in based integer input: invalid base');
+    if not (inum in [2, 8, 16]) then
+        raise EInpChk.Create('error in based integer input: invalid base');
+
+    base := inum;
     inum := 0;
     negative := False;
+
     repeat
       begin
         if negative then
@@ -174,6 +175,7 @@ end;
     SkipBlanks;
     sign := ReadSign;
 
+    Result := 0;
     if HasNextCh then
     begin
       if not (inchar in ['0'..'9']) then
@@ -195,8 +197,12 @@ end;
 
     NextCh;
     sign := ReadSign;
+
     if not (inchar in ['0'..'9']) then
       raise EInpChk.Create('error in numeric input');
+
+    s := 0;
+
     repeat
       begin
         if s > (intmax div 10) then
