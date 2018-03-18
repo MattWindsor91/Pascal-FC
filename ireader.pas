@@ -22,6 +22,9 @@ type
       { Reads the next character. }
       procedure NextCh;
 
+      { Returns true if there are characters left. }
+      function HasNextCh: boolean;
+
       { Skips to the next non-whitespace character. }
       procedure SkipBlanks;
 
@@ -62,6 +65,11 @@ implementation
     Read(input, inchar);
   end;
 
+  function TReader.HasNextCh: boolean;
+  begin
+    Result := EOF;
+  end;
+
 function TReader.ReadSign: TSign;
 var
   sign: TSign;
@@ -81,10 +89,10 @@ end;
 
   procedure TReader.SkipBlanks;
   begin
-    while not EOF and ShouldSkip(inchar) do
+    while HasNextCh and ShouldSkip(inchar) do
       NextCh;
 
-    if EOF then raise ERedChk.Create('reading past end of file');
+    if HasNextCh then raise ERedChk.Create('reading past end of file');
   end;
 
   procedure TReader.ReadUnsignedInt(var inum: integer);
@@ -166,7 +174,7 @@ end;
     SkipBlanks;
     sign := ReadSign;
 
-    if not EOF then
+    if HasNextCh then
     begin
       if not (inchar in ['0'..'9']) then
         raise EInpChk.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [inchar, Ord(inchar)]);
@@ -252,7 +260,7 @@ end;
     SkipBlanks;
     sign := ReadSign;
 
-    if not EOF then
+    if HasNextCh then
     begin
       if not (inchar in ['0'..'9']) then
         raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [inchar, Ord(inchar)]);
