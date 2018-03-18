@@ -27,9 +27,6 @@ type
 
     { Returns true if there are characters left. }
     function HasNextCh: boolean;
-
-    { The current character in the reader. }
-    property Ch: char read GetCh;
   end;
 
   { TStdinCharReader is an ICharReader that reads from input. }
@@ -42,8 +39,6 @@ type
     procedure NextCh;
     function GetCh: char;
     function HasNextCh: boolean;
-
-    property Ch: char read GetCh;
   end;
 
   { TReader reads integers and reals from an input source. }
@@ -128,9 +123,9 @@ var
 begin
   sign := 1;
 
-  if FChar.Ch = '+' then
+  if FChar.GetCh = '+' then
     FChar.NextCh
-  else if FChar.Ch = '-' then
+  else if FChar.GetCh = '-' then
   begin
     FChar.NextCh;
     sign := -1;
@@ -141,7 +136,7 @@ end;
 
   procedure TReader.SkipBlanks;
   begin
-    while FChar.HasNextCh and ShouldSkip(FChar.Ch) do
+    while FChar.HasNextCh and ShouldSkip(FChar.GetCh) do
       FChar.NextCh;
 
     if not FChar.HasNextCh then raise ERedChk.Create('reading past end of file');
@@ -159,7 +154,7 @@ end;
           raise EInpChk.Create('error in unsigned integer input: number too big');
 
         inum := inum * 10;
-        digit := Ord(FChar.Ch) - Ord('0');
+        digit := Ord(FChar.GetCh) - Ord('0');
 
         if digit > (intmax - inum) then
           raise EInpChk.Create('error in unsigned integer input: number too big');
@@ -167,7 +162,7 @@ end;
         inum := inum + digit;
       end;
       FChar.NextCh;
-    until not (FChar.Ch in ['0'..'9']);
+    until not (FChar.GetCh in ['0'..'9']);
   end;
 
   procedure TReader.ReadBasedInt(var inum: integer);
@@ -197,14 +192,14 @@ end;
           inum := inum mod (intmax div base + 1);
         end;
         inum := inum * base;
-        if FChar.Ch in ['0'..'9'] then
-          digit := Ord(FChar.Ch) - Ord('0')
+        if FChar.GetCh in ['0'..'9'] then
+          digit := Ord(FChar.GetCh) - Ord('0')
         else
-        if FChar.Ch in ['A'..'Z'] then
-          digit := Ord(FChar.Ch) - Ord('A') + 10
+        if FChar.GetCh in ['A'..'Z'] then
+          digit := Ord(FChar.GetCh) - Ord('A') + 10
         else
-        if FChar.Ch in ['a'..'z'] then
-          digit := Ord(FChar.Ch) - Ord('a') + 10
+        if FChar.GetCh in ['a'..'z'] then
+          digit := Ord(FChar.GetCh) - Ord('a') + 10
         else
           raise EInpChk.Create('error in based integer input: invalid digit');
         if digit >= base then
@@ -212,7 +207,7 @@ end;
         inum := inum + digit;
       end;
       FChar.NextCh
-    until not (FChar.Ch in ['0'..'9', 'A'..'Z', 'a'..'z']);
+    until not (FChar.GetCh in ['0'..'9', 'A'..'Z', 'a'..'z']);
     if negative then
     begin
       if inum = 0 then raise EInpChk.Create('error in based integer input: read negative zero');
@@ -230,12 +225,12 @@ end;
     Result := 0;
     if FChar.HasNextCh then
     begin
-      if not (FChar.Ch in ['0'..'9']) then
-        raise EInpChk.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [FChar.Ch, Ord(FChar.Ch)]);
+      if not (FChar.GetCh in ['0'..'9']) then
+        raise EInpChk.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
 
       ReadUnsignedInt(Result);
       Result := Result * sign;
-      if FChar.Ch = '#' then
+      if FChar.GetCh = '#' then
         ReadBasedInt(Result);
     end;
   end;
@@ -250,7 +245,7 @@ end;
     FChar.NextCh;
     sign := ReadSign;
 
-    if not (FChar.Ch in ['0'..'9']) then
+    if not (FChar.GetCh in ['0'..'9']) then
       raise EInpChk.Create('error in numeric input');
 
     s := 0;
@@ -260,7 +255,7 @@ end;
         if s > (intmax div 10) then
           raise EInpChk.Create('error in numeric input');
         s := 10 * s;
-        digit := Ord(FChar.Ch) - Ord('0');
+        digit := Ord(FChar.GetCh) - Ord('0');
 
         if digit > (intmax - s) then
           raise EInpChk.Create('error in numeric input');
@@ -268,7 +263,7 @@ end;
         s := s + digit;
       end;
       FChar.NextCh
-    until not (FChar.Ch in ['0'..'9']);
+    until not (FChar.GetCh in ['0'..'9']);
 
     e := s * sign + e;
   end;
@@ -320,17 +315,17 @@ end;
 
     if FChar.HasNextCh then
     begin
-      if not (FChar.Ch in ['0'..'9']) then
-        raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [FChar.Ch, Ord(FChar.Ch)]);
+      if not (FChar.GetCh in ['0'..'9']) then
+        raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
 
-      while FChar.Ch = '0' do
+      while FChar.GetCh = '0' do
         FChar.NextCh;
 
       Result := 0.0;
 
       k := 0;
       e := 0;
-      while FChar.Ch in ['0'..'9'] do
+      while FChar.GetCh in ['0'..'9'] do
       begin
         if Result > (realmax / 10.0) then
           e := e + 1
@@ -338,23 +333,23 @@ end;
         begin
           k := k + 1;
           Result := Result * 10.0;
-          digit := Ord(FChar.Ch) - Ord('0');
+          digit := Ord(FChar.GetCh) - Ord('0');
           if digit <= (realmax - Result) then
             Result := Result + digit;
         end;
         FChar.NextCh;
       end;
-      if FChar.Ch = '.' then
+      if FChar.GetCh = '.' then
       begin  (* fractional part *)
         FChar.NextCh;
         repeat
-          if FChar.Ch in ['0'..'9'] then
+          if FChar.GetCh in ['0'..'9'] then
           begin
             if Result <= (realmax / 10.0) then
             begin
               e := e - 1;
               Result := 10.0 * Result;
-              digit := Ord(FChar.Ch) - Ord('0');
+              digit := Ord(FChar.GetCh) - Ord('0');
               if digit <= (realmax - Result) then
                 Result := Result + digit;
             end;
@@ -362,14 +357,14 @@ end;
           end
           else
             raise EInpChk.Create('error in numeric input');
-        until not (FChar.Ch in ['0'..'9']);
-        if FChar.Ch in ['e', 'E'] then
+        until not (FChar.GetCh in ['0'..'9']);
+        if FChar.GetCh in ['e', 'E'] then
           readscale(e);
         if e <> 0 then
           adjustscale(Result, k, e);
       end  (* fractional part *)
       else
-      if FChar.Ch in ['e', 'E'] then
+      if FChar.GetCh in ['e', 'E'] then
       begin
         readscale(e);
         if e <> 0 then
