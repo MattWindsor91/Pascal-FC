@@ -32,14 +32,16 @@
         <PackageName Value="FCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="6">
       <Unit0>
         <Filename Value="pfctests.lpr"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="pinttests"/>
       </Unit0>
       <Unit1>
         <Filename Value="tstack.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="TStack"/>
       </Unit1>
       <Unit2>
         <Filename Value="istack.pas"/>
@@ -51,6 +53,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="TStrUtil"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="treader.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="TReader"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="ireader.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="IReader"/>
+      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

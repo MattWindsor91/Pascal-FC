@@ -67,8 +67,8 @@ type
     function HasNextCh: boolean;
   end;
 
-  { TReader reads integers and reals from an input source. }
-  TReader = class(TObject)
+  { TNumReader reads integers and reals from an input source. }
+  TNumReader = class(TObject)
     private
       FChar: ICharReader;
 
@@ -90,10 +90,10 @@ type
       procedure ReadScale(var e: integer);
 
     public
-      { Constructs a TReader with a standard input-reading ICharReader. }
+      { Constructs a TNumReader with a standard input-reading ICharReader. }
       constructor Create;
 
-      { Constructs a TReader with a given ICharReader. }
+      { Constructs a TNumReader with a given ICharReader. }
       constructor Create(cr: ICharReader);
 
       { Reads an integer. }
@@ -133,17 +133,17 @@ implementation
     Result := not EOF;
   end;
 
-  constructor TReader.Create;
+  constructor TNumReader.Create;
   begin
     FChar := TStdinCharReader.Create;
   end;
 
-  constructor TReader.Create(cr: ICharReader);
+  constructor TNumReader.Create(cr: ICharReader);
   begin
     FChar := cr;
   end;
 
-function TReader.ReadSign: TSign;
+function TNumReader.ReadSign: TSign;
 var
   sign: TSign;
 begin
@@ -160,7 +160,7 @@ begin
   Result := sign;
 end;
 
-  procedure TReader.SkipBlanks;
+  procedure TNumReader.SkipBlanks;
   begin
     while FChar.HasNextCh and ShouldSkip(FChar.GetCh) do
       FChar.NextCh;
@@ -168,7 +168,7 @@ end;
     if not FChar.HasNextCh then raise ERedChk.Create('reading past end of file');
   end;
 
-  procedure TReader.ReadUnsignedInt(var inum: integer);
+  procedure TNumReader.ReadUnsignedInt(var inum: integer);
   var
     digit: integer;
   begin
@@ -191,7 +191,7 @@ end;
     until not (FChar.GetCh in ['0'..'9']);
   end;
 
-  procedure TReader.ReadBasedInt(var inum: integer);
+  procedure TNumReader.ReadBasedInt(var inum: integer);
   var
     digit, base: integer;
     negative: boolean;
@@ -241,7 +241,7 @@ end;
     end;
   end;  (* readbasedint *)
 
-  function TReader.ReadInt: integer;
+  function TNumReader.ReadInt: integer;
   var
     sign: TSign;
   begin
@@ -261,7 +261,7 @@ end;
     end;
   end;
 
-  procedure TReader.ReadScale(var e: integer);
+  procedure TNumReader.ReadScale(var e: integer);
   var
     sign: TSign;
     s, digit: integer;
@@ -331,7 +331,7 @@ end;
       rnum := rnum / t;
   end;
 
-  function TReader.ReadReal: real;
+  function TNumReader.ReadReal: real;
   var
     sign: TSign;
     k, e, digit: integer;
