@@ -74,8 +74,8 @@ var
     time: integer
   end;
 
-  { The TReader used to read integers and reals. }
-  reader: TReader;
+  { The TNumReader used to read integers and reals. }
+  reader: TNumReader;
 
 
   function itob(i: integer): boolean;
@@ -2497,7 +2497,7 @@ begin  (* Main *)
 
   ReadPCode(objrec, ParamStr(1));
 
-  reader := TReader.Create;
+  reader := TNumReader.Create;
 
   repeat
 

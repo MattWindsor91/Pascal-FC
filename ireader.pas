@@ -120,6 +120,8 @@ implementation
 
   procedure TStdinCharReader.NextCh;
   begin
+    if EOF then
+       raise ERedChk.Create('reading past end of file');
     Read(FCh);
   end;
 
@@ -164,8 +166,6 @@ end;
   begin
     while FChar.HasNextCh and ShouldSkip(FChar.GetCh) do
       FChar.NextCh;
-
-    if not FChar.HasNextCh then raise ERedChk.Create('reading past end of file');
   end;
 
   procedure TNumReader.ReadUnsignedInt(var inum: integer);
