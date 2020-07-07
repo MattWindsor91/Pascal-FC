@@ -62,6 +62,7 @@ TBTabRec =
 end;
 TBTabArray = array[1..bmax] of TBTabRec;
 
+{ Type of string tables. }
 TSTabArray = packed array[0..smax] of char;
 TRealArray = array[1..rmax] of real;
 

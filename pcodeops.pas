@@ -177,12 +177,18 @@ const
     x: Unused.
     y: 1 for integer; 3 for char; 4 for real }
   pReadip = 27;
+
   { 028 Write string
 
-    x: If 1, pop an amount to left-pad the string off the stack.
+    Pop the length of the string to write, then write that many characters
+    from the string table beginning at 'y', optionally with padding if 'x' is 1.
+
+    x: If 1, pop a target length before the actual length, and left-pad the
+       string to that length.
        If 0, don't left-pad.
     y: The location of the begining of the string in genstab. }
   pWrstr = 28;
+
   { 029 Write value
 
     Pop a value off the stack, interpret it according to y, and write it to

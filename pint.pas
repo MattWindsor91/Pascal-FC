@@ -23,6 +23,7 @@ program pint;
 
 uses
   SysUtils,
+  StrUtils,
   PCodeOps,
   PCodeObj,
   GConsts,
@@ -958,6 +959,11 @@ var
       CheckStackOverflow(p);
     end;
 
+    procedure DecStackPointer(p: TProcessID);
+    begin
+      processes[p].t := processes[p].t - 1;
+    end;
+
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
     procedure PushInteger(p: TProcessID; i: integer);
     begin
@@ -989,14 +995,14 @@ var
     function PopInteger(p: TProcessID): integer;
     begin
       Result := StackLoadInteger(stack, processes[p].t);
-      processes[p].t := processes[p].t - 1;
+      DecStackPointer(p);
     end;
 
     { Pops a real from the stack segment for process 'p'. }
     function PopReal(p: TProcessID): real;
     begin
       Result := StackLoadReal(stack, processes[p].t);
-      processes[p].t := processes[p].t - 1;
+      DecStackPointer(p);
     end;
 
     { Pops a Boolean from the stack segment for process 'p'. }
@@ -1010,6 +1016,7 @@ var
     begin
       Result := processes[p].display[x] + y;
     end;
+
 
     procedure RunLdadr(p: TProcessID; x, y: integer);
     begin
@@ -1545,6 +1552,29 @@ var
       end;
     end;
 
+    procedure RetrieveString(out s: ansistring; base, len: sizeint);
+    begin
+      SetString(s, @objrec.genstab[base], len);
+    end;
+
+    procedure RunWrstr(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+       padLen: integer;   { Target string length, plus any padding. }
+       strBase: integer;  { Base index of string in string table. }
+       strLen: integer;   { Length of string to write. }
+       str: ansistring;   { The string itself. }
+    begin
+      padLen := 0;
+      if x = 1 then
+      begin
+        padLen := PopInteger(p);
+      end;
+      strLen := PopInteger(p);
+      strBase := y;
+      RetrieveString(str, strBase, strLen);
+      Write(PadLeft(str, padLen));
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1574,28 +1604,7 @@ var
           pLdconR: PushReal(p, objrec.genrconst[ir.y]);
           pIfloat: RunIfloat(p, ir.y);
           pReadip: RunReadip(p, ir.y);
-          pWrstr:
-          begin
-            if ir.x = 1 then
-            begin
-              h3 := PopInteger(p);
-            end
-            else
-              h3 := 0;
-            h1 := stack[t].i;
-            h2 := ir.y;
-            t := t - 1;
-            while h3 > h1 do
-            begin
-              Write(' ');
-              h3 := h3 - 1;
-            end;
-            repeat
-              Write(objrec.genstab[h2]);
-              h1 := h1 - 1;
-              h2 := h2 + 1
-            until h1 = 0;
-          end;
+          pWrstr: RunWrstr(p, ir.x, ir.y);
 
           pWrval:
           begin
