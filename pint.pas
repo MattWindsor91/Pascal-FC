@@ -1375,7 +1375,7 @@ var
 
     { Executes a 'for2up' instruction on process 'p', with Y-value 'y'.
 
-      See the entry for 'pFor2up' in the 'Opcodes' unit for details. }
+      See the entry for 'pFor2up' in the 'PCodeOps' unit for details. }
     procedure RunFor2up(p: TProcessID; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
@@ -1399,6 +1399,9 @@ var
       end
     end;
 
+    { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and Y-value 'y'.
+
+      See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
     procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
     begin
       with processes[p] do
@@ -1572,7 +1575,7 @@ var
       strLen := PopInteger(p);
       strBase := y;
       RetrieveString(str, strBase, strLen);
-      Write(PadLeft(str, padLen));
+      Write(str: padLen);
     end;
 
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
