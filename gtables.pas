@@ -45,12 +45,14 @@ TTabRec =
 end;
 TTabArray = array[0..tmax] of TTabRec;
 
+{ Type of elements in the array table. }
 TATabRec =
   packed record
   inxtyp, eltyp: TType;
   inxref, elref: TIndex;
   low, high, elsize, size: TIndex;
 end;
+{ Type of array tables. }
 TATabArray = array[1..amax] of TATabRec;
 
 TBTabRec =

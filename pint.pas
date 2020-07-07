@@ -1448,10 +1448,18 @@ var
       end;
     end;
 
+    { Calculates an array index pointer from the given base pointer, index,
+      array lower bound, and element size. }
+    function ArrayIndexPointer(base, index, lbound, size: integer): integer;
+    begin
+      ArrayIndexPointer := base + (index - lbound) * size;
+    end;
+
     procedure RunIxary(p: TProcessID; y: TYArgument);
     var
       arrTypeID: integer;
       arrbaseAddr: TStackAddress;
+      arrRec: TATabRec;
       index: integer;
       lbound: integer;
       hbound: integer;
@@ -1460,9 +1468,10 @@ var
       index := PopInteger(p);
 
       arrTypeID := y;
-      lbound := objrec.genatab[arrTypeID].low;
-      hbound := objrec.genatab[arrTypeID].high;
-      elsize := objrec.genatab[arrTypeId].elsize;
+      arrRec := objrec.genatab[arrTypeID];
+
+      lbound := arrRec.low;
+      hbound := arrRec.high;
 
       if index < lbound then
         ps := inxchk
@@ -1471,8 +1480,9 @@ var
         ps := inxchk
       else
       begin
+        elsize := arrRec.elsize;
         arrbaseAddr := PopInteger(p);
-        PushInteger(p, arrBaseAddr + (index - lbound) * elsize);
+        PushInteger(p, ArrayIndexPointer(arrBaseAddr, index, lbound, elsize));
       end;
     end;
 
