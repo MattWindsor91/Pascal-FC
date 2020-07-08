@@ -1438,10 +1438,25 @@ var
       end;
     end;
 
-    procedure SetBasePointer(p: TProcessID; out oldBase: TStackAddress);
+    { Sets 'p''s base pointer to the given value, placing the previous base
+      address in 'oldBase'. }
+    procedure SetBase(p: TProcessID; newBase: TStackAddress; out oldBase: TStackAddress);
     begin
       oldBase := processes[p].b;
-      processes[p].b := processes[p].t;
+      processes[p].b := newBase;
+    end;
+
+    { Sets 'p''s base pointer to the stack pointer, placing the previous base
+      address in 'oldBase'. }
+    procedure AdvanceBase(p: TProcessID; out oldBase: TStackAddress);
+    begin
+      SetBase(p, processes[p].t, oldBase);
+    end;
+
+    { Sets 'p''s stack pointer to the base pointer. }
+    procedure ReturnToBase(p: TProcessID);
+    begin
+      processes[p].t := processes[p].b;
     end;
 
     { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
@@ -1471,7 +1486,7 @@ var
       level := tabRec.lev;
       processes[p].display[level + 1] := processes[p].t;
 
-      SetBasePointer(p, oldBase);
+      AdvanceBase(p, oldBase);
 
       { At the base of the new stack frame, we push the current program
         counter, the display(?), and then the base pointer }
@@ -1664,23 +1679,28 @@ var
       PopWrite(p, y, width);
     end;
 
-    procedure RunRetproc(p: TProcessID; y: TYArgument);
+    procedure Deactivate(p: TProcessID);
     begin
-      with processes[p] do
-      begin
-        t := b - 1;
-        pc := stack[b + 1].i;
-        { Are we returning from the main procedure? }
-        if pc <> 0 then
-          b := stack[b + 3].i
-        else
-        begin
-          npr := npr - 1;
-          active := False;
-          stepcount := 0;
-          processes[0].active := (npr = 0);
-        end;
-      end;
+      npr := npr - 1;
+      processes[p].active := False;
+      stepcount := 0;
+      processes[0].active := (npr = 0);
+    end;
+
+    procedure RunRetproc(p: TProcessID; y: TYArgument);
+    var
+      oldBase: TStackAddress;
+    begin
+      ReturnToBase(p);
+      { Above us is the programme counter, display address, and base address. }
+      IncStackPointer(p, 3);
+      SetBase(p, PopInteger(p), oldBase);
+      PopInteger(p); { Ignore display address }
+      processes[p].pc := PopInteger(p);
+
+      { Are we returning from the main procedure? }
+      if processes[p].pc = 0 then
+        Deactivate(p);
     end;
 
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
