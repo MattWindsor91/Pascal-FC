@@ -1428,12 +1428,12 @@ var
       { TODO: is this correct?
         Hard to tell if it's an intentional overstatement of what the
         stack space will grow to. }
-      CheckStackOverflow(curpr, vsize);
+      CheckStackOverflow(p, vsize);
 
       { Reserving space for the new stack base, program counter, and level(?). }
-      IncStackPointer(curpr, 3);
-      PushInteger(curpr, vsize - 1);
-      PushInteger(curpr, tabAddr);
+      IncStackPointer(p, 3);
+      PushInteger(p, vsize - 1);
+      PushInteger(p, tabAddr);
     end;
 
     procedure StartProcessBuild;
@@ -1452,7 +1452,7 @@ var
     procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
     begin
       if x = 1 then StartProcessBuild;
-      MarkStack(p, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
+      MarkStack(curpr, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
     end;
 
     { Sets 'p''s base pointer to the given value, placing the previous base
@@ -1520,7 +1520,7 @@ var
       else
         PushInteger(p, oldBase);
 
-      for i := 1 to cap-y do
+      for i := 0 to cap-y do
         PushInteger(p, 0);
 
       processes[p].pc := tabRec.taddr;
@@ -1530,7 +1530,7 @@ var
       array lower bound, and element size. }
     function ArrayIndexPointer(base, index, lbound, size: integer): integer;
     begin
-      ArrayIndexPointer := base + (index - lbound) * size;
+      Result := base + (index - lbound) * size;
     end;
 
     { Executes an 'ixary' instruction on process 'p', with Y-value 'y'.
