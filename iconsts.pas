@@ -39,7 +39,6 @@ const
   minreal = 1e-37;       { smallest real (for division) }
   bsmsb = 7;             { most sig. bit in target bitset }
   sfsize = 6;            { size of "frame" in a select statement }
-
 implementation
 
 end.

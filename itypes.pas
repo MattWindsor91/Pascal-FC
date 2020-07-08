@@ -86,6 +86,7 @@ type
   EInpChk = class(EInterpreterFault);
   ERedChk = class(EInterpreterFault);
 
+  ENotAChar = class(EInterpreterFault);
 implementation
 
 end.

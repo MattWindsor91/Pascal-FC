@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -53,6 +53,15 @@ const
 
   entrysize = 3;         { space for a process entry point }
 
+  {#
+   # Primitive type identifiers
+   #}
+
+  ptyInt = 1;
+  ptyBool = 2;
+  ptyChar = 3;
+  ptyReal = 4;
+  ptyBitset = 5;
 implementation
 
 end.

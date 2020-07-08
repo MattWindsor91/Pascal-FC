@@ -64,7 +64,7 @@ const
     Pop an integer.  If the integer is zero, behave as 'jmp'.
 
     x: Unused.
-    y: The program counter to jump to, if the popped value is zero. }
+    y: Program counter to jump to, if the popped value is zero. }
   pJmpiz = 11;
 
   {#
@@ -81,7 +81,7 @@ const
     Else, push back 'testValue'.
 
     x: Unused.
-    y: The program counter to jump to (if 'caseValue' = 'testValue').
+    y: Program counter to jump to (if 'caseValue' = 'testValue').
 
     NOTE: The correct 'caseValue' should be pushed onto the stack before each
     'case1' using 'ldconI'. }
@@ -114,7 +114,7 @@ const
     original order, and set the integer at stack address 'lcAddr' to 'lcFrom'.
 
     x: Unused.
-    y: The program counter to jump to (if 'lcFrom' > 'lcTo').
+    y: Program counter to jump to (if 'lcFrom' > 'lcTo').
        This should point to the end of the for loop. }
   pFor1up = 14;
 
@@ -133,7 +133,7 @@ const
     jump to 'y'.
 
     x: Unused.
-    y: The program counter to jump to (if the new loop counter <= 'lcTo').
+    y: Program counter to jump to (if the new loop counter <= 'lcTo').
        This should point to the end of the for loop. }
   pFor2up = 15;
 
@@ -148,8 +148,23 @@ const
   { 019 Call subroutine }
   pCallsub = 19;
   { 020 UNUSED }
-  { 021 Index array? }
+
+  { 021 Index array
+
+    Top of stack must contain:
+
+    - an integer 'index' containing the desired index within the array;
+    - a stack address 'baseAddr' containing the address of the array to index.
+
+    Pop 'index', check that it is in bounds for the array whose type record is
+    at 'y' in the table.  If so, pop 'baseAddr' and push the address of the
+    element at index 'index' in the array located at 'baseAddr'.
+
+    x: Unused.
+    y: Index of the array type record in the array table.
+  }
   pIxary = 21;
+
   { 022 Load block }
   pLdblk = 22;
   { 023 Copy block }
@@ -214,14 +229,14 @@ const
 
     Pops an address from the top of the stack and pushes the contents of
     the stack location it addresses.
-    
+
     x: Unused.
     y: Unused. }
   pRepadr = 34;
   { 035 Logical negate
 
     Pops a Boolean from the top of the stack and pushes its logical negation.
-  
+
     x: Unused.
     y: Unused. }
   pNotop = 35;
@@ -307,18 +322,18 @@ const
   pMretn = 72;
   { 073 UNUSED }
   { 074 Check lower bound
-  
+
     Raises a bound check fault if the integer at the top of the stack is below
     y.
-    
+
     x: Unused.
     y: The lower bound. }
   pLobnd = 74;
   { 075 Check upper bound
-  
+
     Raises a bound check fault if the integer at the top of the stack is above
     y.
-    
+
     x: Unused.
     y. The upper bound. }
   pHibnd = 75;

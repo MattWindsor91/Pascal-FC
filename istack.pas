@@ -91,6 +91,9 @@ type
     { Checks if the stack pointer is out of bounds. }
     procedure CheckBounds;
 
+    { Increases the frame pointer. }
+    procedure Advance;
+
   public
     { TODO: these should stop being public }
 
@@ -110,6 +113,9 @@ type
     { Pushes a real to the current frame. }
     procedure PushReal(r: real);
 
+    { Pushes a bitset to the current frame. }
+    procedure PushBitset(bs: Powerset);
+
     { Pushes a record to the current frame. }
     procedure PushRecord(s: TStackRecord);
 
@@ -118,6 +124,9 @@ type
 
     { Pops a real from the current frame. }
     function PopReal: real;
+
+    { Pops a bitset from the current frame. }
+    function PopBitset: Powerset;
 
     { Pops a record from the current frame. }
     function PopRecord: TStackRecord;
@@ -130,6 +139,9 @@ function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
 { Reads an real from the stack zone 's' at address 'a'. }
 function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
 
+{ Reads a bitset from the stack zone 's' at address 'a'. }
+function StackLoadBitset(var s: TStackZone; a: TStackAddress): Powerset;
+
 { Reads a stack record from the stack zone 's' at address 'a'. }
 function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
 
@@ -138,6 +150,9 @@ procedure StackStoreInteger(var s: TStackZone; a: TStackAddress; i: integer);
 
 { Writes a real 'r' to the stack zone 's' at address 'a'. }
 procedure StackStoreReal(var s: TStackZone; a: TStackAddress; r: real);
+
+{ Writes a bitset 'bs' to the stack zone 's' at address 'a'. }
+procedure StackStoreBitset(var s: TStackZone; a: TStackAddress; bs: Powerset);
 
 { Writes a stack record 'r' to the stack 's' at address 'a'. }
 procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
@@ -154,11 +169,15 @@ procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
 
 implementation
 
-function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
+procedure CheckInt(var s: TStackZone; a: TStackAddress);
 begin
   if s[a].tp <> ints then
-    raise EPfcStackTypeError.Create('expected integer');
+  raise EPfcStackTypeError.Create('expected integer');
+end;
 
+function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
+begin
+  CheckInt(s, a);
   Result := s[a].i;
 end;
 
@@ -168,6 +187,14 @@ begin
     raise EPfcStackTypeError.Create('expected real');
 
   Result := s[a].r;
+end;
+
+function StackLoadBitset(var s: TStackZone; a: TStackAddress): Powerset;
+begin
+  if s[a].tp <> bitsets then
+    raise EPfcStackTypeError.Create('expected bitset');
+
+  Result := s[a].bs;
 end;
 
 function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
@@ -187,6 +214,12 @@ begin
   s[a].r := r;
 end;
 
+procedure StackStoreBitset(var s: TStackZone; a: TStackAddress; bs: Powerset);
+begin
+  s[a].tp := bitsets;
+  s[a].bs := bs;
+end;
+
 procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
 begin
   s[a] := r;
@@ -194,17 +227,13 @@ end;
 
 procedure StackIncInteger(var s: TStackZone; a: TStackAddress);
 begin
-  if s[a].tp <> ints then
-    raise EPfcStackTypeError.Create('expected integer');
-
+  CheckInt(s, a);
   Inc(s[a].i);
 end;
 
 procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
 begin
-  if s[a].tp <> ints then
-    raise EPfcStackTypeError.Create('expected integer');
-
+  CheckInt(s, a);
   s[a].i := s[a].i + delta;
 end;
 
@@ -235,24 +264,33 @@ begin
   CheckBoundsAfter(0);
 end;
 
-procedure TStackSegment.PushInteger(i: integer);
+procedure TStackSegment.Advance;
 begin
   Inc(frameTop);
   CheckBounds;
+end;
+
+procedure TStackSegment.PushInteger(i: integer);
+begin
+  Advance;
   StackStoreInteger(zone^, frameTop, i);
 end;
 
 procedure TStackSegment.PushReal(r: real);
 begin
-  Inc(frameTop);
-  CheckBounds;
+  Advance;
   StackStoreReal(zone^, frameTop, r);
+end;
+
+procedure TStackSegment.PushBitset(bs: Powerset);
+begin
+  Advance;
+  StackStoreBitset(zone^, frameTop, bs);
 end;
 
 procedure TStackSegment.PushRecord(s: TStackRecord);
 begin
-  Inc(frameTop);
-  CheckBounds;
+  Advance;
   StackStoreRecord(zone^, frameTop, s);
 end;
 
@@ -267,6 +305,13 @@ function TStackSegment.PopReal: real;
 begin
   CheckBounds;
   Result := StackLoadReal(zone^, frameTop);
+  Dec(frameTop);
+end;
+
+function TStackSegment.PopBitset: Powerset;
+begin
+  CheckBounds;
+  Result := StackLoadBitset(zone^, frameTop);
   Dec(frameTop);
 end;
 

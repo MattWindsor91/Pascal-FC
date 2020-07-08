@@ -41,7 +41,7 @@ var
   stantyps: TTypeSet;
   ch: char;
 
-  ps: (run, fin, divchk, inxchk, charchk, channerror,
+  ps: (run, fin, divchk, inxchk, channerror,
     guardchk, queuechk, statchk, nexistchk, namechk, casechk,
     bndchk, instchk, setchk, ovchk, seminitchk);
 
@@ -326,8 +326,6 @@ var
         writeln(tofile, 'division by 0');
       inxchk:
         writeln(tofile, 'invalid index ');
-      charchk:
-        writeln(tofile, 'illegal or uninitialised character');
       channerror:
         writeln(tofile, 'channel error');
       guardchk:
@@ -998,6 +996,13 @@ var
       DecStackPointer(p);
     end;
 
+    { Pops a bitset from the stack segment for process 'p'. }
+    function PopBitset(p: TProcessID): Powerset;
+    begin
+      Result := StackLoadBitset(stack, processes[p].t);
+      DecStackPointer(p);
+    end;
+
     { Pops a real from the stack segment for process 'p'. }
     function PopReal(p: TProcessID): real;
     begin
@@ -1164,6 +1169,13 @@ var
       PushBoolean(p, RealRelOp(ro, l, r));
     end;
 
+    function AsChar(x: integer): char;
+    begin
+      if not (x in [charl..charh]) then
+        raise EProcNchk.CreateFmt('expected char, but got out-of-bounds %D', [x]);
+      Result := Chr(x);
+    end;
+
     procedure RunStfun(p: TProcessID; y: integer);
     begin
       with processes[p] do
@@ -1184,8 +1196,8 @@ var
             stack[t].r := sqr(stack[t].r);
         4:
           stack[t].i := btoi(odd(stack[t].i));
-        5: if not (stack[t].i in [charl..charh]) then
-            ps := charchk;
+        5: { check character overflow }
+          AsChar(stack[t].i);
         6: ;
         7:  (* succ *)
           stack[t].i := stack[t].i + 1;
@@ -1299,7 +1311,7 @@ var
 
     { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.
 
-      See the entry for 'ixrec' in the 'Opcodes' unit for details. }
+      See the entry for 'ixrec' in the 'PCodeOps' unit for details. }
     procedure RunIxrec(p: TProcessID; y: TYArgument);
     var
       ix: integer; { Unsure what this actually is. }
@@ -1320,7 +1332,7 @@ var
 
     { Executes a 'jmpiz' instruction on process 'p', with Y-value 'y'.
 
-      See the entry for 'pJmpiz' in the 'Opcodes' unit for details. }
+      See the entry for 'pJmpiz' in the 'PCodeOps' unit for details. }
     procedure RunJmpiz(p: TProcessID; y: TYArgument);
     var
       condition : integer;
@@ -1332,7 +1344,7 @@ var
 
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
 
-      See the entry for 'pCase1' in the 'Opcodes' unit for details. }
+      See the entry for 'pCase1' in the 'PCodeOps' unit for details. }
     procedure RunCase1(p: TProcessID; y: TYArgument);
     var
       caseValue: integer; { The value of this leg of the case (popped first). }
@@ -1351,7 +1363,7 @@ var
 
     { Executes a 'for1up' instruction on process 'p', with Y-value 'y'.
 
-      See the entry for 'pFor1up' in the 'Opcodes' unit for details. }
+      See the entry for 'pFor1up' in the 'PCodeOps' unit for details. }
     procedure RunFor1up(p: TProcessID; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
@@ -1399,7 +1411,8 @@ var
       end
     end;
 
-    { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and Y-value 'y'.
+    { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
 
       See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
     procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
@@ -1428,6 +1441,10 @@ var
       end;
     end;
 
+    { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+
+      See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
     procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
     var
       newBase: integer;
@@ -1465,6 +1482,9 @@ var
       ArrayIndexPointer := base + (index - lbound) * size;
     end;
 
+    { Executes an 'ixary' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pIxary' in the 'PCodeOps' unit for details. }
     procedure RunIxary(p: TProcessID; y: TYArgument);
     var
       arrTypeID: integer;
@@ -1496,6 +1516,9 @@ var
       end;
     end;
 
+    { Executes a 'ldblk' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pLdblk' in the 'PCodeOps' unit for details. }
     procedure RunLdblk(p: TProcessID; y: TYArgument);
     var
       srcStart: TStackAddress;  { Start of block to copy. }
@@ -1509,6 +1532,9 @@ var
         PushRecord(p, StackLoadRecord(stack, srcStart + off));
     end;
 
+    { Executes a 'cpblk' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pCpblk' in the 'PCodeOps' unit for details. }
     procedure RunCpblk(p: TProcessID; y: TYArgument);
     var
       srcStart: TStackAddress;  { Start of source block. }
@@ -1521,6 +1547,9 @@ var
         StackStoreRecord(stack, dstStart + off, StackLoadRecord(stack, srcStart + off));
     end;
 
+    { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pIfloat' in the 'PCodeOps' unit for details. }
     procedure RunIfloat(p: TProcessID; y: TYArgument);
     var
       loc: TStackAddress;  { Location to convert to float. }
@@ -1531,6 +1560,9 @@ var
       StackStoreReal(stack, loc, i);
     end;
 
+    { Executes a 'readip' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pReadip' in the 'PCodeOps' unit for details. }
     procedure RunReadip(p: TProcessID; y: TYArgument);
     var
       dest: TStackAddress; { Destination of item being read. }
@@ -1541,31 +1573,37 @@ var
       dest := PopInteger(p);
 
       case y of
-        1:    (* integer *)
+        ptyInt:
           StackStoreInteger(stack, dest, reader.ReadInt);
-        3:    (* char *)
+        ptyChar:
           begin
             if EOF then
               raise ERedChk.Create('reading past end of file');
             Read(ch);
             StackStoreInteger(stack, dest, Ord(ch));
           end;
-        4:  (* real *)
+        ptyReal:
           StackStoreReal(stack, dest, reader.ReadReal);
       end;
     end;
 
+    { Gets a string from the string table at base 'base' with length 'len';
+      stores this string into 's'. }
     procedure RetrieveString(out s: ansistring; base, len: sizeint);
     begin
       SetString(s, @objrec.genstab[base], len);
     end;
 
+    { Executes a 'wrstr' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+
+      See the entry for 'pWrstr' in the 'PCodeOps' unit for details. }
     procedure RunWrstr(p: TProcessID; x: TXArgument; y: TYArgument);
     var
-       padLen: integer;   { Target string length, plus any padding. }
-       strBase: integer;  { Base index of string in string table. }
-       strLen: integer;   { Length of string to write. }
-       str: ansistring;   { The string itself. }
+      padLen: integer;   { Target string length, plus any padding. }
+      strBase: integer;  { Base index of string in string table. }
+      strLen: integer;   { Length of string to write. }
+      str: ansistring;   { The string itself. }
     begin
       padLen := 0;
       if x = 1 then
@@ -1576,6 +1614,45 @@ var
       strBase := y;
       RetrieveString(str, strBase, strLen);
       Write(str: padLen);
+    end;
+
+    function BitsetString(bs: Powerset): ansistring;
+    var
+      i: sizeint;
+    begin
+      Result := StringOfChar('0', bsmsb);
+      for i := 0 to bsmsb do
+        if i in bs then
+          Result[bsmsb - i + 1] := '1';
+    end;
+
+    procedure PopWrite(p: TProcessID; typ: TPrimType; minWidth: integer);
+    begin
+      case typ of
+        ptyInt:
+          Write(PopInteger(p): minWidth);
+        ptyBool:
+          Write(itob(PopInteger(p)): minWidth);
+        ptyChar:
+          Write(AsChar(PopInteger(p)): minWidth);
+        ptyReal:
+          Write(PopReal(p): minWidth);
+        ptyBitset:
+          Write(BitsetString(PopBitset(p)): minWidth);
+      end;
+    end;
+
+    procedure RunWrval(p: TProcessID; y: TYArgument);
+    begin
+      PopWrite(p, y, 0);
+    end;
+
+    procedure RunWrfrm(p: TProcessID; y: TYArgument);
+    var
+      width: integer; { Minimum width of field to format }
+    begin
+      width := PopInteger(p);
+      PopWrite(p, y, width);
     end;
 
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
@@ -1608,64 +1685,9 @@ var
           pIfloat: RunIfloat(p, ir.y);
           pReadip: RunReadip(p, ir.y);
           pWrstr: RunWrstr(p, ir.x, ir.y);
-
-          pWrval:
-          begin
-            case ir.y of
-              1:    (* ints *)
-                Write(stack[t].i);
-              2:  (* bools *)
-                Write(itob(stack[t].i));
-              3:    (* chars *)
-                if (stack[t].i < charl) or (stack[t].i > charh) then
-                  ps := charchk
-                else
-                  Write(chr(stack[t].i));
-              4:  (* reals *)
-                Write(stack[t].r);
-              5:  (* bitsets *)
-                for h1 := bsmsb downto 0 do
-                  if h1 in stack[t].bs then
-                    Write('1')
-                  else
-                    Write('0')
-            end;   (* case *)
-            t := t - 1;
-          end;   (* s9 *)
-
-          pWrfrm:
-          begin
-            h3 := PopInteger(p);  (* field width *)
-            case ir.y of
-              1:
-                Write(stack[t].i: h3);  (* ints *)
-              2:
-                Write(itob(stack[t].i): h3);  (* bools *)
-              3:
-                if (stack[t].i < charl) or (stack[t].i > charh) then
-                  ps := charchk
-                else
-                  Write(chr(stack[t].i): h3);
-              4: Write(stack[t].r: h3);
-              5:
-              begin
-                while h3 > (bsmsb + 1) do
-                begin
-                  Write(' ');
-                  h3 := h3 - 1;
-                end;
-                for h1 := bsmsb downto 0 do
-                  if h1 in stack[t].bs then
-                    Write('1')
-                  else
-                    Write('0');
-              end
-            end;  (* case *)
-            t := t - 1;
-          end;  (* 30 *)
-
-          pStop: ps := fin;
-
+          pWrval: RunWrval(p, ir.y);
+          pWrfrm: RunWrfrm(p, ir.y);
+          pStop: ps := fin; { TODO: replace this with an exception? }
           pRetproc:
           begin
             t := b - 1;

@@ -41,6 +41,9 @@ type
 
   TTypeSet = set of TType;
 
+  { Type of primitive type identifiers }
+  TPrimType = ptyInt .. ptyBitset;
+
 implementation
 
 end.
