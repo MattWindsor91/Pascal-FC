@@ -1687,9 +1687,10 @@ var
       processes[0].active := (npr = 0);
     end;
 
-    procedure RunRetproc(p: TProcessID);
+    { The part of the return convention common to both procedures and functions. }
+    procedure Ret(p: TProcessID);
     var
-      oldBase: TStackAddress;
+      oldBase: TStackAddress; { ignored }
     begin
       ReturnToBase(p);
       { Above us is the programme counter, display address, and base address. }
@@ -1697,8 +1698,12 @@ var
       SetBase(p, PopInteger(p), oldBase);
       PopInteger(p); { Ignore display address }
       processes[p].pc := PopInteger(p);
+    end;
 
-      PopInteger(p);
+    procedure RunRetproc(p: TProcessID);
+    begin
+      Ret(p);
+      PopInteger(p); { TODO(@MattWindsor91): work out where this comes from }
       { Are we returning from the main procedure? }
       if processes[p].pc = 0 then
         Deactivate(p);
@@ -1738,14 +1743,7 @@ var
           pWrfrm: RunWrfrm(p, ir.y);
           pStop: ps := fin; { TODO: replace this with an exception? }
           pRetproc: RunRetproc(p);
-
-          pRetfun:
-          begin
-            t := b;
-            pc := stack[b + 1].i;
-            b := stack[b + 3].i;
-          end;
-
+          pRetfun: Ret(p);
           pRepadr:
             stack[t] := stack[stack[t].i];
 
