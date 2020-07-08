@@ -19,25 +19,39 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Console test runner, for running unit tests without Lazarus. }
-program TConsole;
+{ Interpreter: bitsets
+
+  Pascal-FC supports 8-bit bitsets as a primitive type.  This unit contains
+  interpreter support for these bitsets. }
+
+unit IBitset;
 
 {$mode objfpc}{$H+}
 
-uses
-  Classes,
-  ConsoleTestRunner,
-  TBitset,
-  TStack,
-  TStrUtil;
+interface
 
-var
-  App: TTestRunner;
+const
+  { Most significant bit in bitsets. }
+  bsmsb = 7;
 
-begin
-  App := TTestRunner.Create(nil);
-  App.Initialize;
-  App.Title := 'FPCUnit Console Test Case runner.';
-  App.Run;
-  App.Free;
+type
+  { Type of bitsets. }
+  { TODO(@MattWindsor91): rename to, eg, TBitset }
+  Powerset = set of 0..bsmsb;
+
+{ Returns a string representation of the bitset 'bs'. }
+function BitsetString(bs: Powerset): string;
+
+implementation
+
+  function BitsetString(bs: Powerset): string;
+  var
+    i: sizeint;
+  begin
+    Result := StringOfChar('0', bsmsb + 1);
+    for i := 0 to bsmsb do
+      if i in bs then
+        Result[bsmsb - i + 1] := '1';
+  end;
+
 end.

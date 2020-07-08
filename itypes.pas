@@ -75,7 +75,6 @@ type
   { Type of relational operations. }
   TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
 
-  powerset = set of 0..bsmsb;
 
   EInterpreterFault = class(Exception);
 

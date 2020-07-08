@@ -35,6 +35,7 @@ interface
 
 uses
   SysUtils,
+  IBitset,
   IConsts,
   ITypes,
   GTypes;

@@ -30,7 +30,7 @@ uses
   GTypes,
   IConsts,
   GTables,
-  IStack, itypes, ireader;
+  IBitset, IStack, ITypes, IReader;
 
 (* Pascal-FC interpreter *)
 
@@ -1614,16 +1614,6 @@ var
       strBase := y;
       RetrieveString(str, strBase, strLen);
       Write(str: padLen);
-    end;
-
-    function BitsetString(bs: Powerset): ansistring;
-    var
-      i: sizeint;
-    begin
-      Result := StringOfChar('0', bsmsb);
-      for i := 0 to bsmsb do
-        if i in bs then
-          Result[bsmsb - i + 1] := '1';
     end;
 
     procedure PopWrite(p: TProcessID; typ: TPrimType; minWidth: integer);

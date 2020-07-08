@@ -1,12 +1,17 @@
 all: pfccomp pint
 
-pfccomp: pfccomp.pas gconsts.pas gtypes.pas gtables.pas gstrutil.pas cconsts.pas pcodeobj.pas pcodeops.pas
+cunits := cconsts.pas
+iunits := ibitset.pas iconsts.pas itypes.pas istack.pas
+gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
+punits := pcodeobj.pas pcodeops.pas
+
+pfccomp: pfccomp.pas ${gunits} ${cunits} ${punits}
 	fpc -Mobjfpc -g $<
 
-pint: pint.pas iconsts.pas itypes.pas istack.pas gconsts.pas gtypes.pas gtables.pas pcodeobj.pas pcodeops.pas
+pint: pint.pas ${gunits} ${iunits} ${punits}
 	fpc -Mobjfpc -g $<
 
-tconsole: tconsole.pas tstack.pas tstrutil.pas
+tconsole: tconsole.pas tbitset.pas tstack.pas tstrutil.pas ${gunits} ${iunits}
 	fpc -Mobjfpc -g $<
 
 install: pfccomp pint
