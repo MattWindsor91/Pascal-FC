@@ -1687,7 +1687,7 @@ var
       processes[0].active := (npr = 0);
     end;
 
-    procedure RunRetproc(p: TProcessID; y: TYArgument);
+    procedure RunRetproc(p: TProcessID);
     var
       oldBase: TStackAddress;
     begin
@@ -1698,6 +1698,7 @@ var
       PopInteger(p); { Ignore display address }
       processes[p].pc := PopInteger(p);
 
+      PopInteger(p);
       { Are we returning from the main procedure? }
       if processes[p].pc = 0 then
         Deactivate(p);
@@ -1736,7 +1737,7 @@ var
           pWrval: RunWrval(p, ir.y);
           pWrfrm: RunWrfrm(p, ir.y);
           pStop: ps := fin; { TODO: replace this with an exception? }
-          pRetproc: RunRetproc(p, ir.y);
+          pRetproc: RunRetproc(p);
 
           pRetfun:
           begin
