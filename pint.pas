@@ -2344,7 +2344,7 @@ var
 
           pMexec:
           begin  (* execute monitor body code *)
-            PushInteger(pc, p);
+            PushInteger(p, pc);
             pc := ir.y;
           end;
 
