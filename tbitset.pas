@@ -34,6 +34,7 @@ uses
 type
   TBitsetTestCase = class(TTestCase)
   published
+    { Tests that BitsetString stringifies bitsets appropriately. }
     procedure TestBitsetString;
   end;
 
