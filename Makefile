@@ -5,14 +5,16 @@ iunits := ibitset.pas iconsts.pas itypes.pas istack.pas
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
 punits := pcodeobj.pas pcodeops.pas
 
+FLAGS := -Mobjfpc -g
+
 pfccomp: pfccomp.pas ${gunits} ${cunits} ${punits}
-	fpc -Mobjfpc -g $<
+	fpc ${FLAGS} $<
 
 pint: pint.pas ${gunits} ${iunits} ${punits}
-	fpc -Mobjfpc -g $<
+	fpc ${FLAGS}l $<
 
 tconsole: tconsole.pas tbitset.pas tstack.pas tstrutil.pas ${gunits} ${iunits}
-	fpc -Mobjfpc -g $<
+	fpc ${FLAGS} $<
 
 install: pfccomp pint
 	install pint /usr/bin/

@@ -78,6 +78,26 @@ var
   { The TNumReader used to read integers and reals. }
   reader: TNumReader;
 
+  procedure DumpExceptionCallStack(E: Exception);
+  var
+    I: Integer;
+    Frames: PPointer;
+    Report: string;
+  begin
+    Writeln('Exception when running program');
+    Writeln('Stacktrace:');
+    if E <> nil then begin
+      Writeln('Exception class: ', E.ClassName);
+      Writeln('Message: ', E.Message);
+    end;
+    Write(BackTraceStrFunc(ExceptAddr));
+    Frames := ExceptFrames;
+    for I := 0 to ExceptFrameCount - 1 do
+    begin
+      Writeln;
+      Write(BackTraceStrFunc(Frames[I]));
+    end;
+  end;
 
   function itob(i: integer): boolean;
   begin
@@ -2577,7 +2597,12 @@ begin  (* Main *)
 
   repeat
 
-    runprog;
+    try
+      runprog;
+    except
+      on E: Exception do
+        DumpExceptionCallStack(E);
+    end;
     writeln;
     writeln('Type r and RETURN to rerun');
     if EOF then
