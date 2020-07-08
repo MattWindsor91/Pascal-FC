@@ -82,7 +82,6 @@ var
   var
     I: Integer;
     Frames: PPointer;
-    Report: string;
   begin
     Writeln('Exception when running program');
     Writeln('Stacktrace:');
@@ -1424,38 +1423,36 @@ var
       end
     end;
 
+    procedure MarkStack(p: TProcessID; vsize: integer; tabAddr: TStackAddress);
+    begin
+      { TODO: is this correct?
+        Hard to tell if it's an intentional overstatement of what the
+        stack space will grow to. }
+      CheckStackOverflow(curpr, vsize);
+
+      { Reserving space for the new stack base, program counter, and level(?). }
+      IncStackPointer(curpr, 3);
+      PushInteger(curpr, vsize - 1);
+      PushInteger(curpr, tabAddr);
+    end;
+
+    procedure StartProcessBuild;
+    begin
+      if npr = pmax then raise EProcNchk.CreateFmt('more than %D processes', [pmax]);
+
+      npr := npr + 1;
+      concflag := True;
+      curpr := npr;
+    end;
+
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
 
       See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
     procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
-    var
-      vsize: integer;
     begin
-      with processes[p] do
-      begin
-        if x = 1 then
-        begin  (* process *)
-          if npr = pmax then raise EProcNchk.CreateFmt('more than %D processes', [pmax]);
-
-          npr := npr + 1;
-          concflag := True;
-          curpr := npr;
-        end;
-        with processes[curpr] do
-        begin
-          vsize := objrec.genbtab[objrec.gentab[y].ref].vsize;
-        { TODO: is this correct?
-          Hard to tell if it's an intentional overstatement of what the
-          stack space will grow to. }
-          CheckStackOverflow(p, vsize);
-
-          { Reserving space for the new stack base, program counter, and level(?). }
-          IncStackPointer(p, 3);
-          PushInteger(p, vsize - 1);
-          PushInteger(p, y);
-        end;  (* with *)
-      end;
+      if x = 1 then StartProcessBuild;
+      MarkStack(p, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
     end;
 
     { Sets 'p''s base pointer to the given value, placing the previous base
@@ -2561,8 +2558,8 @@ var
 
     except
       on E: EInterpreterFault do begin
-        writeln('Interpreter error.');
-        writeln('Cause: ', E.Message);
+        DumpExceptionCallStack(E);
+        Writeln;
         expmd;
       end;
     end;
@@ -2597,12 +2594,7 @@ begin  (* Main *)
 
   repeat
 
-    try
-      runprog;
-    except
-      on E: Exception do
-        DumpExceptionCallStack(E);
-    end;
+    runprog;
     writeln;
     writeln('Type r and RETURN to rerun');
     if EOF then

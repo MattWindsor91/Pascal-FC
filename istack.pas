@@ -67,7 +67,7 @@ type
 
   { TODO: add segment tracking to TStackZone. }
 
-  EPfcStackError = class(Exception);
+  EPfcStackError = class(EInterpreterFault);
 
   { A stack operation tried to pop a value of the wrong type. }
   EPfcStackTypeError = class(EPfcStackError);
