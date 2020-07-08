@@ -936,30 +936,23 @@ var
 
     { Checks to see if process 'p' will overflow its stack if we push
       'nItems' items onto it. }
-    procedure CheckStackOverflowAfter(nItems: integer; p: TProcessID);
+    procedure CheckStackOverflow(p: TProcessID; nItems: integer = 0);
     begin
       with processes[p] do
         if (t + nItems) > stacksize then
           raise EStkChk.Create('stack overflow');
     end;
 
-
-    { Checks to see if process 'p' has an overflowing stack. }
-    procedure CheckStackOverflow(p: TProcessID);
-    begin
-      CheckStackOverflowAfter(0, p);
-    end;
-
     { Increments the stack pointer for process 'p', checking for overflow. }
-    procedure IncStackPointer(p: TProcessID);
+    procedure IncStackPointer(p: TProcessID; n: integer = 1);
     begin
-      processes[p].t := processes[p].t + 1;
+      processes[p].t := processes[p].t + n;
       CheckStackOverflow(p);
     end;
 
-    procedure DecStackPointer(p: TProcessID);
+    procedure DecStackPointer(p: TProcessID; n: integer = 1);
     begin
-      processes[p].t := processes[p].t - 1;
+      processes[p].t := processes[p].t - n;
     end;
 
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
@@ -1416,6 +1409,8 @@ var
 
       See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
     procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+      vsize: integer;
     begin
       with processes[p] do
       begin
@@ -1427,18 +1422,26 @@ var
           concflag := True;
           curpr := npr;
         end;
-        h1 := objrec.genbtab[objrec.gentab[y].ref].vsize;
         with processes[curpr] do
         begin
+          vsize := objrec.genbtab[objrec.gentab[y].ref].vsize;
         { TODO: is this correct?
           Hard to tell if it's an intentional overstatement of what the
           stack space will grow to. }
-          CheckStackOverflowAfter(h1, p);
-          t := t + 5;
-          stack[t - 1].i := h1 - 1;
-          stack[t].i := y;
+          CheckStackOverflow(p, vsize);
+
+          { Reserving space for the new stack base, program counter, and level(?). }
+          IncStackPointer(p, 3);
+          PushInteger(p, vsize - 1);
+          PushInteger(p, y);
         end;  (* with *)
       end;
+    end;
+
+    procedure SetBasePointer(p: TProcessID; out oldBase: TStackAddress);
+    begin
+      oldBase := processes[p].b;
+      processes[p].b := processes[p].t;
     end;
 
     { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
@@ -1447,32 +1450,48 @@ var
       See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
     procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
     var
-      newBase: integer;
-      tabAddr: integer;
+      tabAddr: integer; { Address to subroutine in symbol table }
+      tabRec: TTabRec;  { Record of subroutine }
       i: integer;
+      cap: integer; { Number of items to reserve on the stack. }
+      level: integer; { Level of subroutine. }
+      oldBase: TStackAddress;
     begin
-      with processes[p] do
-      begin
-        newBase := t - y;
-        tabAddr := stack[newBase + 4].i; (*h2 points to tab*)
-        h3 := objrec.gentab[tabAddr].lev;
-        display[h3 + 1] := newBase;
-        h4 := stack[newBase + 3].i + newBase;
-        stack[newBase + 1].i := pc;
-        stack[newBase + 2].i := display[h3];
-        if x = 1 then
-        begin  (* process *)
-          active := True;
-          stack[newBase + 3].i := processes[0].b;
-          concflag := False;
-        end
-        else
-          stack[newBase + 3].i := processes[p].b;
-        for i := t + 1 to h4 do
-          PushInteger(p, 0);
-        b := newBase;
-        pc := objrec.gentab[tabAddr].taddr;
-      end;
+      { Assuming y has the stack markings from earlier included. }
+      DecStackPointer(p, y - 4);
+      tabAddr := PopInteger(p);
+      cap := PopInteger(p);
+
+      tabRec := objrec.gentab[tabAddr];
+
+      { Now move to the actual new base pointer. }
+      DecStackPointer(p, 2);
+
+      { TODO(@MattWindsor91): what does this piece of code actually do? }
+      level := tabRec.lev;
+      processes[p].display[level + 1] := processes[p].t;
+
+      SetBasePointer(p, oldBase);
+
+      { At the base of the new stack frame, we push the current program
+        counter, the display(?), and then the base pointer }
+      PushInteger(p, processes[p].pc);
+      PushInteger(p, processes[p].display[level]);
+
+      { Saving the base frame of the process to return from(?) }
+      if x = 1 then
+      begin  (* process *)
+        processes[p].active := True;
+        PushInteger(p, processes[0].b);
+        concflag := False;
+      end
+      else
+        PushInteger(p, oldBase);
+
+      for i := 1 to cap-y do
+        PushInteger(p, 0);
+
+      processes[p].pc := tabRec.taddr;
     end;
 
     { Calculates an array index pointer from the given base pointer, index,
@@ -1645,6 +1664,25 @@ var
       PopWrite(p, y, width);
     end;
 
+    procedure RunRetproc(p: TProcessID; y: TYArgument);
+    begin
+      with processes[p] do
+      begin
+        t := b - 1;
+        pc := stack[b + 1].i;
+        { Are we returning from the main procedure? }
+        if pc <> 0 then
+          b := stack[b + 3].i
+        else
+        begin
+          npr := npr - 1;
+          active := False;
+          stepcount := 0;
+          processes[0].active := (npr = 0);
+        end;
+      end;
+    end;
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1678,22 +1716,7 @@ var
           pWrval: RunWrval(p, ir.y);
           pWrfrm: RunWrfrm(p, ir.y);
           pStop: ps := fin; { TODO: replace this with an exception? }
-          pRetproc:
-          begin
-            t := b - 1;
-            pc := stack[b + 1].i;
-            { Are we returning from the main procedure? }
-            if pc <> 0 then
-              b := stack[b + 3].i
-            else
-            begin
-              npr := npr - 1;
-              active := False;
-              stepcount := 0;
-              processes[0].active := (npr = 0);
-
-            end;
-          end;
+          pRetproc: RunRetproc(p, ir.y);
 
           pRetfun:
           begin

@@ -145,7 +145,12 @@ const
     x: 1 if process; 0 otherwise
     y: 0 if process; ID of subroutine to call otherwise }
   pMrkstk = 18;
-  { 019 Call subroutine }
+
+  { 019 Call subroutine
+
+    x: 1 if process; 0 otherwise
+    y: ?
+}
   pCallsub = 19;
   { 020 UNUSED }
 
