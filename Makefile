@@ -1,7 +1,7 @@
 all: pfccomp pint
 
 cunits := cconsts.pas
-iunits := ibitset.pas iconsts.pas itypes.pas istack.pas iop.pas
+iunits := ibitset.pas iconsts.pas ierror.pas itypes.pas istack.pas iop.pas
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
 punits := pcodeobj.pas pcodeops.pas
 

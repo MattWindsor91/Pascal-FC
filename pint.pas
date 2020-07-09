@@ -1170,6 +1170,29 @@ var
         toWake^.suspend := 0;
     end;
 
+    { Runs an integer arith operation 'ao'. }
+    procedure RunIntArithOp(p: TProcessID; ao: TArithOp);
+    var
+      l: integer;    { LHS of arith operation }
+      r: integer;    { RHS of arith operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopInteger(p);
+      l := PopInteger(p);
+      PushInteger(p, IntArithOp(ao, l, r));
+    end;
+
+    { Runs an real arith operation 'ao'. }
+    procedure RunRealArithOp(p: TProcessID; ao: TArithOp);
+    var
+      l: real;       { LHS of arith operation }
+      r: real;       { RHS of arith operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopReal(p);
+      l := PopReal(p);
+      PushReal(p, RealArithOp(ao, l, r));
+    end;
 
     { Runs an integer relational operation 'ro'. }
     procedure RunIntRelOp(p: TProcessID; ro: TRelOp);
@@ -1866,93 +1889,16 @@ var
           pRelgtI: RunIntRelOp(p, roGt);
           pRelgeI: RunIntRelOp(p, roGe);
           pOropB: RunBoolOp(p, boOr);
-
-          pAddI:
-          begin
-            t := t - 1;
-            if ((stack[t].i > 0) and (stack[t + 1].i > 0)) or
-              ((stack[t].i < 0) and (stack[t + 1].i < 0)) then
-              if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].i := stack[t].i + stack[t + 1].i;
-          end;
-
-          pSubI:
-          begin
-            t := t - 1;
-            if ((stack[t].i < 0) and (stack[t + 1].i > 0)) or
-              ((stack[t].i > 0) and (stack[t + 1].i < 0)) then
-              if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].i := stack[t].i - stack[t + 1].i;
-          end;
-
-          pAddR:
-          begin
-            t := t - 1;
-            if ((stack[t].r > 0.0) and (stack[t + 1].r > 0.0)) or
-              ((stack[t].r < 0.0) and (stack[t + 1].r < 0.0)) then
-              if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].r := stack[t].r + stack[t + 1].r;
-          end;
-
-          pSubR:
-          begin
-            t := t - 1;
-            if ((stack[t].r > 0.0) and (stack[t + 1].r < 0.0)) or
-              ((stack[t].r < 0.0) and (stack[t + 1].r > 0.0)) then
-              if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].r := stack[t].r - stack[t + 1].r;
-          end;
-
+          pAddI: RunIntArithOp(p, aoAdd);
+          pSubI: RunIntArithOp(p, aoSub);
+          pAddR: RunRealArithOp(p, aoAdd);
+          pSubR: RunRealArithOp(p, aoSub);
           pAndopB: RunBoolOp(p, boAnd);
-
-          pMulI:
-          begin
-            t := t - 1;
-            if stack[t].i <> 0 then
-              if (maxint div abs(stack[t].i)) < abs(stack[t + 1].i) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].i := stack[t].i * stack[t + 1].i;
-          end;
-
-          pDivopI:
-          begin
-            t := t - 1;
-            if stack[t + 1].i = 0 then
-              ps := divchk
-            else
-              stack[t].i := stack[t].i div stack[t + 1].i;
-          end;
-
-          pModop:
-          begin
-            t := t - 1;
-            if stack[t + 1].i = 0 then
-              ps := divchk
-            else
-              stack[t].i := stack[t].i mod stack[t + 1].i;
-          end;
-
-          pMulR:
-          begin
-            t := t - 1;
-            if (abs(stack[t].r) > 1.0) and (abs(stack[t + 1].r) > 1.0) then
-              if (realmax / abs(stack[t].r)) < abs(stack[t + 1].r) then
-                raise EOverflow.Create('overflow detected');
-            stack[t].r := stack[t].r * stack[t + 1].r;
-          end;
-
-          pDivopR:
-          begin
-            t := t - 1;
-            if stack[t + 1].r < minreal then
-              ps := divchk
-            else
-              stack[t].r := stack[t].r / stack[t + 1].r;
-          end;
+          pMulI: RunIntArithOp(p, aoMul);
+          pDivopI: RunIntArithOp(p, aoDiv);
+          pModop: RunIntArithOp(p, aoMod);
+          pMulR: RunRealArithOp(p, aoMul);
+          pDivopR: RunRealArithOp(p, aoDiv);
 
           pRdlin:
             begin

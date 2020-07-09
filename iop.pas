@@ -28,7 +28,24 @@ unit IOp;
 
 interface
 
+uses IConsts, GConsts, IError;
+
 type
+  { Enumeratinon of arithmetic binary operators. }
+  TArithOp = (
+    aoAdd, { Addition }
+    aoSub, { Subtraction }
+    aoMul, { Multiplication }
+    aoDiv, { Division }
+    aoMod  { Modulo }
+    );
+
+  { Enumeration of Boolean binary operators. }
+  TBoolOp = (
+    boOr, { Logical disjunction }
+    boAnd { Logical conjunction }
+    );
+
   { Enumeration of relational operators. }
   TRelOp = (
     roEq, { Equals }
@@ -39,20 +56,30 @@ type
     roGt  { Greater than }
     );
 
-  { Enumeration of Boolean binary operators. }
-  TBoolOp = (
-    boOr, { Logical disjunction }
-    boAnd { Logical conjunction }
-    );
+{#
+ # Binary operators
+ #}
+
+{ Returns the result of a boolean binary operation on 'l' and 'r'. }
+function BoolOp(bo: TBoolOp; l, r: boolean): boolean;
+
+{# Arithmetic operators #}
+
+{ Returns the result of an arithmetic operation on integers 'l' and 'r'.
+  Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+function IntArithOp(ao: TArithOp; l, r: integer): integer;
+
+{ Returns the result of an arithmetic operation on reals 'l' and 'r'.
+  Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+function RealArithOp(ao: TArithOp; l, r: real): real;
+
+{# Relational operators #}
 
 { Returns the result of a relational operation on integers 'l' and 'r'. }
 function IntRelOp(ro: TRelOp; l, r: integer): boolean;
 
 { Returns the result of a relational operation on reals 'l' and 'r'. }
 function RealRelOp(ro: TRelOp; l, r: real): boolean;
-
-{ Returns the result of a boolean binary operation on 'l' and 'r'. }
-function BoolOp(bo: TBoolOp; l, r: boolean): boolean;
 
 implementation
 
@@ -85,6 +112,62 @@ begin
   case bo of
     boAnd: result := l and r;
     boOr: result := l or r;
+  end;
+end;
+
+{ Checks to see if an integer arithmetic operation will overflow or div-0. }
+procedure CheckIntArithOp(ao: TArithOp; l, r: integer);
+begin
+  case ao of
+    aoAdd, aoSub:
+      { TODO(@MattWindsor91): Are these supposed to be the same check? }
+      if (((l > 0) and (r > 0)) or ((l < 0) and (r < 0))) and ((maxint - abs(l)) < abs(r)) then
+        raise EOverflow.Create('overflow detected');
+    aoMul:
+      if (l <> 0) and ((maxint div abs(l)) < abs(r)) then
+        raise EOverflow.Create('overflow detected');
+    aoDiv, aoMod:
+      if r = 0 then raise EDivZero.Create('division by zero');
+  end;
+end;
+
+{ Checks to see if a real arithmetic operation will overflow or div-0. }
+procedure CheckRealArithOp(ao: TArithOp; l, r: real);
+begin
+  case ao of
+    aoAdd, aoSub:
+      { TODO(@MattWindsor91): Are these supposed to be the same check? }
+      if (((l > 0.0) and (r > 0.0)) or ((l < 0.0) and (r < 0.0))) and ((realmax - abs(l)) < abs(r)) then
+        raise EOverflow.Create('overflow detected');
+    aoMul:
+      if (abs(l) > 1.0) and (abs(r) > 1.0) and ((realmax / abs(l)) < abs(r)) then
+        raise EOverflow.Create('overflow detected');
+    aoDiv:
+      if r < minreal then raise EDivZero.Create('division by zero');
+  end;
+end;
+
+function IntArithOp(ao: TArithOp; l, r: integer): integer;
+begin
+  CheckIntArithOp(ao, l, r);
+  case ao of
+    aoAdd: Result := l + r;
+    aoSub: Result := l - r;
+    aoMul: Result := l * r;
+    aoDiv: Result := l div r;
+    aoMod: Result := l mod r;
+  end;
+end;
+
+function RealArithOp(ao: TArithOp; l, r: real): real;
+begin
+  CheckRealArithOp(ao, l, r);
+  case ao of
+    aoAdd: Result := l + r;
+    aoSub: Result := l - r;
+    aoMul: Result := l * r;
+    aoDiv: Result := l / r;
+    { No real modulus operator }
   end;
 end;
 
