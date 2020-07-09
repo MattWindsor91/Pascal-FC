@@ -1747,6 +1747,19 @@ var
       Write(val: width: prec);
     end;
 
+    { Executes a 'store' instruction on process 'p'.
+
+      See the entry for 'pStore' in the 'PCodeOps' unit for details. }
+    procedure RunStore(p: TProcessID);
+    var
+      rec: TStackRecord;
+      addr: TStackAddress;
+    begin
+      rec := PopRecord(p);
+      addr := PopInteger(p);
+      StackStoreRecord(stack, addr, rec);
+    end;
+
     procedure Deactivate(p: TProcessID);
     begin
       npr := npr - 1;
@@ -1852,12 +1865,7 @@ var
           pNotop: RunNotop(p);
           pNegate: RunNegate(p);
           pW2frm: RunW2frm(p);
-          pStore:
-          begin
-            stack[stack[t - 1].i] := stack[t];
-            t := t - 2;
-          end;
-
+          pStore: RunStore(p);
           pRelequR: RunRealRelOp(p, roEq);
           pRelneqR: RunRealRelOp(p, roNe);
           pRelltR: RunRealRelOp(p, roLt);
