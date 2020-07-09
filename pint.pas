@@ -1742,6 +1742,9 @@ var
       PopPC(p);
     end;
 
+    { Executes a 'retproc' instruction on process 'p'.
+
+      See the entry for 'pRetproc' in the 'PCodeOps' unit for details. }
     procedure RunRetproc(p: TProcessID);
     begin
       Ret(p);
@@ -1749,6 +1752,39 @@ var
       { Are we returning from the main procedure? }
       if processes[p].pc = 0 then
         Deactivate(p);
+    end;
+
+    { Executes a 'repadr' instruction on process 'p'.
+
+      See the entry for 'pRepadr' in the 'PCodeOps' unit for details. }
+    procedure RunRepadr(p: TProcessID);
+    var
+      addr: TStackAddress;
+    begin
+      addr := PopInteger(p);
+      PushRecord(p, StackLoadRecord(stack, addr));
+    end;
+
+    { Executes a 'notop' instruction on process 'p'.
+
+      See the entry for 'pNotop' in the 'PCodeOps' unit for details. }
+    procedure RunNotop(p: TProcessID);
+    var
+      b: boolean;
+    begin
+      b := PopBoolean(p);
+      PushBoolean(p, not b);
+    end;
+
+    { Executes a 'negate' instruction on process 'p'.
+
+      See the entry for 'pNegate' in the 'PCodeOps' unit for details. }
+    procedure RunNegate(p: TProcessID);
+    var
+      i: integer;
+    begin
+      i := PopInteger(p);
+      PushInteger(p, -i);
     end;
 
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
@@ -1786,14 +1822,11 @@ var
           pStop: ps := fin; { TODO: replace this with an exception? }
           pRetproc: RunRetproc(p);
           pRetfun: Ret(p);
-          pRepadr:
-            stack[t] := stack[stack[t].i];
+          pRepadr: RunRepadr(p);
 
-          pNotop:
-            stack[t].i := btoi(not (itob(stack[t].i)));
+          pNotop: RunNotop(p);
 
-          pNegate:
-            stack[t].i := -stack[t].i;
+          pNegate: RunNegate(p);
 
           pW2frm:
           begin    (* formatted reals output *)
