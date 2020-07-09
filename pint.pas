@@ -47,7 +47,7 @@ var
 
   ps: (run, fin, divchk, inxchk, channerror,
     guardchk, queuechk, statchk, nexistchk, namechk, casechk,
-    bndchk, instchk, setchk, ovchk, seminitchk);
+    bndchk, instchk, setchk, seminitchk);
 
   h1, h2, h3, h4: integer;
   h1r: real;
@@ -372,8 +372,6 @@ var
         writeln(tofile, 'multiple activation of a process');
       setchk:
         writeln(tofile, 'bitset value out of bounds');
-      ovchk:
-        writeln(tofile, 'arithmetic overflow');
       seminitchk:
         writeln(tofile, 'attempt to initialise semaphore from process')
     end;  (* case *)
@@ -1224,12 +1222,12 @@ var
           stack[t].r := abs(stack[t].r);
         2:    (* integer sqr *)
           if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].i := sqr(stack[t].i);
         3:    (* real sqr *)
           if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].r := sqr(stack[t].r);
         4:
@@ -1243,12 +1241,12 @@ var
           stack[t].i := stack[t].i - 1;
         9:    (* round *)
           if abs(stack[t].r) >= (intmax + 0.5) then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].i := round(stack[t].r);
         10:  (* trunc *)
           if abs(stack[t].r) >= (intmax + 1.0) then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].i := trunc(stack[t].r);
         11:
@@ -1259,12 +1257,12 @@ var
           stack[t].r := exp(stack[t].r);
         14:  (* ln *)
           if stack[t].r <= 0.0 then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].r := ln(stack[t].r);
         15:  (* sqrt *)
           if stack[t].r < 0.0 then
-            ps := ovchk
+            raise EOverflow.Create('overflow detected')
           else
             stack[t].r := sqrt(stack[t].r);
         16:
@@ -1875,9 +1873,8 @@ var
             if ((stack[t].i > 0) and (stack[t + 1].i > 0)) or
               ((stack[t].i < 0) and (stack[t + 1].i < 0)) then
               if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].i := stack[t].i + stack[t + 1].i;
+                raise EOverflow.Create('overflow detected');
+            stack[t].i := stack[t].i + stack[t + 1].i;
           end;
 
           pSubI:
@@ -1886,9 +1883,8 @@ var
             if ((stack[t].i < 0) and (stack[t + 1].i > 0)) or
               ((stack[t].i > 0) and (stack[t + 1].i < 0)) then
               if (maxint - abs(stack[t].i)) < abs(stack[t + 1].i) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].i := stack[t].i - stack[t + 1].i;
+                raise EOverflow.Create('overflow detected');
+            stack[t].i := stack[t].i - stack[t + 1].i;
           end;
 
           pAddR:
@@ -1897,9 +1893,8 @@ var
             if ((stack[t].r > 0.0) and (stack[t + 1].r > 0.0)) or
               ((stack[t].r < 0.0) and (stack[t + 1].r < 0.0)) then
               if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].r := stack[t].r + stack[t + 1].r;
+                raise EOverflow.Create('overflow detected');
+            stack[t].r := stack[t].r + stack[t + 1].r;
           end;
 
           pSubR:
@@ -1908,9 +1903,8 @@ var
             if ((stack[t].r > 0.0) and (stack[t + 1].r < 0.0)) or
               ((stack[t].r < 0.0) and (stack[t + 1].r > 0.0)) then
               if (realmax - abs(stack[t].r)) < abs(stack[t + 1].r) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].r := stack[t].r - stack[t + 1].r;
+                raise EOverflow.Create('overflow detected');
+            stack[t].r := stack[t].r - stack[t + 1].r;
           end;
 
           pAndopB: RunBoolOp(p, boAnd);
@@ -1920,9 +1914,8 @@ var
             t := t - 1;
             if stack[t].i <> 0 then
               if (maxint div abs(stack[t].i)) < abs(stack[t + 1].i) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].i := stack[t].i * stack[t + 1].i;
+                raise EOverflow.Create('overflow detected');
+            stack[t].i := stack[t].i * stack[t + 1].i;
           end;
 
           pDivopI:
@@ -1948,9 +1941,8 @@ var
             t := t - 1;
             if (abs(stack[t].r) > 1.0) and (abs(stack[t + 1].r) > 1.0) then
               if (realmax / abs(stack[t].r)) < abs(stack[t + 1].r) then
-                ps := ovchk;
-            if ps <> ovchk then
-              stack[t].r := stack[t].r * stack[t + 1].r;
+                raise EOverflow.Create('overflow detected');
+            stack[t].r := stack[t].r * stack[t + 1].r;
           end;
 
           pDivopR:
