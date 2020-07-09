@@ -1861,14 +1861,12 @@ var
           pRelleR: RunRealRelOp(p, roLe);
           pRelgtR: RunRealRelOp(p, roGt);
           pRelgeR: RunRealRelOp(p, roGe);
-
           pRelequI: RunIntRelOp(p, roEq);
           pRelneqI: RunIntRelOp(p, roNe);
           pRelltI: RunIntRelOp(p, roLt);
           pRelleI: RunIntRelOp(p, roLe);
           pRelgtI: RunIntRelOp(p, roGt);
           pRelgeI: RunIntRelOp(p, roGe);
-
           pOropB: RunBoolOp(p, boOr);
 
           pAddI:
@@ -1915,11 +1913,7 @@ var
               stack[t].r := stack[t].r - stack[t + 1].r;
           end;
 
-          pAndopB:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(itob(stack[t].i) and itob(stack[t + 1].i));
-          end;
+          pAndopB: RunBoolOp(p, boAnd);
 
           pMulI:
           begin
