@@ -782,7 +782,7 @@ var
           chanptr := stack[frameptr].i;
           if chanptr <> 0 then  (* timeout if 0 *)
           begin
-            stack[chanptr].i := 0;
+            StackStoreInteger(stack, chanptr, 0);
             if chanptr = h then
               if onselect then
               begin
@@ -950,7 +950,7 @@ var
           stack[curmon].i := -1;
       end
       else
-        stack[curmon].i := 0;
+        StackStoreInteger(stack, curmon, 0);
     end;
 
     { Checks to see if process 'p' will overflow its stack if we push
@@ -1022,6 +1022,13 @@ var
       DecStackPointer(p);
     end;
 
+    { Pops a record from the stack segment for process 'p'. }
+    function PopRecord(p: TProcessID): TStackRecord;
+    begin
+      Result := StackLoadRecord(stack, processes[p].t);
+      DecStackPointer(p);
+    end;
+
     { Pops a Boolean from the stack segment for process 'p'. }
     function PopBoolean(p: TProcessID): boolean;
     begin
@@ -1034,6 +1041,36 @@ var
       Result := processes[p].display[x] + y;
     end;
 
+    { Gets the stack pointer. }
+    function Sp(p: TProcessID): TStackAddress;
+    begin
+      Result := processes[p].t;
+    end;
+
+    { Gets the base pointer. }
+    function Base(p: TProcessID): TStackAddress;
+    begin
+      Result := processes[p].b;
+    end;
+
+    { Sets 'p''s base pointer to the given value, placing the previous base
+      address in 'oldBase'. }
+    procedure SetBase(p: TProcessID; newBase: TStackAddress);
+    begin
+      processes[p].b := newBase;
+    end;
+
+    { Sets 'p''s base pointer to the stack pointer. }
+    procedure AdvanceBase(p: TProcessID);
+    begin
+      SetBase(p, processes[p].t);
+    end;
+
+    { Sets 'p''s stack pointer to the base pointer. }
+    procedure ReturnToBase(p: TProcessID);
+    begin
+      processes[p].t := processes[p].b;
+    end;
 
     procedure RunLdadr(p: TProcessID; x, y: integer);
     begin
@@ -1262,9 +1299,9 @@ var
         begin
           h1 := stack[t].i;
           if stack[h1].i = 0 then
-            stack[t].i := 1
+            StackStoreInteger(stack, t, 1)
           else
-            stack[t].i := 0;
+            StackStoreInteger(stack, t, 0);
         end;  (* f21 *)
         21:  (* bits *)
         begin
@@ -1445,6 +1482,55 @@ var
       curpr := npr;
     end;
 
+    { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+      See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
+    procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+      tabAddr: integer; { Address to subroutine in symbol table }
+      tabRec: TTabRec;  { Record of subroutine }
+      level: integer; { Level of subroutine. }
+
+      oldBase: TStackAddress; { Used to hold the base to save to the stack }
+      i: integer;
+      cap: integer; { TODO(@MattWindsor91): work out exactly what this is}
+    begin
+      if x = 1 then
+      begin  (* process *)
+        processes[p].active := True;
+        oldBase := Base(0);
+        concflag := False;
+      end
+      else
+        oldBase := Base(p);
+
+      DecStackPointer(p, y - 4);
+      { This should have been put on the stack by a previous mark operation. }
+      tabAddr := PopInteger(p);
+      cap := PopInteger(p);
+
+      { TODO(@MattWindsor91): what does this piece of code actually do? }
+      tabRec := objrec.gentab[tabAddr];
+      level := tabRec.lev;
+
+      { Move to the new base pointer. }
+      DecStackPointer(p, 2);
+      processes[p].display[level + 1] := Sp(p);
+      AdvanceBase(p);
+
+      { Store information needed to return back at the end of the procedure. }
+      PushInteger(p, processes[p].pc);
+      PushInteger(p, processes[p].display[level]);
+      PushInteger(p, oldBase);
+
+      { Initialise local variables, maybe? }
+      IncStackPointer(p, y);
+      for i := 1 to cap - y do
+        PushInteger(p, 0);
+
+      processes[p].pc := tabRec.taddr;
+    end;
+
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
 
@@ -1453,77 +1539,6 @@ var
     begin
       if x = 1 then StartProcessBuild;
       MarkStack(curpr, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
-    end;
-
-    { Sets 'p''s base pointer to the given value, placing the previous base
-      address in 'oldBase'. }
-    procedure SetBase(p: TProcessID; newBase: TStackAddress; out oldBase: TStackAddress);
-    begin
-      oldBase := processes[p].b;
-      processes[p].b := newBase;
-    end;
-
-    { Sets 'p''s base pointer to the stack pointer, placing the previous base
-      address in 'oldBase'. }
-    procedure AdvanceBase(p: TProcessID; out oldBase: TStackAddress);
-    begin
-      SetBase(p, processes[p].t, oldBase);
-    end;
-
-    { Sets 'p''s stack pointer to the base pointer. }
-    procedure ReturnToBase(p: TProcessID);
-    begin
-      processes[p].t := processes[p].b;
-    end;
-
-    { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
-      Y-value 'y'.
-
-      See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
-    procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
-    var
-      tabAddr: integer; { Address to subroutine in symbol table }
-      tabRec: TTabRec;  { Record of subroutine }
-      i: integer;
-      cap: integer; { Number of items to reserve on the stack. }
-      level: integer; { Level of subroutine. }
-      oldBase: TStackAddress;
-    begin
-      { Assuming y has the stack markings from earlier included. }
-      DecStackPointer(p, y - 4);
-      tabAddr := PopInteger(p);
-      cap := PopInteger(p);
-
-      tabRec := objrec.gentab[tabAddr];
-
-      { Now move to the actual new base pointer. }
-      DecStackPointer(p, 2);
-
-      { TODO(@MattWindsor91): what does this piece of code actually do? }
-      level := tabRec.lev;
-      processes[p].display[level + 1] := processes[p].t;
-
-      AdvanceBase(p, oldBase);
-
-      { At the base of the new stack frame, we push the current program
-        counter, the display(?), and then the base pointer }
-      PushInteger(p, processes[p].pc);
-      PushInteger(p, processes[p].display[level]);
-
-      { Saving the base frame of the process to return from(?) }
-      if x = 1 then
-      begin  (* process *)
-        processes[p].active := True;
-        PushInteger(p, processes[0].b);
-        concflag := False;
-      end
-      else
-        PushInteger(p, oldBase);
-
-      for i := 0 to cap-y do
-        PushInteger(p, 0);
-
-      processes[p].pc := tabRec.taddr;
     end;
 
     { Calculates an array index pointer from the given base pointer, index,
@@ -1704,23 +1719,33 @@ var
       processes[0].active := (npr = 0);
     end;
 
+    procedure PopPC(p: TProcessID);
+    var
+      r: TStackRecord;
+    begin
+      { TODO(@MattWindsor91): at the bottom of the process stack, the program
+        counter stack entry is present but its type is not properly set.
+        This is a workaround for that case, but ideally that stack entry should
+        be initialised instead. }
+      r := PopRecord(p);
+      processes[p].pc := r.i;
+    end;
+
     { The part of the return convention common to both procedures and functions. }
     procedure Ret(p: TProcessID);
-    var
-      oldBase: TStackAddress; { ignored }
     begin
       ReturnToBase(p);
       { Above us is the programme counter, display address, and base address. }
       IncStackPointer(p, 3);
-      SetBase(p, PopInteger(p), oldBase);
-      PopInteger(p); { Ignore display address }
-      processes[p].pc := PopInteger(p);
+      SetBase(p, PopInteger(p));
+      DecStackPointer(p); { Ignore display address }
+      PopPC(p);
     end;
 
     procedure RunRetproc(p: TProcessID);
     begin
       Ret(p);
-      PopInteger(p); { TODO(@MattWindsor91): work out where this comes from }
+      DecStackPointer(p); { TODO(@MattWindsor91): work out where this comes from }
       { Are we returning from the main procedure? }
       if processes[p].pc = 0 then
         Deactivate(p);
@@ -2405,7 +2430,7 @@ var
               procwake(h3);
             end;
             t := h1 - 1;
-            stack[curmon + 2].i := 0;
+            StackStoreInteger(stack, curmon + 2, 0);
             pc := PopInteger(p);
           end;
 
@@ -2480,10 +2505,10 @@ var
     writeln;
     writeln;
     initqueue;
-    stack[1].i := 0;
-    stack[2].i := 0;
-    stack[3].i := -1;
-    stack[4].i := objrec.genbtab[1].last;
+    StackStoreInteger(stack, 1, 0);
+    StackStoreInteger(stack, 2, 0);
+    StackStoreInteger(stack, 3, -1);
+    StackStoreInteger(stack, 4, objrec.genbtab[1].last);
 
     try { Exception trampoline for Deadlock }
 
@@ -2504,7 +2529,7 @@ var
         t := objrec.genbtab[2].vsize - 1;
         CheckStackOverflow(0);
         for h1 := 5 to t do
-          stack[h1].i := 0;
+          StackStoreInteger(stack, h1, 0);
       end;
       for curpr := 1 to pmax do
         with processes[curpr] do
