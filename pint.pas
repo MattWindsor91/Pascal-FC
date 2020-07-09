@@ -990,7 +990,14 @@ var
       StackStoreReal(stack, processes[p].t, r);
     end;
 
-    { Pushes a Boolean 'i' onto the stack segment for process 'p'. }
+    { Pushes a bitset 'bs' onto the stack segment for process 'p'. }
+    procedure PushBitset(p: TProcessID; bs: Powerset);
+    begin
+      IncStackPointer(p);
+      StackStoreBitset(stack, processes[p].t, bs);
+    end;
+
+    { Pushes a Boolean 'b' onto the stack segment for process 'p'. }
     procedure PushBoolean(p: TProcessID; b: boolean);
     begin
       PushInteger(p, btoi(b));
@@ -1170,6 +1177,18 @@ var
         toWake^.suspend := 0;
     end;
 
+    { Runs a bitset arith operation 'ao'. }
+    procedure RunBitsetArithOp(p: TProcessID; ao: TArithOp);
+    var
+      l: Powerset;    { LHS of arith operation }
+      r: Powerset;    { RHS of arith operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopBitset(p);
+      l := PopBitset(p);
+      PushBitset(p, ao.EvalBitset(l, r));
+    end;
+
     { Runs an integer arith operation 'ao'. }
     procedure RunIntArithOp(p: TProcessID; ao: TArithOp);
     var
@@ -1179,7 +1198,7 @@ var
       { Operands are pushed in reverse order }
       r := PopInteger(p);
       l := PopInteger(p);
-      PushInteger(p, IntArithOp(ao, l, r));
+      PushInteger(p, ao.EvalInt(l, r));
     end;
 
     { Runs an real arith operation 'ao'. }
@@ -1191,7 +1210,19 @@ var
       { Operands are pushed in reverse order }
       r := PopReal(p);
       l := PopReal(p);
-      PushReal(p, RealArithOp(ao, l, r));
+      PushReal(p, ao.EvalReal(l, r));
+    end;
+
+    { Runs a bitset relational operation 'ro'. }
+    procedure RunBitsetRelOp(p: TProcessID; ro: TRelOp);
+    var
+      l: Powerset;    { LHS of relational operation }
+      r: Powerset;    { RHS of relational operation }
+    begin
+      { Operands are pushed in reverse order }
+      r := PopBitset(p);
+      l := PopBitset(p);
+      PushBoolean(p, ro.EvalBitset(l, r));
     end;
 
     { Runs an integer relational operation 'ro'. }
@@ -1203,7 +1234,7 @@ var
       { Operands are pushed in reverse order }
       r := PopInteger(p);
       l := PopInteger(p);
-      PushBoolean(p, IntRelOp(ro, l, r));
+      PushBoolean(p, ro.EvalInt(l, r));
     end;
 
     { Runs an real relational operation 'ro'. }
@@ -1215,17 +1246,29 @@ var
       { Operands are pushed in reverse order }
       r := PopReal(p);
       l := PopReal(p);
-      PushBoolean(p, RealRelOp(ro, l, r));
+      PushBoolean(p, ro.EvalReal(l, r));
     end;
 
-    procedure RunBoolOp(p: TProcessID; bo: TBoolOp);
+    { Runs a bitset logical operation 'lo'. }
+    procedure RunBitsetLogicOp(p: TProcessID; lo: TLogicOp);
     var
-      l: boolean; { LHS of Boolean operation }
-      r: boolean; { LHS of Boolean operation }
+      l: Powerset; { LHS of logical operation }
+      r: Powerset; { LHS of logical operation }
+    begin
+      r := PopBitset(p);
+      l := PopBitset(p);
+      PushBitset(p, lo.EvalBitset(l, r));
+    end;
+
+    { Runs a boolean logical operation 'lo'. }
+    procedure RunBoolLogicOp(p: TProcessID; lo: TLogicOp);
+    var
+      l: boolean; { LHS of logical operation }
+      r: boolean; { LHS of logical operation }
     begin
       r := PopBoolean(p);
       l := PopBoolean(p);
-      PushBoolean(p, BoolOp(bo, l, r));
+      PushBoolean(p, lo.EvalBool(l, r));
     end;
 
     function AsChar(x: integer): char;
@@ -1888,12 +1931,12 @@ var
           pRelleI: RunIntRelOp(p, roLe);
           pRelgtI: RunIntRelOp(p, roGt);
           pRelgeI: RunIntRelOp(p, roGe);
-          pOropB: RunBoolOp(p, boOr);
+          pOropB: RunBoolLogicOp(p, loOr);
           pAddI: RunIntArithOp(p, aoAdd);
           pSubI: RunIntArithOp(p, aoSub);
           pAddR: RunRealArithOp(p, aoAdd);
           pSubR: RunRealArithOp(p, aoSub);
-          pAndopB: RunBoolOp(p, boAnd);
+          pAndopB: RunBoolLogicOp(p, loAnd);
           pMulI: RunIntArithOp(p, aoMul);
           pDivopI: RunIntArithOp(p, aoDiv);
           pModop: RunIntArithOp(p, aoMod);
@@ -2297,64 +2340,15 @@ var
 
           end;
 
-          pRelequS:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].bs = stack[t + 1].bs);
-          end;
-
-          pRelneqS:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].bs <> stack[t + 1].bs);
-          end;
-
-          pRelltS:
-          begin
-            t := t - 1;
-            //stack[t].i := btoi(stack[t].bs < stack[t+1].bs)
-            stack[t].i := btoi((stack[t].bs <= stack[t + 1].bs) and
-              (stack[t].bs <> stack[t + 1].bs));
-          end;
-
-          pRelleS:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].bs <= stack[t + 1].bs);
-          end;
-
-
-          pRelgtS:
-          begin
-            t := t - 1;
-            //stack[t].i := btoi(stack[t].bs > stack[t+1].bs)
-            stack[t].i := btoi((stack[t].bs >= stack[t + 1].bs) and
-              (stack[t].bs <> stack[t + 1].bs));
-          end;
-
-          pRelgeS:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(stack[t].bs >= stack[t + 1].bs);
-          end;
-
-          pOropS:
-          begin
-            t := t - 1;
-            stack[t].bs := stack[t].bs + stack[t + 1].bs;
-          end;
-
-          pSubS:
-          begin
-            t := t - 1;
-            stack[t].bs := stack[t].bs - stack[t + 1].bs;
-          end;
-
-          pAndopS:
-          begin
-            t := t - 1;
-            stack[t].bs := stack[t].bs * stack[t + 1].bs;
-          end;
+          pRelequS: RunBitsetRelOp(p, roEq);
+          pRelneqS: RunBitsetRelOp(p, roNe);
+          pRelltS: RunBitsetRelOp(p, roLt);
+          pRelleS: RunBitsetRelOp(p, roLe);
+          pRelgtS: RunBitsetRelOp(p, roGt);
+          pRelgeS: RunBitsetRelOp(p, roGe);
+          pOropS: RunBitsetLogicOp(p, loOr);
+          pSubS: RunBitsetArithOp(p, aoSub);
+          pAndopS: RunBitsetLogicOp(p, loAnd);
 
           pSinit:
             if curpr <> 0 then

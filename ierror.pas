@@ -60,6 +60,10 @@ type
   { Class of checked-arithmetic overflow errors. }
   EOverflow = class(EInterpreterFault);
 
+  { Class of errors resulting from trying to run a binary operator on a type
+    that doesn't support it. }
+  EBadOp = class(EInterpreterFault);
+
 implementation
 
 end.

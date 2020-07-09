@@ -25,10 +25,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 unit IOp;
 
 {$mode objfpc}{$H+}
+{$modeswitch TypeHelpers}
 
 interface
 
-uses IConsts, GConsts, IError;
+uses IBitset, IConsts, GConsts, IError;
 
 type
   { Enumeratinon of arithmetic binary operators. }
@@ -40,10 +41,10 @@ type
     aoMod  { Modulo }
     );
 
-  { Enumeration of Boolean binary operators. }
-  TBoolOp = (
-    boOr, { Logical disjunction }
-    boAnd { Logical conjunction }
+  { Enumeration of logical binary operators. }
+  TLogicOp = (
+    loOr, { Disjunction }
+    loAnd { Conjunction }
     );
 
   { Enumeration of relational operators. }
@@ -57,63 +58,47 @@ type
     );
 
 {#
- # Binary operators
+ # Evaluation of operators
  #}
 
-{ Returns the result of a boolean binary operation on 'l' and 'r'. }
-function BoolOp(bo: TBoolOp; l, r: boolean): boolean;
+{ Evaluation of arithmetic operators. }
+TArithOpHelper = type helper for TArithOp
+  { Returns the result of an arithmetic operation on bitsets 'l' and 'r'.
+    (Currently, only subtract is supported, and has the semantics of set
+     difference.) }
+  function EvalBitset(l, r: Powerset): Powerset;
 
-{# Arithmetic operators #}
+  { Returns the result of an arithmetic operation on integers 'l' and 'r'.
+    Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+  function EvalInt(l, r: integer): integer;
 
-{ Returns the result of an arithmetic operation on integers 'l' and 'r'.
-  Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
-function IntArithOp(ao: TArithOp; l, r: integer): integer;
+  { Returns the result of an arithmetic operation on reals 'l' and 'r'.
+    Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+  function EvalReal(l, r: real): real;
+end;
 
-{ Returns the result of an arithmetic operation on reals 'l' and 'r'.
-  Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
-function RealArithOp(ao: TArithOp; l, r: real): real;
+{ Evaluation of logic operators. }
+TLogicOpHelper = type helper for TLogicOp
+  { Returns the result of a logical binary operation on bitsets 'l' and 'r'. }
+  function EvalBitset(l, r: Powerset): Powerset;
 
-{# Relational operators #}
+  { Returns the result of a logical binary operation on booleans 'l' and 'r'. }
+  function EvalBool(l, r: boolean): boolean;
+end;
 
-{ Returns the result of a relational operation on integers 'l' and 'r'. }
-function IntRelOp(ro: TRelOp; l, r: integer): boolean;
+{ Evaluation of relational operators. }
+TRelOpHelper = type helper for TRelOp
+  { Returns the result of a relational operation on bitsets 'l' and 'r'. }
+  function EvalBitset(l, r: Powerset): boolean;
 
-{ Returns the result of a relational operation on reals 'l' and 'r'. }
-function RealRelOp(ro: TRelOp; l, r: real): boolean;
+  { Returns the result of a relational operation on integers 'l' and 'r'. }
+  function EvalInt(l, r: integer): boolean;
+
+  { Returns the result of a relational operation on reals 'l' and 'r'. }
+  function EvalReal(l, r: real): boolean;
+end;
 
 implementation
-
-function IntRelOp(ro: TRelOp; l, r: integer): boolean;
-begin
-  case ro of
-    roEq: result := l = r;
-    roNe: result := l <> r;
-    roLt: result := l < r;
-    roLe: result := l <= r;
-    roGe: result := l >= r;
-    roGt: result := l > r;
-  end;
-end;
-
-function RealRelOp(ro: TRelOp; l, r: real): boolean;
-begin
-  case ro of
-    roEq: result := l = r;
-    roNe: result := l <> r;
-    roLt: result := l < r;
-    roLe: result := l <= r;
-    roGe: result := l >= r;
-    roGt: result := l > r;
-  end;
-end;
-
-function BoolOp(bo: TBoolOp; l, r: boolean): boolean;
-begin
-  case bo of
-    boAnd: result := l and r;
-    boOr: result := l or r;
-  end;
-end;
 
 { Checks to see if an integer arithmetic operation will overflow or div-0. }
 procedure CheckIntArithOp(ao: TArithOp; l, r: integer);
@@ -147,27 +132,109 @@ begin
   end;
 end;
 
-function IntArithOp(ao: TArithOp; l, r: integer): integer;
+{# TArithOpHelper #}
+
+function TArithOpHelper.EvalBitset(l, r: Powerset): Powerset;
 begin
-  CheckIntArithOp(ao, l, r);
-  case ao of
+  case self of
+    { Only sub is supported so far, and it doesn't overflow }
+    aoSub: Result := l - r;
+  else
+    raise EBadOp.Create('unsupported arithmetic operand for bitsets')
+  end;
+end;
+
+function TArithOpHelper.EvalInt(l, r: integer): integer;
+begin
+  CheckIntArithOp(self, l, r);
+  case self of
     aoAdd: Result := l + r;
     aoSub: Result := l - r;
     aoMul: Result := l * r;
     aoDiv: Result := l div r;
     aoMod: Result := l mod r;
+  else
+    raise EBadOp.Create('unsupported arithmetic operand for integers')
   end;
 end;
 
-function RealArithOp(ao: TArithOp; l, r: real): real;
+function TArithOpHelper.EvalReal(l, r: real): real;
 begin
-  CheckRealArithOp(ao, l, r);
-  case ao of
+  CheckRealArithOp(self, l, r);
+  case self of
     aoAdd: Result := l + r;
     aoSub: Result := l - r;
     aoMul: Result := l * r;
     aoDiv: Result := l / r;
     { No real modulus operator }
+  else
+    raise EBadOp.Create('unsupported arithmetic operand for reals')
+  end;
+end;
+
+{# TRelOpHelper #}
+
+function TRelOpHelper.EvalBitset(l, r: Powerset): boolean;
+begin
+  case self of
+    roEq: result := l = r;
+    roNe: result := l <> r;
+    roLt: result := (l <= r) and (l <> r);
+    roLe: result := l <= r;
+    roGe: result := l >= r;
+    roGt: result := (l >= r) and (l <> r);
+  else
+    raise EBadOp.Create('unsupported relational operand for bitsets')
+  end;
+end;
+
+function TRelOpHelper.EvalInt(l, r: integer): boolean;
+begin
+  case self of
+    roEq: result := l = r;
+    roNe: result := l <> r;
+    roLt: result := l < r;
+    roLe: result := l <= r;
+    roGe: result := l >= r;
+    roGt: result := l > r;
+  else
+    raise EBadOp.Create('unsupported relational operand for integers')
+  end;
+end;
+
+function TRelOpHelper.EvalReal(l, r: real): boolean;
+begin
+  case self of
+    roEq: result := l = r;
+    roNe: result := l <> r;
+    roLt: result := l < r;
+    roLe: result := l <= r;
+    roGe: result := l >= r;
+    roGt: result := l > r;
+  else
+    raise EBadOp.Create('unsupported relational operand for reals')
+  end;
+end;
+
+{# TLogicOpHelper #}
+
+function TLogicOpHelper.EvalBitset(l, r: Powerset): Powerset;
+begin
+  case self of
+    loAnd: result := l * r;
+    loOr: result := l + r;
+  else
+    raise EBadOp.Create('unsupported logic operand for bitsets')
+  end;
+end;
+
+function TLogicOpHelper.EvalBool(l, r: boolean): boolean;
+begin
+  case self of
+    loAnd: result := l and r;
+    loOr: result := l or r;
+  else
+    raise EBadOp.Create('unsupported logic operand for booleans')
   end;
 end;
 
