@@ -1660,6 +1660,37 @@ var
       SetString(s, @objrec.genstab[base], len);
     end;
 
+    { Pops from 'p''s stack an item with type 'typ', then writes it on stdout
+      with the minimum width 'minWidth'. }
+    procedure PopWrite(p: TProcessID; typ: TPrimType; minWidth: integer);
+    begin
+      case typ of
+        ptyInt:
+          Write(PopInteger(p): minWidth);
+        ptyBool:
+          Write(itob(PopInteger(p)): minWidth);
+        ptyChar:
+          Write(AsChar(PopInteger(p)): minWidth);
+        ptyReal:
+          Write(PopReal(p): minWidth);
+        ptyBitset:
+          Write(BitsetString(PopBitset(p)): minWidth);
+      end;
+    end;
+
+    { Pops an integer from 'p''s stack and sets 'p''s program counter to it. }
+    procedure PopPC(p: TProcessID);
+    var
+      r: TStackRecord;
+    begin
+      { TODO(@MattWindsor91): at the bottom of the process stack, the program
+        counter stack entry is present but its type is not properly set.
+        This is a workaround for that case, but ideally that stack entry should
+        be initialised instead. }
+      r := PopRecord(p);
+      processes[p].pc := r.i;
+    end;
+
     { Executes a 'wrstr' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
 
@@ -1682,33 +1713,38 @@ var
       Write(str: padLen);
     end;
 
-    procedure PopWrite(p: TProcessID; typ: TPrimType; minWidth: integer);
-    begin
-      case typ of
-        ptyInt:
-          Write(PopInteger(p): minWidth);
-        ptyBool:
-          Write(itob(PopInteger(p)): minWidth);
-        ptyChar:
-          Write(AsChar(PopInteger(p)): minWidth);
-        ptyReal:
-          Write(PopReal(p): minWidth);
-        ptyBitset:
-          Write(BitsetString(PopBitset(p)): minWidth);
-      end;
-    end;
+    { Executes a 'wrval' instruction on process 'p', with Y-value 'y'.
 
+      See the entry for 'pWrval' in the 'PCodeOps' unit for details. }
     procedure RunWrval(p: TProcessID; y: TYArgument);
     begin
       PopWrite(p, y, 0);
     end;
 
+    { Executes a 'wrfrm' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pWrfrm' in the 'PCodeOps' unit for details. }
     procedure RunWrfrm(p: TProcessID; y: TYArgument);
     var
       width: integer; { Minimum width of field to format }
     begin
       width := PopInteger(p);
       PopWrite(p, y, width);
+    end;
+
+    { Executes a 'w2frm' instruction on process 'p'.
+
+      See the entry for 'pW2frm' in the 'PCodeOps' unit for details. }
+    procedure RunW2frm(p: TProcessID);
+    var
+      width: integer;
+      prec: integer;
+      val: real;
+    begin
+      prec := PopInteger(p);
+      width := PopInteger(p);
+      val := PopReal(p);
+      Write(val: width: prec);
     end;
 
     procedure Deactivate(p: TProcessID);
@@ -1719,17 +1755,6 @@ var
       processes[0].active := (npr = 0);
     end;
 
-    procedure PopPC(p: TProcessID);
-    var
-      r: TStackRecord;
-    begin
-      { TODO(@MattWindsor91): at the bottom of the process stack, the program
-        counter stack entry is present but its type is not properly set.
-        This is a workaround for that case, but ideally that stack entry should
-        be initialised instead. }
-      r := PopRecord(p);
-      processes[p].pc := r.i;
-    end;
 
     { The part of the return convention common to both procedures and functions. }
     procedure Ret(p: TProcessID);
@@ -1787,6 +1812,7 @@ var
       PushInteger(p, -i);
     end;
 
+
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
       with processes[p] do
@@ -1823,19 +1849,9 @@ var
           pRetproc: RunRetproc(p);
           pRetfun: Ret(p);
           pRepadr: RunRepadr(p);
-
           pNotop: RunNotop(p);
-
           pNegate: RunNegate(p);
-
-          pW2frm:
-          begin    (* formatted reals output *)
-            h3 := stack[t - 1].i;
-            h4 := stack[t].i;
-            Write(stack[t - 2].r: h3: h4);
-            t := t - 3;
-          end;
-
+          pW2frm: RunW2frm(p);
           pStore:
           begin
             stack[stack[t - 1].i] := stack[t];
