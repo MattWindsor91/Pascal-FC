@@ -72,10 +72,6 @@ type
   (* This type is declared within the GCP Run Time System *)
   UnixTimeType = longint;
 
-  { Type of relational operations. }
-  TRelOp = (roEq, roNe, roLt, roLe, roGe, roGt);
-
-
   EInterpreterFault = class(Exception);
 
   { These replace GOTOs in the original. }

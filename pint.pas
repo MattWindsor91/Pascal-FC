@@ -28,9 +28,13 @@ uses
   PCodeObj,
   GConsts,
   GTypes,
-  IConsts,
   GTables,
-  IBitset, IStack, ITypes, IReader;
+  IBitset,
+  IConsts,
+  IOp,
+  IStack,
+  ITypes,
+  IReader;
 
 (* Pascal-FC interpreter *)
 
@@ -1168,31 +1172,6 @@ var
         toWake^.suspend := 0;
     end;
 
-    { Returns the result of a relational operation on integers 'l' and 'r'. }
-    function IntRelOp(ro: TRelOp; l, r: integer): boolean;
-    begin
-      case ro of
-        roEq: Result := l = r;
-        roNe: Result := l <> r;
-        roLt: Result := l < r;
-        roLe: Result := l <= r;
-        roGe: Result := l >= r;
-        roGt: Result := l > r;
-      end;
-    end;
-
-    { Returns the result of a relational operation on reals 'l' and 'r'. }
-    function RealRelOp(ro: TRelOp; l, r: real): boolean;
-    begin
-      case ro of
-        roEq: Result := l = r;
-        roNe: Result := l <> r;
-        roLt: Result := l < r;
-        roLe: Result := l <= r;
-        roGe: Result := l >= r;
-        roGt: Result := l > r;
-      end;
-    end;
 
     { Runs an integer relational operation 'ro'. }
     procedure RunIntRelOp(p: TProcessID; ro: TRelOp);
@@ -1216,6 +1195,16 @@ var
       r := PopReal(p);
       l := PopReal(p);
       PushBoolean(p, RealRelOp(ro, l, r));
+    end;
+
+    procedure RunBoolOp(p: TProcessID; bo: TBoolOp);
+    var
+      l: boolean; { LHS of Boolean operation }
+      r: boolean; { LHS of Boolean operation }
+    begin
+      r := PopBoolean(p);
+      l := PopBoolean(p);
+      PushBoolean(p, BoolOp(bo, l, r));
     end;
 
     function AsChar(x: integer): char;
@@ -1880,11 +1869,7 @@ var
           pRelgtI: RunIntRelOp(p, roGt);
           pRelgeI: RunIntRelOp(p, roGe);
 
-          pOropB:
-          begin
-            t := t - 1;
-            stack[t].i := btoi(itob(stack[t].i) or itob(stack[t + 1].i));
-          end;
+          pOropB: RunBoolOp(p, boOr);
 
           pAddI:
           begin
