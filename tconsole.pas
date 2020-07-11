@@ -28,6 +28,7 @@ uses
   Classes,
   ConsoleTestRunner,
   TBitset,
+  TOp,
   TStack,
   TStrUtil;
 
