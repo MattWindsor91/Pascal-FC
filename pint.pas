@@ -1727,7 +1727,7 @@ var
         ptyReal:
           Write(PopReal(p): minWidth);
         ptyBitset:
-          Write(BitsetString(PopBitset(p)): minWidth);
+          Write(PopBitset(p).AsString: minWidth);
       end;
     end;
 

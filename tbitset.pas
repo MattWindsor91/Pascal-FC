@@ -44,16 +44,16 @@ procedure TBitsetTestCase.TestBitsetString;
 var
   got: string;
 begin
-  got := BitsetString([]);
+  got := Powerset([]).AsString;
   AssertEquals('Empty bitset not stringified properly', '00000000', got);
 
-  got := BitsetString([0, 1, 2, 3, 4, 5, 6, 7]);
+  got := Powerset([0, 1, 2, 3, 4, 5, 6, 7]).AsString;
   AssertEquals('Full bitset not stringified properly', '11111111', got);
 
-  got := BitsetString([0, 1, 2, 3]);
+  got := Powerset([0, 1, 2, 3]).AsString;
   AssertEquals('Half bitset not stringified properly', '00001111', got);
 
-  got := BitsetString([0, 2, 4, 6, 7]);
+  got := Powerset([0, 2, 4, 6, 7]).AsString;
   AssertEquals('Interleaved bitset not stringified properly', '11010101', got);
 end;
 

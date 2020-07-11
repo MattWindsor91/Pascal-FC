@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 unit IBitset;
 
 {$mode objfpc}{$H+}
+{$modeswitch TypeHelpers}
 
 interface
 
@@ -39,18 +40,20 @@ type
   { TODO(@MattWindsor91): rename to, eg, TBitset }
   Powerset = set of 0..bsmsb;
 
-{ Returns a string representation of the bitset 'bs'. }
-function BitsetString(bs: Powerset): string;
+TBitsetHelper = type helper for Powerset
+  { Returns a string representation of the bitset 'bs'. }
+  function AsString: string;
+end;
 
 implementation
 
-  function BitsetString(bs: Powerset): string;
+  function TBitsetHelper.AsString: string;
   var
     i: sizeint;
   begin
     Result := StringOfChar('0', bsmsb + 1);
     for i := 0 to bsmsb do
-      if i in bs then
+      if i in self then
         Result[bsmsb - i + 1] := '1';
   end;
 
