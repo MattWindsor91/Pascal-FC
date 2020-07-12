@@ -750,7 +750,7 @@ var
           chanptr := stack[frameptr].i;
           if chanptr <> 0 then  (* timeout if 0 *)
           begin
-            StackStoreInteger(stack, chanptr, 0);
+            stack.StoreInteger(chanptr, 0);
             if chanptr = h then
               if onselect then
               begin
@@ -916,7 +916,7 @@ var
           stack[curmon].i := -1;
       end
       else
-        StackStoreInteger(stack, curmon, 0);
+        stack.StoreInteger(curmon, 0);
     end;
 
     { Checks to see if process 'p' will overflow its stack if we push
@@ -944,21 +944,21 @@ var
     procedure PushInteger(p: TProcessID; i: integer);
     begin
       IncStackPointer(p);
-      StackStoreInteger(stack, processes[p].t, i);
+      stack.StoreInteger(processes[p].t, i);
     end;
 
     { Pushes a real 'r' onto the stack segment for process 'p'. }
     procedure PushReal(p: TProcessID; r: real);
     begin
       IncStackPointer(p);
-      StackStoreReal(stack, processes[p].t, r);
+      stack.StoreReal(processes[p].t, r);
     end;
 
     { Pushes a bitset 'bs' onto the stack segment for process 'p'. }
     procedure PushBitset(p: TProcessID; bs: Powerset);
     begin
       IncStackPointer(p);
-      StackStoreBitset(stack, processes[p].t, bs);
+      stack.StoreBitset(processes[p].t, bs);
     end;
 
     { Pushes a Boolean 'b' onto the stack segment for process 'p'. }
@@ -971,14 +971,14 @@ var
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
       IncStackPointer(p);
-      StackStoreRecord(stack, processes[p].t, r);
+      stack.StoreRecord(processes[p].t, r);
     end;
 
     { Reads an integer at the stack pointer of 'p' without popping. }
     function PeekInteger(p: TProcessID): integer;
     begin
       { TODO(@MattWindsor91): backport to IStack. }
-      Result := StackLoadInteger(stack, processes[p].t);
+      Result := stack.LoadInteger(processes[p].t);
     end;
 
     { Pops an integer from the stack segment for process 'p'. }
@@ -991,21 +991,21 @@ var
     { Pops a bitset from the stack segment for process 'p'. }
     function PopBitset(p: TProcessID): Powerset;
     begin
-      Result := StackLoadBitset(stack, processes[p].t);
+      Result := stack.LoadBitset(processes[p].t);
       DecStackPointer(p);
     end;
 
     { Pops a real from the stack segment for process 'p'. }
     function PopReal(p: TProcessID): real;
     begin
-      Result := StackLoadReal(stack, processes[p].t);
+      Result := stack.LoadReal(processes[p].t);
       DecStackPointer(p);
     end;
 
     { Pops a record from the stack segment for process 'p'. }
     function PopRecord(p: TProcessID): TStackRecord;
     begin
-      Result := StackLoadRecord(stack, processes[p].t);
+      Result := stack.LoadRecord(processes[p].t);
       DecStackPointer(p);
     end;
 
@@ -1061,7 +1061,7 @@ var
     var
       rec : TStackRecord;
     begin
-      rec := StackLoadRecord(stack, LocalAddress(p, x, y));
+      rec := stack.LoadRecord(LocalAddress(p, x, y));
       PushRecord(p, rec);
     end;
 
@@ -1070,8 +1070,8 @@ var
       addr : integer;
       rec : TStackRecord;
     begin
-      addr := StackLoadInteger(stack, LocalAddress(p, x, y));
-      rec := StackLoadRecord(stack, addr);
+      addr := stack.LoadInteger(LocalAddress(p, x, y));
+      rec := stack.LoadRecord(addr);
       PushRecord(p, rec);
     end;
 
@@ -1083,7 +1083,7 @@ var
       repeat
         processes[p].display[h1] := h3;
         h1 := h1 - 1;
-        h3 := StackLoadInteger(stack, h3 + 2)
+        h3 := stack.LoadInteger(h3 + 2)
       until h1 = h2;
     end;
 
@@ -1101,9 +1101,9 @@ var
     begin
       semAddr := PopInteger(p);
 
-      semVal := StackLoadInteger(stack, semAddr);
+      semVal := stack.LoadInteger(semAddr);
       if semVal > 0 then
-        StackStoreInteger(stack, semAddr, semVal - 1)
+        stack.StoreInteger(semAddr, semVal - 1)
       else
       begin
         processes[p].suspend := semAddr;
@@ -1143,7 +1143,7 @@ var
 
       toWake := FindWaitingProcess(semAddr);
       if toWake = nil then
-        StackIncInteger(stack, semAddr)
+        stack.IncInteger(semAddr)
       else
         toWake^.suspend := 0;
     end;
@@ -1323,9 +1323,9 @@ var
         begin
           h1 := stack[t].i;
           if stack[h1].i = 0 then
-            StackStoreInteger(stack, t, 1)
+            stack.StoreInteger(t, 1)
           else
-            StackStoreInteger(stack, t, 0);
+            stack.StoreInteger(t, 0);
         end;  (* f21 *)
         21:  (* bits *)
         begin
@@ -1470,7 +1470,7 @@ var
 
       if lcFrom <= lcTo then
       begin
-        StackStoreInteger(stack, lcAddr, lcFrom);
+        stack.StoreInteger(lcAddr, lcFrom);
         PushInteger(p, lcAddr);
         PushInteger(p, lcFrom);
         PushInteger(p, lcTo);
@@ -1494,10 +1494,10 @@ var
       lcFrom := PopInteger(p);
       lcAddr := PopInteger(p);
 
-      lcNext := StackLoadInteger(stack, lcAddr) + 1;
+      lcNext := stack.LoadInteger(lcAddr) + 1;
       if lcNext <= lcTo then
       begin
-        StackStoreInteger(stack, lcAddr, lcNext);
+        stack.StoreInteger(lcAddr, lcNext);
         PushInteger(p, lcAddr);
         PushInteger(p, lcFrom);
         PushInteger(p, lcTo);
@@ -1637,7 +1637,7 @@ var
         we could implement this as a special case of Cpblk. }
       srcStart := PopInteger(p);
       for off := 0 to y - 1 do
-        PushRecord(p, StackLoadRecord(stack, srcStart + off));
+        PushRecord(p, stack.LoadRecord(srcStart + off));
     end;
 
     { Executes a 'cpblk' instruction on process 'p', with Y-value 'y'.
@@ -1652,7 +1652,7 @@ var
       dstStart := PopInteger(p);
       srcStart := PopInteger(p);
       for off := 0 to y - 1 do
-        StackStoreRecord(stack, dstStart + off, StackLoadRecord(stack, srcStart + off));
+        stack.StoreRecord(dstStart + off, stack.LoadRecord(srcStart + off));
     end;
 
     { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
@@ -1664,8 +1664,8 @@ var
       i: integer;          { The integer to convert. }
     begin
       loc := processes[p].t - y;
-      i := StackLoadInteger(stack, loc);
-      StackStoreReal(stack, loc, i);
+      i := stack.LoadInteger(loc);
+      stack.StoreReal(loc, i);
     end;
 
     { Executes a 'readip' instruction on process 'p', with Y-value 'y'.
@@ -1683,16 +1683,16 @@ var
 
       case y of
         ptyInt:
-          StackStoreInteger(stack, dest, reader.ReadInt);
+          stack.StoreInteger(dest, reader.ReadInt);
         ptyChar:
           begin
             if EOF then
               raise EPfcEOF.Create('reading past end of file');
             Read(ch);
-            StackStoreInteger(stack, dest, Ord(ch));
+            stack.StoreInteger(dest, Ord(ch));
           end;
         ptyReal:
-          StackStoreReal(stack, dest, reader.ReadReal);
+          stack.StoreReal(dest, reader.ReadReal);
       end;
     end;
 
@@ -1784,7 +1784,7 @@ var
     begin
       rec := PopRecord(p);
       addr := PopInteger(p);
-      StackStoreRecord(stack, addr, rec);
+      stack.StoreRecord(addr, rec);
     end;
 
     { Deactivates the current process, and deactivates the main process if no
@@ -1829,7 +1829,7 @@ var
       addr: TStackAddress;
     begin
       addr := PopInteger(p);
-      PushRecord(p, StackLoadRecord(stack, addr));
+      PushRecord(p, stack.LoadRecord(addr));
     end;
 
     { Executes a 'notop' instruction on process 'p'.
@@ -2205,9 +2205,9 @@ var
       { TODO(@MattWindsor91): refactor. }
       vp := PopInteger(p);
       processes[p].varptr := vp;
-      if StackLoadInteger(stack, vp) <> 0 then
+      if stack.LoadInteger(vp) <> 0 then
         raise EPfcProcMultiActivate.Create('multiple activation of a process');
-      StackStoreInteger(stack, vp, curpr);
+      stack.StoreInteger(vp, curpr);
     end;
 
     { Executes an 'ecall' instruction on process 'p', with Y-argument 'y'.
@@ -2299,7 +2299,7 @@ var
     procedure RunRep1c(p: TProcessID; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      StackStoreInteger(stack, LocalAddress(p, x, y), processes[p].repindex);
+      stack.StoreInteger(LocalAddress(p, x, y), processes[p].repindex);
     end;
 
     { Executes a 'rep2c' instruction on process 'p', with Y-argument 'y'.
@@ -2307,7 +2307,7 @@ var
       See the entry for 'pRep2c' in the 'PCodeOps' unit for details. }
     procedure RunRep2c(p: TProcessID; y: TYArgument);
     begin
-      StackIncInteger(stack, PopInteger(p));
+      stack.IncInteger(PopInteger(p));
       Jump(p, y);
     end;
 
@@ -2418,7 +2418,7 @@ var
         procwake(h3);
       end;
       processes[p].t := h1 - 1;
-      StackStoreInteger(stack, processes[p].curmon + 2, 0);
+      stack.StoreInteger(processes[p].curmon + 2, 0);
       PopJump(p);
     end;
 
@@ -2603,10 +2603,10 @@ var
     writeln;
     writeln;
     initqueue;
-    StackStoreInteger(stack, 1, 0);
-    StackStoreInteger(stack, 2, 0);
-    StackStoreInteger(stack, 3, -1);
-    StackStoreInteger(stack, 4, objrec.genbtab[1].last);
+    stack.StoreInteger(1, 0);
+    stack.StoreInteger(2, 0);
+    stack.StoreInteger(3, -1);
+    stack.StoreInteger(4, objrec.genbtab[1].last);
 
     try { Exception trampoline for Deadlock }
 
@@ -2627,7 +2627,7 @@ var
         t := objrec.genbtab[2].vsize - 1;
         CheckStackOverflow(0);
         for h1 := 5 to t do
-          StackStoreInteger(stack, h1, 0);
+          stack.StoreInteger(h1, 0);
       end;
       for curpr := 1 to pmax do
         with processes[curpr] do

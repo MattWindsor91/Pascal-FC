@@ -30,6 +30,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 unit IStack;
 
 {$mode objfpc}{$H+}
+{$modeswitch TypeHelpers}
 
 interface
 
@@ -124,109 +125,113 @@ type
     function PopRecord: TStackRecord;
   end;
 
+{ Type helper for zones.
+  (Eventually, the zone will become an object and these functions will become
+   methods.) }
+TStackZoneHelper = type helper for TStackZone
+  { Reads an integer from the stack zone at address 'a'. }
+  function LoadInteger(a: TStackAddress): integer;
 
-{ Reads an integer from the stack zone 's' at address 'a'. }
-function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
+  { Reads an real from the stack zone at address 'a'. }
+  function LoadReal(a: TStackAddress): real;
 
-{ Reads an real from the stack zone 's' at address 'a'. }
-function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
+  { Reads a bitset from the stack zone at address 'a'. }
+  function LoadBitset(a: TStackAddress): Powerset;
 
-{ Reads a bitset from the stack zone 's' at address 'a'. }
-function StackLoadBitset(var s: TStackZone; a: TStackAddress): Powerset;
+  { Reads a stack record from the stack zone at address 'a'. }
+  function LoadRecord(a: TStackAddress): TStackRecord;
 
-{ Reads a stack record from the stack zone 's' at address 'a'. }
-function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
+  { Writes an integer 'i' to the stack zone at address 'a'. }
+  procedure StoreInteger(a: TStackAddress; i: integer);
 
-{ Writes an integer 'i' to the stack zone 's' at address 'a'. }
-procedure StackStoreInteger(var s: TStackZone; a: TStackAddress; i: integer);
+  { Writes a real 'r' to the stack zone at address 'a'. }
+  procedure StoreReal(a: TStackAddress; r: real);
 
-{ Writes a real 'r' to the stack zone 's' at address 'a'. }
-procedure StackStoreReal(var s: TStackZone; a: TStackAddress; r: real);
+  { Writes a bitset 'bs' to the stack zone at address 'a'. }
+  procedure StoreBitset(a: TStackAddress; bs: Powerset);
 
-{ Writes a bitset 'bs' to the stack zone 's' at address 'a'. }
-procedure StackStoreBitset(var s: TStackZone; a: TStackAddress; bs: Powerset);
+  { Writes a stack record 'r' to the stack zone at address 'a'. }
+  procedure StoreRecord(a: TStackAddress; r: TStackRecord);
 
-{ Writes a stack record 'r' to the stack 's' at address 'a'. }
-procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
+  {#
+  # Numeric functions
+  #}
 
-{#
- # Numeric functions
- #}
+  { Increments the integer in the stack zone at address 'a'. }
+  procedure IncInteger(a: TStackAddress);
 
-{ Increments the integer in the stack 's' at address 'a'. }
-procedure StackIncInteger(var s: TStackZone; a: TStackAddress);
-
-{ Adds the integer 'delta' to the integer in the stack 's' at address 'a'. }
-procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
+  { Adds the integer 'delta' to the integer in the stack zone at address 'a'. }
+  procedure AddInteger(a: TStackAddress; delta: integer);
+end;
 
 implementation
 
 procedure CheckInt(var s: TStackZone; a: TStackAddress);
 begin
   if s[a].tp <> ints then
-  raise EPfcStackType.Create('expected integer');
+    raise EPfcStackType.Create('expected integer');
 end;
 
-function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
+function TStackZoneHelper.LoadRecord(a: TStackAddress): TStackRecord;
 begin
-  CheckInt(s, a);
-  Result := s[a].i;
+  Result := self[a];
 end;
 
-function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
+function TStackZoneHelper.LoadInteger(a: TStackAddress): integer;
 begin
-  if s[a].tp <> reals then
+  CheckInt(self, a);
+  Result := self[a].i;
+end;
+
+function TStackZoneHelper.LoadReal(a: TStackAddress): real;
+begin
+  if self[a].tp <> reals then
     raise EPfcStackType.Create('expected real');
 
-  Result := s[a].r;
+  Result := self[a].r;
 end;
 
-function StackLoadBitset(var s: TStackZone; a: TStackAddress): Powerset;
+function TStackZoneHelper.LoadBitset(a: TStackAddress): Powerset;
 begin
-  if s[a].tp <> bitsets then
+  if self[a].tp <> bitsets then
     raise EPfcStackType.Create('expected bitset');
 
-  Result := s[a].bs;
+  Result := self[a].bs;
 end;
 
-function StackLoadRecord(var s: TStackZone; a: TStackAddress): TStackRecord;
+procedure TStackZoneHelper.StoreInteger(a: TStackAddress; i: integer);
 begin
-  Result := s[a];
+  self[a].tp := ints;
+  self[a].i := i;
 end;
 
-procedure StackStoreInteger(var s: TStackZone; a: TStackAddress; i: integer);
+procedure TStackZoneHelper.StoreReal(a: TStackAddress; r: real);
 begin
-  s[a].tp := ints;
-  s[a].i := i;
+  self[a].tp := reals;
+  self[a].r := r;
 end;
 
-procedure StackStoreReal(var s: TStackZone; a: TStackAddress; r: real);
+procedure TStackZoneHelper.StoreBitset(a: TStackAddress; bs: Powerset);
 begin
-  s[a].tp := reals;
-  s[a].r := r;
+  self[a].tp := bitsets;
+  self[a].bs := bs;
 end;
 
-procedure StackStoreBitset(var s: TStackZone; a: TStackAddress; bs: Powerset);
+procedure TStackZoneHelper.StoreRecord(a: TStackAddress; r: TStackRecord);
 begin
-  s[a].tp := bitsets;
-  s[a].bs := bs;
+  self[a] := r;
 end;
 
-procedure StackStoreRecord(var s: TStackZone; a: TStackAddress; r: TStackRecord);
+procedure TStackZoneHelper.IncInteger(a: TStackAddress);
 begin
-  s[a] := r;
+  CheckInt(self, a);
+  Inc(self[a].i);
 end;
 
-procedure StackIncInteger(var s: TStackZone; a: TStackAddress);
+procedure TStackZoneHelper.AddInteger(a: TStackAddress; delta: integer);
 begin
-  CheckInt(s, a);
-  Inc(s[a].i);
-end;
-
-procedure StackAddInteger(var s: TStackZone; a: TStackAddress; delta: integer);
-begin
-  CheckInt(s, a);
-  s[a].i := s[a].i + delta;
+  CheckInt(self, a);
+  self[a].i := self[a].i + delta;
 end;
 
 constructor TStackSegment.Create(z: PStackZone; bot, top: TStackAddress);
@@ -265,52 +270,52 @@ end;
 procedure TStackSegment.PushInteger(i: integer);
 begin
   Advance;
-  StackStoreInteger(zone^, frameTop, i);
+  zone^.StoreInteger(frameTop, i);
 end;
 
 procedure TStackSegment.PushReal(r: real);
 begin
   Advance;
-  StackStoreReal(zone^, frameTop, r);
+  zone^.StoreReal(frameTop, r);
 end;
 
 procedure TStackSegment.PushBitset(bs: Powerset);
 begin
   Advance;
-  StackStoreBitset(zone^, frameTop, bs);
+  zone^.StoreBitset(frameTop, bs);
 end;
 
 procedure TStackSegment.PushRecord(s: TStackRecord);
 begin
   Advance;
-  StackStoreRecord(zone^, frameTop, s);
+  zone^.StoreRecord(frameTop, s);
 end;
 
 function TStackSegment.PopInteger: integer;
 begin
   CheckBounds;
-  Result := StackLoadInteger(zone^, frameTop);
+  Result := zone^.LoadInteger(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopReal: real;
 begin
   CheckBounds;
-  Result := StackLoadReal(zone^, frameTop);
+  Result := zone^.LoadReal(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopBitset: Powerset;
 begin
   CheckBounds;
-  Result := StackLoadBitset(zone^, frameTop);
+  Result := zone^.LoadBitset(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopRecord: TStackRecord;
 begin
   CheckBounds;
-  Result := StackLoadRecord(zone^, frameTop);
+  Result := zone^.LoadRecord(frameTop);
   Dec(frameTop);
 end;
 
