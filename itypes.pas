@@ -72,16 +72,6 @@ type
   (* This type is declared within the GCP Run Time System *)
   UnixTimeType = longint;
 
-  EInterpreterFault = class(Exception);
-
-  { These replace GOTOs in the original. }
-  EStkChk = class(EInterpreterFault);
-  EProcNchk = class(EInterpreterFault);
-  EDeadlock = class(EInterpreterFault);
-  EInpChk = class(EInterpreterFault);
-  ERedChk = class(EInterpreterFault);
-
-  ENotAChar = class(EInterpreterFault);
 implementation
 
 end.

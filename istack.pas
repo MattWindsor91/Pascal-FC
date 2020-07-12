@@ -37,6 +37,7 @@ uses
   SysUtils,
   IBitset,
   IConsts,
+  IError,
   ITypes,
   GTypes;
 
@@ -67,17 +68,7 @@ type
 
   { TODO: add segment tracking to TStackZone. }
 
-  EPfcStackError = class(EInterpreterFault);
-
-  { A stack operation tried to pop a value of the wrong type. }
-  EPfcStackTypeError = class(EPfcStackError);
-
-  { A stack segment overflowed. }
-  EPfcStackOverflow = class(EPfcStackError);
-
-  { A stack segment underflowed. }
-  EPfcStackUnderflow = class(EPfcStackError);
-
+  
   { A single segment in the stack zone. }
   TStackSegment = class(TObject)
     { TODO: This isn't currently used }
@@ -173,7 +164,7 @@ implementation
 procedure CheckInt(var s: TStackZone; a: TStackAddress);
 begin
   if s[a].tp <> ints then
-  raise EPfcStackTypeError.Create('expected integer');
+  raise EPfcStackType.Create('expected integer');
 end;
 
 function StackLoadInteger(var s: TStackZone; a: TStackAddress): integer;
@@ -185,7 +176,7 @@ end;
 function StackLoadReal(var s: TStackZone; a: TStackAddress): real;
 begin
   if s[a].tp <> reals then
-    raise EPfcStackTypeError.Create('expected real');
+    raise EPfcStackType.Create('expected real');
 
   Result := s[a].r;
 end;
@@ -193,7 +184,7 @@ end;
 function StackLoadBitset(var s: TStackZone; a: TStackAddress): Powerset;
 begin
   if s[a].tp <> bitsets then
-    raise EPfcStackTypeError.Create('expected bitset');
+    raise EPfcStackType.Create('expected bitset');
 
   Result := s[a].bs;
 end;

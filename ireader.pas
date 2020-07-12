@@ -33,6 +33,7 @@ interface
 uses
   Classes,
   GConsts,
+  IError,
   ITypes,
   SysUtils;
 
@@ -121,7 +122,7 @@ implementation
   procedure TStdinCharReader.NextCh;
   begin
     if EOF then
-       raise ERedChk.Create('reading past end of file');
+       raise EPfcEof.Create('reading past end of file');
     Read(FCh);
   end;
 
@@ -177,13 +178,13 @@ end;
     repeat
       begin
         if inum > (intmax div 10) then
-          raise EInpChk.Create('error in unsigned integer input: number too big');
+          raise EPfcInput.Create('error in unsigned integer input: number too big');
 
         inum := inum * 10;
         digit := Ord(FChar.GetCh) - Ord('0');
 
         if digit > (intmax - inum) then
-          raise EInpChk.Create('error in unsigned integer input: number too big');
+          raise EPfcInput.Create('error in unsigned integer input: number too big');
 
         inum := inum + digit;
       end;
@@ -199,7 +200,7 @@ end;
     { TODO(@MattWindsor91): refactor to remove 'var' }
     FChar.NextCh;
     if not (inum in [2, 8, 16]) then
-        raise EInpChk.Create('error in based integer input: invalid base');
+        raise EPfcInput.Create('error in based integer input: invalid base');
 
     base := inum;
     inum := 0;
@@ -208,13 +209,13 @@ end;
     repeat
       begin
         if negative then
-          raise EInpChk.Create('error in based integer input');
+          raise EPfcInput.Create('error in based integer input');
         if inum > (intmax div base) then
         begin
           if inum <= (intmax div (base div 2)) then
             negative := True
           else
-            raise EInpChk.Create('error in based integer input');
+            raise EPfcInput.Create('error in based integer input');
           inum := inum mod (intmax div base + 1);
         end;
         inum := inum * base;
@@ -227,16 +228,16 @@ end;
         if FChar.GetCh in ['a'..'z'] then
           digit := Ord(FChar.GetCh) - Ord('a') + 10
         else
-          raise EInpChk.Create('error in based integer input: invalid digit');
+          raise EPfcInput.Create('error in based integer input: invalid digit');
         if digit >= base then
-          raise EInpChk.Create('error in based integer input: digit not allowed in base');
+          raise EPfcInput.Create('error in based integer input: digit not allowed in base');
         inum := inum + digit;
       end;
       FChar.NextCh
     until not (FChar.GetCh in ['0'..'9', 'A'..'Z', 'a'..'z']);
     if negative then
     begin
-      if inum = 0 then raise EInpChk.Create('error in based integer input: read negative zero');
+      if inum = 0 then raise EPfcInput.Create('error in based integer input: read negative zero');
       inum := (-maxint + inum) - 1;
     end;
   end;  (* readbasedint *)
@@ -252,7 +253,7 @@ end;
     if FChar.HasNextCh then
     begin
       if not (FChar.GetCh in ['0'..'9']) then
-        raise EInpChk.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
+        raise EPfcInput.CreateFmt('error reading integer: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
 
       ReadUnsignedInt(Result);
       Result := Result * sign;
@@ -272,19 +273,19 @@ end;
     sign := ReadSign;
 
     if not (FChar.GetCh in ['0'..'9']) then
-      raise EInpChk.Create('error in numeric input');
+      raise EPfcInput.Create('error in numeric input');
 
     s := 0;
 
     repeat
       begin
         if s > (intmax div 10) then
-          raise EInpChk.Create('error in numeric input');
+          raise EPfcInput.Create('error in numeric input');
         s := 10 * s;
         digit := Ord(FChar.GetCh) - Ord('0');
 
         if digit > (intmax - s) then
-          raise EInpChk.Create('error in numeric input');
+          raise EPfcInput.Create('error in numeric input');
 
         s := s + digit;
       end;
@@ -302,7 +303,7 @@ end;
     { TODO(@MattWindsor91): refactor to remove 'var' }
 
     if (k + e) > emax then
-      raise EInpChk.Create('error in numeric input');
+      raise EPfcInput.Create('error in numeric input');
 
     while e < emin do
     begin
@@ -324,7 +325,7 @@ end;
     if e >= 0 then
       begin
         if rnum > (realmax / t) then
-          raise EInpChk.Create('error in numeric input');
+          raise EPfcInput.Create('error in numeric input');
         rnum := rnum * t
       end
     else
@@ -342,7 +343,7 @@ end;
     if FChar.HasNextCh then
     begin
       if not (FChar.GetCh in ['0'..'9']) then
-        raise EInpChk.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
+        raise EPfcInput.CreateFmt('error reading real: unexpected character ''%S'' (#%D)', [FChar.GetCh, Ord(FChar.GetCh)]);
 
       while FChar.GetCh = '0' do
         FChar.NextCh;
@@ -382,7 +383,7 @@ end;
             FChar.NextCh;
           end
           else
-            raise EInpChk.Create('error in numeric input');
+            raise EPfcInput.Create('error in numeric input');
         until not (FChar.GetCh in ['0'..'9']);
         if FChar.GetCh in ['e', 'E'] then
           readscale(e);
@@ -398,7 +399,7 @@ end;
       end
       else
       if e <> 0 then
-        raise EInpChk.Create('error in numeric input');
+        raise EPfcInput.Create('error in numeric input');
       Result := Result * sign;
     end;
   end;

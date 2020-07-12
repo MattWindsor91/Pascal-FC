@@ -69,11 +69,11 @@ TArithOpHelper = type helper for TArithOp
   function EvalBitset(l, r: Powerset): Powerset;
 
   { Returns the result of an arithmetic operation on integers 'l' and 'r'.
-    Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+    Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
   function EvalInt(l, r: integer): integer;
 
   { Returns the result of an arithmetic operation on reals 'l' and 'r'.
-    Can throw 'EOverflow' on overflow and 'EDivZero' on zero-division. }
+    Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
   function EvalReal(l, r: real): real;
 end;
 
@@ -107,12 +107,12 @@ begin
     aoAdd, aoSub:
       { TODO(@MattWindsor91): Are these supposed to be the same check? }
       if (((l > 0) and (r > 0)) or ((l < 0) and (r < 0))) and ((maxint - abs(l)) < abs(r)) then
-        raise EOverflow.Create('overflow detected');
+        raise EPfcMathOverflow.Create('overflow detected');
     aoMul:
       if (l <> 0) and ((maxint div abs(l)) < abs(r)) then
-        raise EOverflow.Create('overflow detected');
+        raise EPfcMathOverflow.Create('overflow detected');
     aoDiv, aoMod:
-      if r = 0 then raise EDivZero.Create('division by zero');
+      if r = 0 then raise EPfcMathDivZero.Create('division by zero');
   end;
 end;
 
@@ -123,12 +123,12 @@ begin
     aoAdd, aoSub:
       { TODO(@MattWindsor91): Are these supposed to be the same check? }
       if (((l > 0.0) and (r > 0.0)) or ((l < 0.0) and (r < 0.0))) and ((realmax - abs(l)) < abs(r)) then
-        raise EOverflow.Create('overflow detected');
+        raise EPfcMathOverflow.Create('overflow detected');
     aoMul:
       if (abs(l) > 1.0) and (abs(r) > 1.0) and ((realmax / abs(l)) < abs(r)) then
-        raise EOverflow.Create('overflow detected');
+        raise EPfcMathOverflow.Create('overflow detected');
     aoDiv:
-      if r < minreal then raise EDivZero.Create('division by zero');
+      if r < minreal then raise EPfcMathDivZero.Create('division by zero');
   end;
 end;
 
@@ -140,7 +140,7 @@ begin
     { Only sub is supported so far, and it doesn't overflow }
     aoSub: Result := l - r;
   else
-    raise EBadOp.Create('unsupported arithmetic operand for bitsets')
+    raise EPfcBadOp.Create('unsupported arithmetic operand for bitsets')
   end;
 end;
 
@@ -154,7 +154,7 @@ begin
     aoDiv: Result := l div r;
     aoMod: Result := l mod r;
   else
-    raise EBadOp.Create('unsupported arithmetic operand for integers')
+    raise EPfcBadOp.Create('unsupported arithmetic operand for integers')
   end;
 end;
 
@@ -168,7 +168,7 @@ begin
     aoDiv: Result := l / r;
     { No real modulus operator }
   else
-    raise EBadOp.Create('unsupported arithmetic operand for reals')
+    raise EPfcBadOp.Create('unsupported arithmetic operand for reals')
   end;
 end;
 
@@ -184,7 +184,7 @@ begin
     roGe: result := l >= r;
     roGt: result := (l >= r) and (l <> r);
   else
-    raise EBadOp.Create('unsupported relational operand for bitsets')
+    raise EPfcBadOp.Create('unsupported relational operand for bitsets')
   end;
 end;
 
@@ -198,7 +198,7 @@ begin
     roGe: result := l >= r;
     roGt: result := l > r;
   else
-    raise EBadOp.Create('unsupported relational operand for integers')
+    raise EPfcBadOp.Create('unsupported relational operand for integers')
   end;
 end;
 
@@ -212,7 +212,7 @@ begin
     roGe: result := l >= r;
     roGt: result := l > r;
   else
-    raise EBadOp.Create('unsupported relational operand for reals')
+    raise EPfcBadOp.Create('unsupported relational operand for reals')
   end;
 end;
 
@@ -224,7 +224,7 @@ begin
     loAnd: result := l * r;
     loOr: result := l + r;
   else
-    raise EBadOp.Create('unsupported logic operand for bitsets')
+    raise EPfcBadOp.Create('unsupported logic operand for bitsets')
   end;
 end;
 
@@ -234,7 +234,7 @@ begin
     loAnd: result := l and r;
     loOr: result := l or r;
   else
-    raise EBadOp.Create('unsupported logic operand for booleans')
+    raise EPfcBadOp.Create('unsupported logic operand for booleans')
   end;
 end;
 

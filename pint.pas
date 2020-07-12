@@ -31,6 +31,7 @@ uses
   GTables,
   IBitset,
   IConsts,
+  IError,
   IOp,
   IStack,
   ITypes,
@@ -45,9 +46,7 @@ var
   stantyps: TTypeSet;
   ch: char;
 
-  ps: (run, fin, divchk, inxchk, channerror,
-    guardchk, queuechk, statchk, nexistchk, namechk, casechk,
-    bndchk, instchk, setchk, seminitchk);
+  ps: (run, fin);
 
   h1, h2, h3, h4: integer;
 
@@ -341,38 +340,7 @@ var
       end;
     end;
     Write(tofile, 'Reason:   ');
-
-    case ps of
-      divchk:
-        writeln(tofile, 'division by 0');
-      inxchk:
-        writeln(tofile, 'invalid index ');
-      channerror:
-        writeln(tofile, 'channel error');
-      guardchk:
-        writeln(tofile, 'closed guards');
-      statchk:
-        writeln
-        (tofile, 'statement limit of ', statmax: 1,
-          ' reached (possible livelock)');
-      nexistchk:
-        writeln(tofile,
-          'attempt to call entry of non-existent/terminated process');
-      namechk:
-        writeln(tofile,
-          'attempt to make entry on process without unique name');
-      casechk:
-        writeln(tofile,
-          'label of ', stack[processes[curpr].t].i: 1, ' not found in case');
-      bndchk:
-        writeln(tofile, 'ordinal value out of range');
-      instchk:
-        writeln(tofile, 'multiple activation of a process');
-      setchk:
-        writeln(tofile, 'bitset value out of bounds');
-      seminitchk:
-        writeln(tofile, 'attempt to initialise semaphore from process')
-    end;  (* case *)
+    { TODO(@MattWindsor91): hook this back up to the exception setup }
 
     writeln(tofile);
     writeln(tofile);
@@ -755,7 +723,7 @@ var
             end
             else
             begin
-              raise EDeadlock.Create('deadlock');
+              raise EPfcDeadlock.Create('deadlock');
             end
           else
             processes[0].active := True
@@ -836,14 +804,12 @@ var
     procedure getnode(var node: TProcessID);
     begin  (* getnode *)
       with procqueue do
-        if Free = 0 then
-          ps := queuechk
-        else
-        begin
-          node := Free;
-          Free := proclist[node].link;
-          proclist[node].link := 0;
-        end;
+      begin
+        if Free = 0 then raise EPfcQueue.Create('queue check');
+        node := Free;
+        Free := proclist[node].link;
+        proclist[node].link := 0;
+      end;
     end;
 
 
@@ -959,7 +925,7 @@ var
     begin
       with processes[p] do
         if (t + nItems) > stacksize then
-          raise EStkChk.Create('stack overflow');
+          raise EPfcStackOverflow.Create('stack overflow');
     end;
 
     { Increments the stack pointer for process 'p', checking for overflow. }
@@ -1279,7 +1245,7 @@ var
     function AsChar(x: integer): char;
     begin
       if not (x in [charl..charh]) then
-        raise EProcNchk.CreateFmt('expected char, but got out-of-bounds %D', [x]);
+        raise EPfcCharBound.CreateFmt('expected char, but got out-of-bounds %D', [x]);
       Result := Chr(x);
     end;
 
@@ -1293,12 +1259,12 @@ var
           stack[t].r := abs(stack[t].r);
         2:    (* integer sqr *)
           if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := sqr(stack[t].i);
         3:    (* real sqr *)
           if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := sqr(stack[t].r);
         4:
@@ -1312,12 +1278,12 @@ var
           stack[t].i := stack[t].i - 1;
         9:    (* round *)
           if abs(stack[t].r) >= (intmax + 0.5) then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := round(stack[t].r);
         10:  (* trunc *)
           if abs(stack[t].r) >= (intmax + 1.0) then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := trunc(stack[t].r);
         11:
@@ -1328,12 +1294,12 @@ var
           stack[t].r := exp(stack[t].r);
         14:  (* ln *)
           if stack[t].r <= 0.0 then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := ln(stack[t].r);
         15:  (* sqrt *)
           if stack[t].r < 0.0 then
-            raise EOverflow.Create('overflow detected')
+            raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := sqrt(stack[t].r);
         16:
@@ -1367,17 +1333,13 @@ var
           stack[t].bs := [];
           h3 := 0;
           if h1 < 0 then
+          begin
             if bsmsb < intmsb then
-            begin
-              ps := setchk;
-              h1 := 0;
-            end
-            else
-            begin
-              stack[t].bs := [bsmsb];
-              h1 := (h1 + 1) + maxint;
-              h3 := 1;
-            end;
+              raise EPfcSetBound.CreateFmt('bsmsb (%D) < intmsb (%D)', [bsmsb, intmsb]);
+            stack[t].bs := [bsmsb];
+            h1 := (h1 + 1) + maxint;
+            h3 := 1;
+          end;
           for h2 := 0 to bsmsb - h3 do
           begin
             if (h1 mod 2) = 1 then
@@ -1385,7 +1347,7 @@ var
             h1 := h1 div 2;
           end;
           if h1 <> 0 then
-            ps := setchk;
+            raise EPfcSetBound.Create('set bounds error?');
         end;  (* f21 *)
 
         24:  (* int - bitset to integer *)
@@ -1435,6 +1397,19 @@ var
       processes[p].pc := pc;
     end;
 
+    { Pops an integer from 'p''s stack and jumps to it. }
+    procedure PopJump(p: TProcessID);
+    var
+      r: TStackRecord;
+    begin
+      { TODO(@MattWindsor91): at the bottom of the process stack, the program
+        counter stack entry is present but its type is not properly set.
+        This is a workaround for that case, but ideally that stack entry should
+        be initialised instead. }
+      r := PopRecord(p);
+      Jump(p, r.i);
+    end;
+
     { No RunJmp: use Jump instead. }
 
     { Executes a 'jmpiz' instruction on process 'p', with Y-value 'y'.
@@ -1442,11 +1417,12 @@ var
       See the entry for 'pJmpiz' in the 'PCodeOps' unit for details. }
     procedure RunJmpiz(p: TProcessID; y: TYArgument);
     var
-      condition : integer;
+      condition: integer;
     begin
+      { Can't convert this to PopBoolean, as it'll change the semantics
+        to 'jump if not true'. }
       condition := PopInteger(p);
-      if condition = fals then
-        Jump(p, y);
+      if condition = fals then Jump(p, y);
     end;
 
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
@@ -1464,6 +1440,17 @@ var
         Jump(p, y)
       else
         PushInteger(p, testValue);
+    end;
+
+    { Executes a 'case2' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pCase2' in the 'PCodeOps' unit for details. }
+    procedure RunCase2(p: TProcessID);
+    var
+      caseValue: integer;
+    begin
+      caseValue := PopInteger(p);
+      raise EPfcMissingCase.CreateFmt('label of %D not found in case', [caseValue]);
     end;
 
     { No RunCase2: interpreting Case2 is a case-check exception. }
@@ -1533,7 +1520,7 @@ var
 
     procedure StartProcessBuild;
     begin
-      if npr = pmax then raise EProcNchk.CreateFmt('more than %D processes', [pmax]);
+      if npr = pmax then raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
 
       npr := npr + 1;
       concflag := True;
@@ -1614,12 +1601,12 @@ var
       arrTypeID: integer;
       arrbaseAddr: TStackAddress;
       arrRec: TATabRec;
-      index: integer;
+      ix: integer;
       lbound: integer;
       hbound: integer;
       elsize: integer;
     begin
-      index := PopInteger(p);
+      ix := PopInteger(p);
 
       arrTypeID := y;
       arrRec := objrec.genatab[arrTypeID];
@@ -1627,17 +1614,14 @@ var
       lbound := arrRec.low;
       hbound := arrRec.high;
 
-      if index < lbound then
-        ps := inxchk
-      else
-      if index > hbound then
-        ps := inxchk
-      else
-      begin
-        elsize := arrRec.elsize;
-        arrbaseAddr := PopInteger(p);
-        PushInteger(p, ArrayIndexPointer(arrBaseAddr, index, lbound, elsize));
-      end;
+      if ix < lbound then
+        raise EPfcIndexBound.CreateFmt('Index %D < lo-bound %D', [ix, lbound]);
+      if hbound < ix then
+        raise EPfcIndexBound.CreateFmt('Index %D > hi-bound %D', [ix, hbound]);
+
+      elsize := arrRec.elsize;
+      arrbaseAddr := PopInteger(p);
+      PushInteger(p, ArrayIndexPointer(arrBaseAddr, ix, lbound, elsize));
     end;
 
     { Executes a 'ldblk' instruction on process 'p', with Y-value 'y'.
@@ -1692,7 +1676,8 @@ var
       dest: TStackAddress; { Destination of item being read. }
     begin
       { TODO(@MattWindsor91): needs refactoring. }
-      if EOF(input) then raise ERedChk.Create('reading past end of file');
+      { TODO(@MattWindsor91): wrong files used? }
+      if EOF(input) then raise EPfcEOF.Create('reading past end of file');
 
       dest := PopInteger(p);
 
@@ -1702,7 +1687,7 @@ var
         ptyChar:
           begin
             if EOF then
-              raise ERedChk.Create('reading past end of file');
+              raise EPfcEOF.Create('reading past end of file');
             Read(ch);
             StackStoreInteger(stack, dest, Ord(ch));
           end;
@@ -1734,19 +1719,6 @@ var
         ptyBitset:
           Write(PopBitset(p).AsString: minWidth);
       end;
-    end;
-
-    { Pops an integer from 'p''s stack and jumps to it. }
-    procedure PopJump(p: TProcessID);
-    var
-      r: TStackRecord;
-    begin
-      { TODO(@MattWindsor91): at the bottom of the process stack, the program
-        counter stack entry is present but its type is not properly set.
-        This is a workaround for that case, but ideally that stack entry should
-        be initialised instead. }
-      r := PopRecord(p);
-      Jump(p, r.i);
     end;
 
     { Executes a 'wrstr' instruction on process 'p', with X-value 'x' and
@@ -1888,7 +1860,7 @@ var
     procedure RunRdlin;
     begin
       if EOF(input) then
-        raise ERedChk.Create('reading past end of file');
+        raise EPfcEOF.Create('reading past end of file');
       readln;
     end;
 
@@ -1913,7 +1885,7 @@ var
         if h2 = 0 then
         begin
           if y = 0 then
-            ps := guardchk  (* closed guards and no else/terminate *)
+            raise EPfcClosedGuards.Create('closed guards and no else/terminate')
           else
           if y = 1 then
             termstate := True;
@@ -1999,7 +1971,7 @@ var
             begin  (* channel rendezvous *)
               if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
                 ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
-                ps := channerror
+                raise EPfcChannel.Create('channel rendezvous error')
               else
               begin  (* rendezvous *)
                 stack[h1].i := abs(stack[h1].i);
@@ -2043,8 +2015,7 @@ var
         h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
         h3 := stack[t].i;   (* base address of source (for x=1) *)
         if h2 > 0 then
-          ps := channerror  (* another writer on this channel *)
-        else
+          raise EPfcChannel.Create('multiple writers on channel');
         if h2 = 0 then
         begin  (* first *)
           if x = 0 then
@@ -2089,8 +2060,7 @@ var
         h1 := PopInteger(p);
         h2 := stack[h1].i;
         if h2 < 0 then
-          ps := channerror
-        else
+          raise EPfcChannel.Create('multiple readers on channel');
         if h2 = 0 then
         begin  (* first *)
           stack[h1].i := -h3;
@@ -2189,13 +2159,18 @@ var
 
     { There is no RunMretn, as it is literally just a popjump. }
 
+    procedure CheckGe(x, y: integer);
+    begin
+      if x < y then
+        raise EPfcOrdinalBound.CreateFmt('%D < %D', [x, y]);
+    end;
+
     { Executes an 'lobnd' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pLobnd' in the 'PCodeOps' unit for details. }
     procedure RunLobnd(p: TProcessID; y: TYArgument);
     begin
-      if PeekInteger(p) < y then
-        ps := bndchk;
+      CheckGe(PeekInteger(p), y);
     end;
 
     { Executes an 'hibnd' instruction on process 'p', with Y-value 'y'.
@@ -2203,8 +2178,7 @@ var
       See the entry for 'pHibnd' in the 'PCodeOps' unit for details. }
     procedure RunHibnd(p: TProcessID; y: TYArgument);
     begin
-      if y < PeekInteger(p) then
-        ps := bndchk;
+      CheckGe(y, PeekInteger(p));
     end;
 
     { Executes a 'sleap' instruction on process 'p'.
@@ -2231,10 +2205,9 @@ var
       { TODO(@MattWindsor91): refactor. }
       vp := PopInteger(p);
       processes[p].varptr := vp;
-      if stack[vp].i = 0 then
-        stack[vp].i := curpr
-      else
-        ps := instchk;
+      if StackLoadInteger(stack, vp) <> 0 then
+        raise EPfcProcMultiActivate.Create('multiple activation of a process');
+      StackStoreInteger(stack, vp, curpr);
     end;
 
     { Executes an 'ecall' instruction on process 'p', with Y-argument 'y'.
@@ -2248,33 +2221,30 @@ var
         h1 := t - y;
         t := h1 - 2;
         h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
-        if h2 > 0 then
-          if not processes[h2].active then
-            ps := nexistchk
-          else
-          begin
-            h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
-            if stack[h3].i <= 0 then
-            begin  (* empty queue on entry *)
-              if stack[h3].i < 0 then
-              begin  (* other process has arrived *)
-                for h4 := 1 to y do
-                  stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
-                wakenon(h3);
-              end;
-              stack[h3 + 1].i := pc;
-              stack[h3 + 2].i := curpr;
-            end;
-            joinqueue(h3);
-            stack[t + 1].i := h3;
-            chans := t + 1;
-            suspend := -1;
-          end
-        else
+
         if h2 = 0 then
-          ps := nexistchk
-        else
-          ps := namechk;
+          raise EPfcProcNotExist.Create('tried to ecall process zero');
+        if h2 < 0 then  
+          raise EPfcProcName.CreateFmt('tried to ecall negative process %D', [h2]);
+        if not processes[h2].active then
+          raise EPfcProcNotExist.CreateFmt('tried to ecall inactive process %D', [h2]);
+
+        h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
+        if stack[h3].i <= 0 then
+        begin  (* empty queue on entry *)
+          if stack[h3].i < 0 then
+          begin  (* other process has arrived *)
+            for h4 := 1 to y do
+              stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
+            wakenon(h3);
+          end;
+          stack[h3 + 1].i := pc;
+          stack[h3 + 2].i := curpr;
+        end;
+        joinqueue(h3);
+        stack[t + 1].i := h3;
+        chans := t + 1;
+        suspend := -1;
       end;
     end;
 
@@ -2341,6 +2311,13 @@ var
       Jump(p, y);
     end;
 
+    { Raises an exception if 'bit' is not a valid bit. }
+    procedure CheckBitInBounds(bit: integer);
+    begin
+      if not (bit in [0..bsmsb]) then
+        raise EPfcSetBound.CreateFmt('not a valid bit: %D', [bit]);
+    end;
+
     { Executes a 'power2' instruction on process 'p'.
     
       See the entry for 'pPower2' in the 'PCodeOps' unit for details. }
@@ -2349,10 +2326,8 @@ var
       bit: integer; { Bit to set (must be 0..MSB) }
     begin
       bit := PopInteger(p);
-      if not (bit in [0..bsmsb]) then
-        ps := setchk
-      else
-        PushBitset(p, [bit]);
+      CheckBitInBounds(bit);
+      PushBitset(p, [bit]);
     end;
 
     { Executes a 'btest' instruction on process 'p'.
@@ -2365,14 +2340,9 @@ var
     begin
       bits := PopBitset(p);
       bit := PopInteger(p);
-
-      if not (bit in [0..bsmsb]) then
-        ps := setchk
-      else
-      begin
-        PushBoolean(p, bit in bits);
-        PushBitset(p, bits);
-      end;
+      CheckBitInBounds(bit);
+      PushBoolean(p, bit in bits);
+      PushBitset(p, bits);
     end;
 
     { Executes a 'wrbas' instruction on process 'p'.
@@ -2397,9 +2367,8 @@ var
     procedure RunSinit(p: TProcessID);
     begin
       if curpr <> 0 then
-        ps := seminitchk
-      else
-        RunStore(p);
+        raise EPfcProcSemiInit.Create('tried to initialise semaphore from process');
+      RunStore(p);
     end;
 
     { Executes an 'prtjmp' instruction on process 'p', with Y-value 'y'.
@@ -2502,7 +2471,7 @@ var
           pJmp: Jump(p, ir.y);
           pJmpiz: RunJmpiz(p, ir.y);
           pCase1: RunCase1(p, ir.y);
-          pCase2: ps := casechk;
+          pCase2: RunCase2(p);
           pFor1up: RunFor1up(p, ir.y);
           pFor2up: RunFor2up(p, ir.y);
           pMrkstk: RunMrkstk(p, ir.x, ir.y);
@@ -2621,10 +2590,10 @@ var
       if eventqueue.First <> nil then
         if eventqueue.time <= sysclock then
           alarmclock;
+
       statcounter := statcounter + 1;
-      ;
       if statcounter >= statmax then
-        ps := statchk
+        raise EPfcLivelock.CreateFmt('statement count max %D reached (possible livelock)', [statmax]);
     end;
 
   begin (* Runprog *)
@@ -2711,7 +2680,7 @@ var
     writeln;
 
     except
-      on E: EInterpreterFault do begin
+      on E: EPfcInterpreter do begin
         DumpExceptionCallStack(E);
         Writeln;
         expmd;
