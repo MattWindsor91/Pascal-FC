@@ -4,6 +4,7 @@ cunits := cconsts.pas
 iunits := ibitset.pas iconsts.pas ierror.pas itypes.pas istack.pas iop.pas
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
 punits := pcodeobj.pas pcodeops.pas
+tunits := tbitset.pas top.pas tstack.pas tstrutil.pas
 
 FLAGS := -Mobjfpc -g
 
@@ -13,7 +14,7 @@ pfccomp: pfccomp.pas ${gunits} ${cunits} ${punits}
 pint: pint.pas ${gunits} ${iunits} ${punits}
 	fpc ${FLAGS}l $<
 
-tconsole: tconsole.pas tbitset.pas tstack.pas tstrutil.pas ${gunits} ${iunits}
+tconsole: tconsole.pas ${gunits} ${iunits} ${tunits}
 	fpc ${FLAGS} $<
 
 install: pfccomp pint

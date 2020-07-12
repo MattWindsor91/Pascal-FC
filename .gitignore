@@ -1,6 +1,9 @@
 *.tmp
 *.o
+*.ppu
 objfile
 listing
 pfccomp
 pint
+backup/
+lib/
