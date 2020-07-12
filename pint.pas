@@ -50,7 +50,6 @@ var
     bndchk, instchk, setchk, seminitchk);
 
   h1, h2, h3, h4: integer;
-  foundcall: boolean;    (* used in select (code 64) *)
 
   stack: TStackZone;
 
@@ -1898,6 +1897,8 @@ var
 
       See the entry for 'pSelec0' in the 'PCodeOps' unit for details. }
     procedure RunSelec0(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+      foundcall: boolean;
     begin
       { TODO(@MattWindsor91): refactor. }
       with processes[p] do
@@ -2416,6 +2417,8 @@ var
     
       See the entry for 'pPrtsel' in the 'PCodeOps' unit for details. }
     procedure RunPrtsel(p: TProcessID);
+    var
+      foundcall: boolean;
     begin
       { TODO(@MattWindsor91): understand and refactor }
       h1 := processes[p].t;
