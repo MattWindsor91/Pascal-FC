@@ -2336,11 +2336,8 @@ var
     
       See the entry for 'pRep2c' in the 'PCodeOps' unit for details. }
     procedure RunRep2c(p: TProcessID; y: TYArgument);
-    var
-      addr: TStackAddress; { TODO(@MattWindsor91): what is this? }
     begin
-      addr := PopInteger(p);
-      stack[addr].i := stack[addr].i + 1;
+      StackIncInteger(stack, PopInteger(p));
       Jump(p, y);
     end;
 
