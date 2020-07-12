@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -29,7 +29,7 @@ unit TStack;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, IStack;
+  Classes, SysUtils, fpcunit, testregistry, IError, IStack;
 
 type
   TStackTestCase = class(TTestCase)
@@ -50,18 +50,18 @@ procedure TStackTestCase.TestStoreInteger;
 var
   readback: integer;
 begin
-  StackStoreInteger(s, 1, 42);
-  readback := StackLoadInteger(s, 1);
+  s.StoreInteger(1, 42);
+  readback := s.LoadInteger(1);
   AssertEquals('Integer storage at 1 seems to have failed', 42, readback);
 
-  StackStoreInteger(s, 1, 27);
-  readback := StackLoadInteger(s, 1);
+  s.StoreInteger(1, 27);
+  readback := s.LoadInteger(1);
   AssertEquals('Integer rewriting at 1 seems to have failed', 27, readback);
 
-  StackStoreInteger(s, 2, 42);
-  readback := StackLoadInteger(s, 2);
+  s.StoreInteger(2, 42);
+  readback := s.LoadInteger(2);
   AssertEquals('Integer storage at 2 seems to have failed', 42, readback);
-  readback := StackLoadInteger(s, 1);
+  readback := s.LoadInteger(1);
   AssertEquals('Integer storage at 2 overwrote location 1', 27, readback);
 end;
 
@@ -70,20 +70,20 @@ var
   i: integer;
   readback: integer;
 begin
-  StackStoreInteger(s, 1, 0);
+  s.StoreInteger(1, 0);
 
-  StackIncInteger(s, 1);
-  readback := StackLoadInteger(s, 1);
+  s.IncInteger(1);
+  readback := s.LoadInteger(1);
   AssertEquals('First increment seems to have failed', 1, readback);
 
-  StackIncInteger(s, 1);
-  readback := StackLoadInteger(s, 1);
+  s.IncInteger(1);
+  readback := s.LoadInteger(1);
   AssertEquals('Second increment seems to have failed', 2, readback);
 
   for i := 1 to 1232 do
-    StackIncInteger(s, 1);
+    s.IncInteger(1);
 
-  readback := StackLoadInteger(s, 1);
+  readback := s.LoadInteger(1);
   AssertEquals('1234th increment seems to have failed', 1234, readback);
 end;
 
@@ -131,7 +131,7 @@ begin
   try
     seg.PopInteger;
   except
-    on E: EPfcStackTypeError do
+    on E: EPfcStackType do
     begin
       FreeAndNil(seg);
       Exit;
