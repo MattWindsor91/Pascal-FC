@@ -150,7 +150,7 @@ const
 
     x: 1 if process; 0 otherwise
     y: ?
-}
+  }
   pCallsub = 19;
   { 020 UNUSED }
 
@@ -188,7 +188,7 @@ const
   { 026 Convert integer to float? }
   pIfloat = 26;
 
-  { 027 Read
+  { 027 Read input
 
     Pop a stack address off the top of the stack.
     Depending on the mode selected by x, read something from input into the
@@ -257,6 +257,11 @@ const
   pW2frm = 37;
   { 038 Store }
   pStore = 38;
+
+  {#
+   # 039 - 044:  Relational operators (Real) 
+   #}
+
   { 039 Equal (Real) }
   pRelequR = 39;
   { 040 Not equal (Real) }
@@ -269,6 +274,11 @@ const
   pRelgtR = 43;
   { 044 Greater than or equal (Real) }
   pRelgeR = 44;
+
+  {#
+   # 045 - 050:  Relational operators (Integer) 
+   #}
+
   { 045 Equal (Integer) }
   pRelequI = 45;
   { 046 Not equal (Integer) }
@@ -281,28 +291,47 @@ const
   pRelgtI = 49;
   { 050 Greater than or equal (Integer) }
   pRelgeI = 50;
+
+  {#
+   # 051 - 055:  Additive operators (Boolean, Integer, Real)
+   #}
+
   { 051 Logical OR (Boolean) }
   pOropB = 51;
+
   { 052 Add (Integer) }
   pAddI = 52;
+
   { 053 Subtract (Integer) }
   pSubI = 53;
+
   { 054 Add (Real) }
   pAddR = 54;
   { 055 Subtract (Real) }
   pSubR = 55;
+
+  {#
+   # 056 - 061:  Multiplicative operators (Boolean, Integer, Real)
+   #}
+
   { 056 Logical AND (Boolean) }
   pAndopB = 56;
+
   { 057 Multiply (Integer) }
   pMulI = 57;
+
   { 058 Divide (Integer) }
   pDivopI = 58;
+
   { 059 Modulo }
   pModop = 59;
+
   { 060 Multiply (Real) }
   pMulR = 60;
+
   { 061 Divide (Real) }
   pDivopR = 61;
+
   { 062 Read line }
   pRdlin = 62;
   { 063 Write line }
@@ -397,6 +426,11 @@ const
   { 109 UNUSED }
   { 110 UNUSED }
   { 111 UNUSED }
+
+  {#
+   # 112-120: Binary operators (bitset)
+   #}
+
   { 112 Equal (Bitset) }
   pRelequS = 112;
   { 113 Not equal (Bitset) }

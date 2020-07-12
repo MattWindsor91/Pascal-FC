@@ -50,7 +50,6 @@ var
     bndchk, instchk, setchk, seminitchk);
 
   h1, h2, h3, h4: integer;
-  h1r: real;
   foundcall: boolean;    (* used in select (code 64) *)
 
   stack: TStackZone;
@@ -1010,10 +1009,17 @@ var
       StackStoreRecord(stack, processes[p].t, r);
     end;
 
+    { Reads an integer at the stack pointer of 'p' without popping. }
+    function PeekInteger(p: TProcessID): integer;
+    begin
+      { TODO(@MattWindsor91): backport to IStack. }
+      Result := StackLoadInteger(stack, processes[p].t);
+    end;
+
     { Pops an integer from the stack segment for process 'p'. }
     function PopInteger(p: TProcessID): integer;
     begin
-      Result := StackLoadInteger(stack, processes[p].t);
+      Result := PeekInteger(p);
       DecStackPointer(p);
     end;
 
@@ -1731,8 +1737,8 @@ var
       end;
     end;
 
-    { Pops an integer from 'p''s stack and sets 'p''s program counter to it. }
-    procedure PopPC(p: TProcessID);
+    { Pops an integer from 'p''s stack and jumps to it. }
+    procedure PopJump(p: TProcessID);
     var
       r: TStackRecord;
     begin
@@ -1741,7 +1747,7 @@ var
         This is a workaround for that case, but ideally that stack entry should
         be initialised instead. }
       r := PopRecord(p);
-      processes[p].pc := r.i;
+      Jump(p, r.i);
     end;
 
     { Executes a 'wrstr' instruction on process 'p', with X-value 'x' and
@@ -1756,10 +1762,7 @@ var
       str: ansistring;   { The string itself. }
     begin
       padLen := 0;
-      if x = 1 then
-      begin
-        padLen := PopInteger(p);
-      end;
+      if x = 1 then padLen := PopInteger(p);
       strLen := PopInteger(p);
       strBase := y;
       RetrieveString(str, strBase, strLen);
@@ -1813,6 +1816,8 @@ var
       StackStoreRecord(stack, addr, rec);
     end;
 
+    { Deactivates the current process, and deactivates the main process if no
+      further processes remain. }
     procedure Deactivate(p: TProcessID);
     begin
       npr := npr - 1;
@@ -1830,7 +1835,7 @@ var
       IncStackPointer(p, 3);
       SetBase(p, PopInteger(p));
       DecStackPointer(p); { Ignore display address }
-      PopPC(p);
+      PopJump(p);
     end;
 
     { Executes a 'retproc' instruction on process 'p'.
@@ -1878,6 +1883,607 @@ var
       PushInteger(p, -i);
     end;
 
+    { Executes a 'rdlin' instruction.
+      
+      See the entry for 'pRdlin' in the 'PCodeOps' unit for details. }
+    procedure RunRdlin;
+    begin
+      if EOF(input) then
+        raise ERedChk.Create('reading past end of file');
+      readln;
+    end;
+
+    { Executes a 'selec0' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+
+      See the entry for 'pSelec0' in the 'PCodeOps' unit for details. }
+    procedure RunSelec0(p: TProcessID; x: TXArgument; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): refactor. }
+      with processes[p] do
+      begin
+        h1 := t;
+        h2 := 0;
+        while stack[h1].i <> -1 do
+        begin
+          h1 := h1 - sfsize;
+          h2 := h2 + 1;
+        end;  (* h2 is now the number of open guards *)
+        if h2 = 0 then
+        begin
+          if y = 0 then
+            ps := guardchk  (* closed guards and no else/terminate *)
+          else
+          if y = 1 then
+            termstate := True;
+        end
+        else
+        begin  (* channels/entries to check *)
+          if x = 0 then
+            h3 := trunc(random * h2)  (* arbitrary choice *)
+          else
+            h3 := h2 - 1;  (* priority select *)
+          h4 := t - (sfsize - 1) - (h3 * sfsize);
+          (* h4 points to bottom of "frame" *)
+          h1 := 1;
+          foundcall := False;
+          while not foundcall and (h1 <= h2) do
+          begin
+            if stack[h4].i = 0 then
+            begin  (* timeout alternative *)
+              if stack[h4 + 3].i < 0 then
+                stack[h4 + 3].i := sysclock
+              else
+                stack[h4 + 3].i := stack[h4 + 3].i + sysclock;
+              if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
+              begin
+                wakeup := stack[h4 + 3].i;
+                wakestart := stack[h4 + 4].i;
+              end;
+              h3 := (h3 + 1) mod h2;
+              h4 := t - (sfsize - 1) - (h3 * sfsize);
+              h1 := h1 + 1;
+            end
+            else
+            if stack[stack[h4].i].i <> 0 then
+              foundcall := True
+            else
+            begin
+              h3 := (h3 + 1) mod h2;
+              h4 := t - (sfsize - 1) - (h3 * sfsize);
+              h1 := h1 + 1;
+            end;
+          end;  (* while not foundcall ... *)
+          if not foundcall then  (* no channel/entry has a call *)
+          begin
+            if y <> 2 then  (* ie, if no else part *)
+            begin  (* sleep on all channels *)
+              if y = 1 then
+                termstate := True;
+              h1 := t - (sfsize - 1) - ((h2 - 1) * sfsize);
+              chans := h1;
+              for h3 := 1 to h2 do
+              begin
+                h4 := stack[h1].i;  (* h4 points to channel/entry *)
+                if h4 <> 0 then  (* 0 means timeout *)
+                begin
+                  if stack[h1 + 2].i = 2 then
+                    stack[h4].i := -stack[h1 + 1].i (* query sleep *)
+                  else
+                  if stack[h1 + 2].i = 0 then
+                    stack[h4].i := h1 + 1
+                  else
+                  if stack[h1 + 2].i = 1 then
+                    stack[h4] := stack[h1 + 1]  (* shriek sleep *)
+                  else
+                    stack[h4].i := -1;  (* entry sleep *)
+                  stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
+                  stack[h4 + 2].i := curpr;
+                end; (* if h4 <> 0 *)
+                h1 := h1 + sfsize;
+              end;  (* for loop *)
+              stepcount := 0;
+              suspend := -h2;
+              onselect := True;
+              if wakeup <> 0 then
+                joineventq(wakeup);
+            end; (* sleep on open-guard channels/entries *)
+          end (* no call *)
+          else
+          begin  (* someone is waiting *)
+            wakeup := 0;
+            wakestart := 0;
+            h1 := stack[h4].i;  (* h1 points to channel/entry *)
+            if stack[h4 + 2].i in [0..2] then
+            begin  (* channel rendezvous *)
+              if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
+                ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
+                ps := channerror
+              else
+              begin  (* rendezvous *)
+                stack[h1].i := abs(stack[h1].i);
+                if stack[h4 + 2].i = 0 then
+                  stack[stack[h1].i] := stack[h4 + 1]
+                else
+                begin  (* block copy *)
+                  h3 := 0;
+                  while h3 < stack[h4 + 3].i do
+                  begin
+                    if stack[h4 + 2].i = 1 then
+                      stack[stack[h1].i + h3] := stack[stack[h4 + 1].i + h3]
+                    else
+                      stack[stack[h4 + 1].i + h3] := stack[stack[h1].i + h3];
+                    h3 := h3 + 1;
+                  end;  (* while *)
+                end;  (* block copy *)
+                pc := stack[h4 + 4].i;
+                repindex := stack[h4 + 5].i;  (* recover repindex *)
+                wakenon(h1);  (* wake the other process *)
+              end;  (* rendezvous *)
+            end  (* channel rendezvous *)
+            else
+              pc := stack[h4 + 4].i;  (* entry *)
+          end;  (* someone was waiting *)
+        end;  (* calls to check *)
+        t := t - 1 - (h2 * sfsize);
+      end;
+    end;
+
+    { Executes a 'chanwr' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+
+      See the entry for 'pChanwr' in the 'PCodeOps' unit for details. }
+    procedure RunChanwr(p: TProcessID; x: TXArgument; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): refactor. }
+      with processes[p] do
+      begin
+        h1 := stack[t - 1].i;   (* h1 now points to channel *)
+        h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
+        h3 := stack[t].i;   (* base address of source (for x=1) *)
+        if h2 > 0 then
+          ps := channerror  (* another writer on this channel *)
+        else
+        if h2 = 0 then
+        begin  (* first *)
+          if x = 0 then
+            stack[h1].i := t
+          else
+            stack[h1].i := h3;
+          stack[h1 + 1].i := pc;
+          stack[h1 + 2].i := curpr;
+          chans := t - 1;
+          suspend := -1;
+          stepcount := 0;
+        end  (* first *)
+        else
+        begin  (* second *)
+          h2 := abs(h2);  (* readers leave negated address *)
+          if x = 0 then
+            stack[h2] := stack[t]
+          else
+          begin
+            h4 := 0;  (* loop control for block copy *)
+            while h4 < y do
+            begin
+              stack[h2 + h4] := stack[h3 + h4];
+              h4 := h4 + 1;
+            end;  (* while *)
+          end;  (* x was 1 *)
+          wakenon(h1);
+        end;  (* second *)
+        t := t - 2;
+      end;
+    end;
+
+    { Executes a 'chanrd' instruction on process 'p', with Y-value 'y'.
+
+      See the entry for 'pChanrd' in the 'PCodeOps' unit for details. }
+    procedure RunChanrd(p: TProcessID; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): refactor. }
+      with processes[p] do { gld }
+      begin
+        h3 := PopInteger(p);
+        h1 := PopInteger(p);
+        h2 := stack[h1].i;
+        if h2 < 0 then
+          ps := channerror
+        else
+        if h2 = 0 then
+        begin  (* first *)
+          stack[h1].i := -h3;
+          stack[h1 + 1].i := pc;
+          stack[h1 + 2].i := curpr;
+          chans := t - 1;
+          suspend := -1;
+          stepcount := 0;
+        end  (* first *)
+        else
+        begin  (* second *)
+          h2 := abs(h2);
+          h4 := 0;
+          while h4 < y do
+          begin
+            stack[h3 + h4] := stack[h2 + h4];
+            h4 := h4 + 1;
+          end;
+          wakenon(h1);
+        end;
+      end;
+    end;
+
+    { Executes a 'delay' instruction on process 'p'.
+    
+      See the entry for 'pDelay' in the 'PCodeOps' unit for details. }
+    procedure RunDelay(p: TProcessID);
+    var
+      mon: TStackAddress; { address of monitor to delay }
+    begin
+      mon := PopInteger(p);
+      joinqueue(mon);
+      if processes[p].curmon <> 0 then
+        releasemon(processes[p].curmon);
+    end;
+
+    procedure Resume(p: TProcessID; mon: TStackAddress);
+    begin
+      procwake(mon);
+      if processes[p].curmon <> 0 then
+        joinqueue(processes[p].curmon + 1);
+    end;
+
+    { Executes a 'resum' instruction on process 'p'.
+    
+      See the entry for 'pResum' in the 'PCodeOps' unit for details. }
+    procedure RunResum(p: TProcessID);
+    var
+      mon: TStackAddress; { address of monitor to resume }
+    begin
+      mon := PopInteger(p);
+      if stack[mon].i > 0 then Resume(p, mon);
+    end;
+
+    { Pushes a new current monitor address onto the stack, replacing
+      it with the previous current monitor address. }
+    procedure SwapMonitor(p: TProcessID);
+    var
+      mon: TStackAddress; { address of monitor to enter }
+    begin
+      mon := PopInteger(p);
+      PushInteger(p, processes[p].curmon);
+      processes[p].curmon := mon;
+    end;
+
+    { Executes an 'enmon' instruction on process 'p'.
+    
+      See the entry for 'pEnmon' in the 'PCodeOps' unit for details. }
+    procedure RunEnmon(p: TProcessID);
+    begin
+      SwapMonitor(p);
+
+      if stack[processes[p].curmon].i = 0 then
+        stack[processes[p].curmon].i := -1
+      else
+        joinqueue(processes[p].curmon);
+    end;
+
+    { Executes an 'exmon' instruction on process 'p'.
+    
+      See the entry for 'pExmon' in the 'PCodeOps' unit for details. }
+    procedure RunExmon(p: TProcessID);
+    begin
+      releasemon(processes[p].curmon);
+      processes[p].curmon := PopInteger(p);
+    end;
+
+    { Executes an 'mexec' instruction on process 'p', with Y-value 'y'.
+    
+      See the entry for 'pMexec' in the 'PCodeOps' unit for details. }
+    procedure RunMexec(p: TProcessID; y: TYArgument);
+    begin
+      PushInteger(p, processes[p].pc);
+      Jump(p, y);
+    end;
+
+    { There is no RunMretn, as it is literally just a popjump. }
+
+    { Executes an 'lobnd' instruction on process 'p', with Y-value 'y'.
+    
+      See the entry for 'pLobnd' in the 'PCodeOps' unit for details. }
+    procedure RunLobnd(p: TProcessID; y: TYArgument);
+    begin
+      if PeekInteger(p) < y then
+        ps := bndchk;
+    end;
+
+    { Executes an 'hibnd' instruction on process 'p', with Y-value 'y'.
+    
+      See the entry for 'pHibnd' in the 'PCodeOps' unit for details. }
+    procedure RunHibnd(p: TProcessID; y: TYArgument);
+    begin
+      if y < PeekInteger(p) then
+        ps := bndchk;
+    end;
+
+    { Executes a 'sleap' instruction on process 'p'.
+    
+      See the entry for 'pSleap' in the 'PCodeOps' unit for details. }
+    procedure RunSleap(p: TProcessID);
+    var
+      time: integer; { TODO(@MattWindsor91): units? }
+    begin
+      time := PopInteger(p);
+      if time <= 0 then
+        stepcount := 0
+      else
+        joineventq(time + sysclock);
+    end;
+
+    { Executes a 'procv' instruction on process 'p'.
+    
+      See the entry for 'pProcv' in the 'PCodeOps' unit for details. }
+    procedure RunProcv(p: TProcessID);
+    var
+      vp: TStackAddress;
+    begin
+      { TODO(@MattWindsor91): refactor. }
+      vp := PopInteger(p);
+      processes[p].varptr := vp;
+      if stack[vp].i = 0 then
+        stack[vp].i := curpr
+      else
+        ps := instchk;
+    end;
+
+    { Executes an 'ecall' instruction on process 'p', with Y-argument 'y'.
+      
+      See the entry for 'pEcall' in the 'PCodeOps' unit for details. }
+    procedure RunEcall(p: TProcessID; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): understand, then refactor }
+      with processes[p] do
+      begin
+        h1 := t - y;
+        t := h1 - 2;
+        h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
+        if h2 > 0 then
+          if not processes[h2].active then
+            ps := nexistchk
+          else
+          begin
+            h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
+            if stack[h3].i <= 0 then
+            begin  (* empty queue on entry *)
+              if stack[h3].i < 0 then
+              begin  (* other process has arrived *)
+                for h4 := 1 to y do
+                  stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
+                wakenon(h3);
+              end;
+              stack[h3 + 1].i := pc;
+              stack[h3 + 2].i := curpr;
+            end;
+            joinqueue(h3);
+            stack[t + 1].i := h3;
+            chans := t + 1;
+            suspend := -1;
+          end
+        else
+        if h2 = 0 then
+          ps := nexistchk
+        else
+          ps := namechk;
+      end;
+    end;
+
+    { Executes an 'acpt1' instruction on process 'p', with Y-argument 'y'.
+      
+      See the entry for 'pAcpt1' in the 'PCodeOps' unit for details. }
+    procedure RunAcpt1(p: TProcessID; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): understand, then refactor }
+      h1 := PopInteger(p);    (* h1 points to entry *)
+      if stack[h1].i = 0 then
+      begin  (* no calls - sleep *)
+        stack[h1].i := -1;
+        stack[h1 + 1].i := processes[p].pc;
+        stack[h1 + 2].i := curpr;
+        processes[p].suspend := -1;
+        processes[p].chans := processes[p].t + 1;
+        stepcount := 0;
+      end
+      else
+      begin  (* another process has arrived *)
+        h2 := stack[h1 + 2].i;  (* hs has proc number *)
+        h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
+        for h4 := 0 to y - 1 do
+
+          stack[h1 + h4 + entrysize] := stack[h3 + h4];
+
+      end;
+    end;
+
+    { Executes an 'acpt2' instruction on process 'p'.
+      
+      See the entry for 'pAcpt2' in the 'PCodeOps' unit for details. }
+    procedure RunAcpt2(p: TProcessID);
+    begin
+      { TODO(@MattWindsor91): understand, then refactor }
+      h1 := PopInteger(p); (* h1 points to entry *)
+      procwake(h1);
+
+      if stack[h1].i <> 0 then
+      begin  (* queue non-empty *)
+        h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
+        stack[h1 + 1].i := processes[h2].pc;
+        stack[h1 + 2].i := h2;
+      end;
+    end;
+
+    { Executes a 'rep1c' instruction on process 'p', with X-argument 'x'
+      and Y-argument 'y'.
+      
+      See the entry for 'pRep1c' in the 'PCodeOps' unit for details. }
+    procedure RunRep1c(p: TProcessID; x: TXArgument; y: TYArgument);
+    begin
+      { TODO(@MattWindsor91): understand, then refactor }
+      stack[processes[p].display[x] + y].i := processes[p].repindex;
+    end;
+
+    { Executes a 'rep2c' instruction on process 'p', with Y-argument 'y'.
+    
+      See the entry for 'pRep2c' in the 'PCodeOps' unit for details. }
+    procedure RunRep2c(p: TProcessID; y: TYArgument);
+    var
+      addr: TStackAddress; { TODO(@MattWindsor91): what is this? }
+    begin
+      addr := PopInteger(p);
+      stack[addr].i := stack[addr].i + 1;
+      Jump(p, y);
+    end;
+
+    { Executes a 'power2' instruction on process 'p'.
+    
+      See the entry for 'pPower2' in the 'PCodeOps' unit for details. }
+    procedure RunPower2(p: TProcessID);
+    var
+      bit: integer; { Bit to set (must be 0..MSB) }
+    begin
+      bit := PopInteger(p);
+      if not (bit in [0..bsmsb]) then
+        ps := setchk
+      else
+        PushBitset(p, [bit]);
+    end;
+
+    { Executes a 'btest' instruction on process 'p'.
+    
+      See the entry for 'pBtest' in the 'PCodeOps' unit for details. }
+    procedure RunBtest(p: TProcessID);
+    var
+      bits: Powerset; { Bitset to test }
+      bit: integer; { Bit to test }
+    begin
+      bits := PopBitset(p);
+      bit := PopInteger(p);
+
+      if not (bit in [0..bsmsb]) then
+        ps := setchk
+      else
+      begin
+        PushBoolean(p, bit in bits);
+        PushBitset(p, bits);
+      end;
+    end;
+
+    { Executes a 'wrbas' instruction on process 'p'.
+    
+      See the entry for 'pWrbas' in the 'PCodeOps' unit for details. }
+    procedure RunWrbas(p: TProcessID);
+    var
+      bas: integer; { TODO(@MattWindsor91): what is this? }
+      val: real;
+    begin
+      bas := PopInteger(p);
+      val := PopReal(p);
+      if bas = 8 then
+        Write(val: 11: 8)
+      else
+        Write(val: 8: 16);
+    end;
+
+    { Executes a 'sinit' instruction on process 'p'.
+    
+      See the entry for 'pSinit' in the 'PCodeOps' unit for details. }
+    procedure RunSinit(p: TProcessID);
+    begin
+      if curpr <> 0 then
+        ps := seminitchk
+      else
+        RunStore(p);
+    end;
+
+    { Executes an 'prtjmp' instruction on process 'p', with Y-value 'y'.
+    
+      See the entry for 'pPrtjmp' in the 'PCodeOps' unit for details. }
+    procedure RunPrtjmp(p: TProcessID; y: TYArgument);
+    begin
+      if stack[processes[p].curmon + 2].i = 0 then Jump(p, y);
+    end;
+
+    { Executes a 'prtsel' instruction on process 'p'.
+    
+      See the entry for 'pPrtsel' in the 'PCodeOps' unit for details. }
+    procedure RunPrtsel(p: TProcessID);
+    begin
+      { TODO(@MattWindsor91): understand and refactor }
+      h1 := processes[p].t;
+      h2 := 0;
+      foundcall := False;
+      while stack[h1].i <> -1 do
+      begin
+        h1 := h1 - 1;
+        h2 := h2 + 1;
+      end;  (* h2 is now the number of open guards *)
+      if h2 <> 0 then
+      begin  (* barriers to check *)
+        h3 := trunc(random * h2);  (* arbitrary choice *)
+        h4 := 0;  (* count of barriers tested *)
+        while not foundcall and (h4 < h2) do
+        begin
+          if stack[stack[h1 + h3 + 1].i].i <> 0 then
+            foundcall := True
+          else
+          begin
+            h3 := (h3 + 1) mod h2;
+            h4 := h4 + 1;
+          end;
+        end;
+      end;  (* barriers to check *)
+      if not foundcall then
+        releasemon(processes[p].curmon)
+      else
+      begin
+        h3 := stack[h1 + h3 + 1].i;
+        procwake(h3);
+      end;
+      processes[p].t := h1 - 1;
+      StackStoreInteger(stack, processes[p].curmon + 2, 0);
+      PopJump(p);
+    end;
+
+    
+    { Executes a 'prtslp' instruction on process 'p'.
+    
+      See the entry for 'pPrtslp' in the 'PCodeOps' unit for details. }
+    procedure RunPrtslp(p: TProcessID);
+    begin
+      JoinQueue(PopInteger(p));
+    end;
+
+    { Executes a 'prtex' instruction on process 'p', with X-value 'x'.
+    
+      See the entry for 'pPrtex' in the 'PCodeOps' unit for details. }
+    procedure RunPrtex(p: TProcessID; x: TXArgument);
+    begin
+      processes[p].clearresource := (x = 0);
+      processes[p].curmon := PopInteger(p);
+    end;
+
+    { Executes a 'prtcnd' instruction on process 'p', with Y-value 'y'.
+    
+      See the entry for 'pPrtcnd' in the 'PCodeOps' unit for details. }
+    procedure RunPrtcnd(p: TProcessID; y: TYArgument);
+    begin
+      if processes[p].clearresource then
+      begin
+        stack[processes[p].curmon + 2].i := 1;
+        PushInteger(p, processes[p].pc);
+        PushInteger(p, -1);
+        Jump(p, y);
+      end;
+    end;
 
     procedure RunInstruction(p: TProcessID; ir: TObjOrder);
     begin
@@ -1942,404 +2548,30 @@ var
           pModop: RunIntArithOp(p, aoMod);
           pMulR: RunRealArithOp(p, aoMul);
           pDivopR: RunRealArithOp(p, aoDiv);
-
-          pRdlin:
-            begin
-              if EOF(input) then
-                raise ERedChk.Create('reading past end of file');
-              readln;
-            end;
-
+          pRdlin: RunRdlin;
           pWrlin: WriteLn;
-
-          pSelec0:
-          begin
-            h1 := t;
-            h2 := 0;
-            while stack[h1].i <> -1 do
-            begin
-              h1 := h1 - sfsize;
-              h2 := h2 + 1;
-            end;  (* h2 is now the number of open guards *)
-            if h2 = 0 then
-            begin
-              if ir.y = 0 then
-                ps := guardchk  (* closed guards and no else/terminate *)
-              else
-              if ir.y = 1 then
-                termstate := True;
-            end
-            else
-            begin  (* channels/entries to check *)
-              if ir.x = 0 then
-                h3 := trunc(random * h2)  (* arbitrary choice *)
-              else
-                h3 := h2 - 1;  (* priority select *)
-              h4 := t - (sfsize - 1) - (h3 * sfsize);
-              (* h4 points to bottom of "frame" *)
-              h1 := 1;
-              foundcall := False;
-              while not foundcall and (h1 <= h2) do
-              begin
-                if stack[h4].i = 0 then
-                begin  (* timeout alternative *)
-                  if stack[h4 + 3].i < 0 then
-                    stack[h4 + 3].i := sysclock
-                  else
-                    stack[h4 + 3].i := stack[h4 + 3].i + sysclock;
-                  if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
-                  begin
-                    wakeup := stack[h4 + 3].i;
-                    wakestart := stack[h4 + 4].i;
-                  end;
-                  h3 := (h3 + 1) mod h2;
-                  h4 := t - (sfsize - 1) - (h3 * sfsize);
-                  h1 := h1 + 1;
-                end
-                else
-                if stack[stack[h4].i].i <> 0 then
-                  foundcall := True
-                else
-                begin
-                  h3 := (h3 + 1) mod h2;
-                  h4 := t - (sfsize - 1) - (h3 * sfsize);
-                  h1 := h1 + 1;
-                end;
-              end;  (* while not foundcall ... *)
-              if not foundcall then  (* no channel/entry has a call *)
-              begin
-                if ir.y <> 2 then  (* ie, if no else part *)
-                begin  (* sleep on all channels *)
-                  if ir.y = 1 then
-                    termstate := True;
-                  h1 := t - (sfsize - 1) - ((h2 - 1) * sfsize);
-                  chans := h1;
-                  for h3 := 1 to h2 do
-                  begin
-                    h4 := stack[h1].i;  (* h4 points to channel/entry *)
-                    if h4 <> 0 then  (* 0 means timeout *)
-                    begin
-                      if stack[h1 + 2].i = 2 then
-                        stack[h4].i := -stack[h1 + 1].i (* query sleep *)
-                      else
-                      if stack[h1 + 2].i = 0 then
-                        stack[h4].i := h1 + 1
-                      else
-                      if stack[h1 + 2].i = 1 then
-                        stack[h4] := stack[h1 + 1]  (* shriek sleep *)
-                      else
-                        stack[h4].i := -1;  (* entry sleep *)
-                      stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
-                      stack[h4 + 2].i := curpr;
-                    end; (* if h4 <> 0 *)
-                    h1 := h1 + sfsize;
-                  end;  (* for loop *)
-                  stepcount := 0;
-                  suspend := -h2;
-                  onselect := True;
-                  if wakeup <> 0 then
-                    joineventq(wakeup);
-                end; (* sleep on open-guard channels/entries *)
-              end (* no call *)
-              else
-              begin  (* someone is waiting *)
-                wakeup := 0;
-                wakestart := 0;
-                h1 := stack[h4].i;  (* h1 points to channel/entry *)
-                if stack[h4 + 2].i in [0..2] then
-                begin  (* channel rendezvous *)
-                  if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
-                    ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
-                    ps := channerror
-                  else
-                  begin  (* rendezvous *)
-                    stack[h1].i := abs(stack[h1].i);
-                    if stack[h4 + 2].i = 0 then
-                      stack[stack[h1].i] := stack[h4 + 1]
-                    else
-                    begin  (* block copy *)
-                      h3 := 0;
-                      while h3 < stack[h4 + 3].i do
-                      begin
-                        if stack[h4 + 2].i = 1 then
-                          stack[stack[h1].i + h3] := stack[stack[h4 + 1].i + h3]
-                        else
-                          stack[stack[h4 + 1].i + h3] := stack[stack[h1].i + h3];
-                        h3 := h3 + 1;
-                      end;  (* while *)
-                    end;  (* block copy *)
-                    pc := stack[h4 + 4].i;
-                    repindex := stack[h4 + 5].i;  (* recover repindex *)
-                    wakenon(h1);  (* wake the other process *)
-                  end;  (* rendezvous *)
-                end  (* channel rendezvous *)
-                else
-                  pc := stack[h4 + 4].i;  (* entry *)
-              end;  (* someone was waiting *)
-            end;  (* calls to check *)
-            t := t - 1 - (h2 * sfsize);
-          end;  (* case 64 *)
-
-          pChanwr: { gld }
-          begin
-            h1 := stack[t - 1].i;   (* h1 now points to channel *)
-            h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
-            h3 := stack[t].i;   (* base address of source (for ir.x=1) *)
-            if h2 > 0 then
-              ps := channerror  (* another writer on this channel *)
-            else
-            if h2 = 0 then
-            begin  (* first *)
-              if ir.x = 0 then
-                stack[h1].i := t
-              else
-                stack[h1].i := h3;
-              stack[h1 + 1].i := pc;
-              stack[h1 + 2].i := curpr;
-              chans := t - 1;
-              suspend := -1;
-              stepcount := 0;
-            end  (* first *)
-            else
-            begin  (* second *)
-              h2 := abs(h2);  (* readers leave negated address *)
-              if ir.x = 0 then
-                stack[h2] := stack[t]
-              else
-              begin
-                h4 := 0;  (* loop control for block copy *)
-                while h4 < ir.y do
-                begin
-                  stack[h2 + h4] := stack[h3 + h4];
-                  h4 := h4 + 1;
-                end;  (* while *)
-              end;  (* ir.x was 1 *)
-              wakenon(h1);
-            end;  (* second *)
-            t := t - 2;
-          end;  (* case 65 *)
-
-          pChanrd: { gld }
-          begin
-            h3 := PopInteger(p);
-            h1 := PopInteger(p);
-            h2 := stack[h1].i;
-            if h2 < 0 then
-              ps := channerror
-            else
-            if h2 = 0 then
-            begin  (* first *)
-              stack[h1].i := -h3;
-              stack[h1 + 1].i := pc;
-              stack[h1 + 2].i := curpr;
-              chans := t - 1;
-              suspend := -1;
-              stepcount := 0;
-            end  (* first *)
-            else
-            begin  (* second *)
-              h2 := abs(h2);
-              h4 := 0;
-              while h4 < ir.y do
-              begin
-                stack[h3 + h4] := stack[h2 + h4];
-                h4 := h4 + 1;
-              end;
-              wakenon(h1);
-            end;
-          end;
-
-          pDelay:
-          begin
-            h1 := PopInteger(p);
-            joinqueue(h1);
-            if curmon <> 0 then
-              releasemon(curmon);
-          end;
-
-          pResum:
-          begin
-            h1 := PopInteger(p);
-            if stack[h1].i > 0 then
-            begin
-              procwake(h1);
-              if curmon <> 0 then
-                joinqueue(curmon + 1);
-            end;
-          end;
-
-          pEnmon:
-          begin
-            h1 := stack[t].i;  (* address of new monitor variable *)
-            stack[t].i := curmon;  (* save old monitor variable *)
-            curmon := h1;
-            if stack[curmon].i = 0 then
-
-              stack[curmon].i := -1
-
-            else
-              joinqueue(curmon);
-          end;
-
-          pExmon:
-          begin
-            releasemon(curmon);
-            curmon := PopInteger(p);
-          end;
-
-          pMexec:
-          begin  (* execute monitor body code *)
-            PushInteger(p, pc);
-            pc := ir.y;
-          end;
-
-          pMretn:
-          begin  (* return from monitor body code *)
-            pc := PopInteger(p);
-          end;
-
-          pLobnd:
-            if stack[t].i < ir.y then
-              ps := bndchk;
-
-          pHibnd:
-            if stack[t].i > ir.y then
-              ps := bndchk;
-
-          pPref: { Not implemented }
-            ;
-
-          pSleap:
-          begin
-            h1 := PopInteger(p);
-            if h1 <= 0 then
-              stepcount := 0
-            else
-              joineventq(h1 + sysclock);
-          end;
-
-          pProcv:
-          begin
-            h1 := PopInteger(p);
-            varptr := h1;
-            if stack[h1].i = 0 then
-              stack[h1].i := curpr
-            else
-              ps := instchk;
-          end;
-
-          pEcall:
-          begin
-            h1 := t - ir.y;
-            t := h1 - 2;
-            h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
-            if h2 > 0 then
-              if not processes[h2].active then
-                ps := nexistchk
-              else
-              begin
-                h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
-                if stack[h3].i <= 0 then
-                begin  (* empty queue on entry *)
-                  if stack[h3].i < 0 then
-                  begin  (* other process has arrived *)
-                    for h4 := 1 to ir.y do
-                      stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
-                    wakenon(h3);
-                  end;
-                  stack[h3 + 1].i := pc;
-                  stack[h3 + 2].i := curpr;
-                end;
-                joinqueue(h3);
-                stack[t + 1].i := h3;
-                chans := t + 1;
-                suspend := -1;
-              end
-            else
-            if h2 = 0 then
-              ps := nexistchk
-            else
-              ps := namechk;
-          end;
-
-          pAcpt1:
-          begin
-            h1 := PopInteger(p);    (* h1 points to entry *)
-            if stack[h1].i = 0 then
-            begin  (* no calls - sleep *)
-              stack[h1].i := -1;
-              stack[h1 + 1].i := pc;
-              stack[h1 + 2].i := curpr;
-              suspend := -1;
-              chans := t + 1;
-              stepcount := 0;
-            end
-            else
-            begin  (* another process has arrived *)
-              h2 := stack[h1 + 2].i;  (* hs has proc number *)
-              h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
-              for h4 := 0 to ir.y - 1 do
-
-                stack[h1 + h4 + entrysize] := stack[h3 + h4];
-
-            end;
-          end;
-
-          pAcpt2:
-          begin
-            h1 := PopInteger(p); (* h1 points to entry *)
-            procwake(h1);
-
-            if stack[h1].i <> 0 then
-            begin  (* queue non-empty *)
-              h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
-              stack[h1 + 1].i := processes[h2].pc;
-              stack[h1 + 2].i := h2;
-            end;
-          end;
-
-          pRep1c:
-            stack[display[ir.x] + ir.y].i := repindex;
-
-          pRep2c:
-          begin  (* replicate tail code *)
-            h1 := PopInteger(p);
-            stack[h1].i := stack[h1].i + 1;
-            pc := ir.y;
-          end;
-
-          pPower2:
-          begin
-            h1 := stack[t].i;
-            if not (h1 in [0..bsmsb]) then
-              ps := setchk
-            else
-              stack[t].bs := [h1];
-          end;
-
-          pBtest:
-          begin
-            t := t - 1;
-            h1 := stack[t].i;
-            if not (h1 in [0..bsmsb]) then
-              ps := setchk
-            else
-              stack[t].i := btoi(h1 in stack[t + 1].bs);
-          end;
-
-          pWrbas:
-          begin
-            h3 := stack[t].i;
-            h1 := stack[t - 1].i;
-            h1r := stack[t - 1].r;
-            t := t - 2;
-            if h3 = 8 then
-              Write(h1r: 11: 8)
-            else
-              Write(h1r: 8: 16);
-
-          end;
-
+          pSelec0: RunSelec0(p, ir.x, ir.y);
+          pChanwr: RunChanwr(p, ir.x, ir.y);
+          pChanrd: RunChanrd(p, ir.y);
+          pDelay: RunDelay(p);
+          pResum: RunResum(p);
+          pEnmon: RunEnmon(p);
+          pExmon: RunExmon(p);
+          pMexec: RunMexec(p, ir.y);
+          pMretn: PopJump(p);
+          pLobnd: RunLobnd(p, ir.y);
+          pHibnd: RunHibnd(p, ir.y);
+          pPref: { Not implemented };
+          pSleap: RunSleap(p);
+          pProcv: RunProcv(p);
+          pEcall: RunEcall(p, ir.y);
+          pAcpt1: RunAcpt1(p, ir.y);
+          pAcpt2: RunAcpt2(p);
+          pRep1c: RunRep1c(p, ir.x, ir.y);
+          pRep2c: RunRep2c(p, ir.y);
+          pPower2: RunPower2(p);
+          pBtest: RunBtest(p);
+          pWrbas: RunWrbas(p);
           pRelequS: RunBitsetRelOp(p, roEq);
           pRelneqS: RunBitsetRelOp(p, roNe);
           pRelltS: RunBitsetRelOp(p, roLt);
@@ -2349,83 +2581,12 @@ var
           pOropS: RunBitsetLogicOp(p, loOr);
           pSubS: RunBitsetArithOp(p, aoSub);
           pAndopS: RunBitsetLogicOp(p, loAnd);
-
-          pSinit:
-            if curpr <> 0 then
-              ps := seminitchk
-            else
-            begin
-              stack[stack[t - 1].i] := stack[t];
-              t := t - 2;
-            end;
-
-          pPrtjmp:
-          begin
-            if stack[curmon + 2].i = 0 then
-              pc := ir.y;
-          end;
-
-          pPrtsel:
-          begin
-            h1 := t;
-            h2 := 0;
-            foundcall := False;
-            while stack[h1].i <> -1 do
-            begin
-              h1 := h1 - 1;
-              h2 := h2 + 1;
-            end;  (* h2 is now the number of open guards *)
-            if h2 <> 0 then
-            begin  (* barriers to check *)
-              h3 := trunc(random * h2);  (* arbitrary choice *)
-              h4 := 0;  (* count of barriers tested *)
-              while not foundcall and (h4 < h2) do
-              begin
-                if stack[stack[h1 + h3 + 1].i].i <> 0 then
-                  foundcall := True
-                else
-                begin
-                  h3 := (h3 + 1) mod h2;
-                  h4 := h4 + 1;
-                end;
-              end;
-            end;  (* barriers to check *)
-            if not foundcall then
-              releasemon(curmon)
-            else
-            begin
-              h3 := stack[h1 + h3 + 1].i;
-              procwake(h3);
-            end;
-            t := h1 - 1;
-            StackStoreInteger(stack, curmon + 2, 0);
-            pc := PopInteger(p);
-          end;
-
-          pPrtslp:
-          begin
-            h1 := PopInteger(p);
-            joinqueue(h1);
-          end;
-
-          pPrtex:
-          begin
-            if ir.x = 0 then
-              clearresource := True
-            else
-              clearresource := False;
-            curmon := PopInteger(p);
-          end;
-
-          pPrtcnd:
-            if clearresource then
-            begin
-              stack[curmon + 2].i := 1;
-              PushInteger(p, pc);
-              PushInteger(p, -1);
-              pc := ir.y;
-            end
-
+          pSinit: RunSinit(p);
+          pPrtjmp: RunPrtjmp(p, ir.y);
+          pPrtsel: RunPrtsel(p);
+          pPrtslp: RunPrtslp(p);
+          pPrtex: RunPrtex(p, ir.x);
+          pPrtcnd: RunPrtcnd(p, ir.y);
         end  (*case*);
 
     end;
