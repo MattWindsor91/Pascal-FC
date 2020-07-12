@@ -2329,7 +2329,7 @@ var
     procedure RunRep1c(p: TProcessID; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      stack[processes[p].display[x] + y].i := processes[p].repindex;
+      StackStoreInteger(stack, LocalAddress(p, x, y), processes[p].repindex);
     end;
 
     { Executes a 'rep2c' instruction on process 'p', with Y-argument 'y'.
