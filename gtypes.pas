@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 unit GTypes;
 
 {$mode objfpc}{$H+}
+{$modeswitch TypeHelpers}
 
 interface
 
@@ -33,14 +34,44 @@ type
   TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
     grdproc, xgrdproc);
 
-  { Type of types }
+  { Type of types. }
   TType = (notyp, ints, reals, bools, chars, arrays, records,
     semafors, channels, monvars, condvars, synchros, adrs,
     procs, entrys, enums, bitsets,
     protvars, protq);
   TTypeSet = set of TType;
 
+  { Helper functions for types. }
+  TTypeHelper = type helper for TType
+    { Gets the string representation of a type. }
+    function ToString: string;
+  end;
+
 implementation
 
+  function TTypeHelper.ToString: string;
+  begin
+    case self of
+      notyp: Result := 'notyp';
+      bitsets: Result := 'bitset';
+      ints: Result := 'integer';
+      reals: Result := 'real';
+      bools: Result := 'boolean';
+      chars: Result := 'char';
+      arrays: Result := 'array';
+      records: Result := 'record';
+      semafors: Result := 'semaphore';
+      channels: Result := 'channel';
+      monvars: Result := 'monvar';
+      protvars: Result := 'resource';
+      protq: Result := 'protq';
+      condvars: Result := 'condition';
+      synchros: Result := 'synch';
+      adrs: Result := 'address';
+      procs: Result := 'process';
+      entrys: Result := 'entry';
+      enums: Result := 'enum'
+    end;
+  end;
 end.
 

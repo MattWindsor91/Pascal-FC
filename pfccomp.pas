@@ -5580,32 +5580,9 @@ var
 
 
   procedure writetype(anytype: TType);
-
   begin
-    case anytype of
-      notyp: Write(listfile, 'notyp       ');
-      bitsets: Write(listfile, 'bitset      ');
-      ints: Write(listfile, 'integer     ');
-      reals: Write(listfile, 'real        ');
-      bools: Write(listfile, 'boolean     ');
-      chars: Write(listfile, 'char        ');
-      arrays: Write(listfile, 'array       ');
-      records: Write(listfile, 'record      ');
-      semafors: Write(listfile, 'semaphore   ');
-      channels: Write(listfile, 'channel     ');
-      monvars: Write(listfile, 'monvar      ');
-      protvars: Write(listfile, 'resource    ');
-      protq: Write(listfile, 'protq       ');
-      condvars: Write(listfile, 'condition   ');
-      synchros: Write(listfile, 'synch       ');
-      adrs: Write(listfile, 'address     ');
-      procs: Write(listfile, 'process     ');
-      entrys: Write(listfile, 'entry       ');
-
-      enums: Write(listfile, 'enum type   ')
-
-    end;  (* case *)
-  end;  (* procedure writetype *)
+    Write(listfile, anytype.ToString);
+  end;
 
 
 
