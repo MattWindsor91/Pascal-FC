@@ -53,15 +53,6 @@ const
 
   entrysize = 3;         { space for a process entry point }
 
-  {#
-   # Primitive type identifiers
-   #}
-
-  ptyInt = 1;
-  ptyBool = 2;
-  ptyChar = 3;
-  ptyReal = 4;
-  ptyBitset = 5;
 implementation
 
 end.

@@ -3,7 +3,7 @@ all: pfccomp pint
 cunits := cconsts.pas
 iunits := ibitset.pas iconsts.pas ierror.pas itypes.pas istack.pas iop.pas
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
-punits := pcodeobj.pas pcodeops.pas
+punits := pcodeobj.pas pcodeops.pas pcodetyp.pas
 tunits := tbitset.pas top.pas tstack.pas tstrutil.pas
 
 FLAGS := -Mobjfpc -g

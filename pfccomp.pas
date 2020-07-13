@@ -27,6 +27,7 @@ uses
   GConsts,
   PCodeObj,
   PCodeOps,
+  PCodeTyp,
   CConsts, GTables, GTypes, GStrUtil;
 
 type
@@ -5774,35 +5775,35 @@ var
             ifloat: gen(pIfloat, 0, y);
             readip: case instyp of
                 notyp,
-                ints: gen(pReadip, 0, 1);
-                reals: gen(pReadip, 0, 4);
-                chars: gen(pReadip, 0, 3)
+                ints: gen(pReadip, 0, ptyInt);
+                reals: gen(pReadip, 0, ptyReal);
+                chars: gen(pReadip, 0, ptyChar)
               end;
             wrstr: gen(pWrstr, 0, y);
             wrsfm: gen(pWrstr, 1, y);
             wrval: case instyp of
                 notyp,
                 ints,
-                semafors: gen(pWrval, 0, 1);
-                bools: gen(pWrval, 0, 2);
-                chars: gen(pWrval, 0, 3);
-                reals: gen(pWrval, 0, 4);
-                bitsets: gen(pWrval, 0, 5)
+                semafors: gen(pWrval, 0, ptyInt);
+                bools: gen(pWrval, 0, ptyBool);
+                chars: gen(pWrval, 0, ptyChar);
+                reals: gen(pWrval, 0, ptyReal);
+                bitsets: gen(pWrval, 0, ptyBitset)
               end;
             wrfrm: case instyp of
                 notyp,
                 ints,
-                semafors: gen(pWrfrm, 0, 1);
-                bools: gen(pWrfrm, 0, 2);
-                chars: gen(pWrfrm, 0, 3);
-                reals: gen(pWrfrm, 0, 4);
-                bitsets: gen(pWrfrm, 0, 5)
+                semafors: gen(pWrfrm, 0, ptyInt);
+                bools: gen(pWrfrm, 0, ptyBool);
+                chars: gen(pWrfrm, 0, ptyChar);
+                reals: gen(pWrfrm, 0, ptyReal);
+                bitsets: gen(pWrfrm, 0, ptyBitset)
               end;
             w2frm: gen(pW2frm, 0, 0);
             wrbas: if instyp = ints then
-                gen(pWrbas, 0, 1)
+                gen(pWrbas, 0, ptyInt)
               else
-                gen(pWrbas, 0, 5);
+                gen(pWrbas, 0, ptyBitset);
             stop: gen(pStop, x, y);
             retproc: gen(pRetproc, x, y);
             retfun: gen(pRetfun, x, y);
@@ -5842,9 +5843,9 @@ var
                 ints,
                 bools,
                 chars,
-                enums: gen(48, 0, 0);
-                reals: gen(42, 0, 0);
-                bitsets: gen(115, 0, 0)
+                enums: gen(pRelleI, 0, 0);
+                reals: gen(pRelleR, 0, 0);
+                bitsets: gen(pRelleS, 0, 0)
               end;
             relgt: case instyp of
                 notyp,

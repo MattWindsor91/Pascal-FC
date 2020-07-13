@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -19,28 +19,33 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ General: Miscellaneous base types }
+{ P-code: Type identifiers
 
-unit GTypes;
+  These are the type identifiers used in the P-code representation, and
+  distinct from the in-interpreter and in-compiler representations.
+}
+unit PCodeTyp;
 
 {$mode objfpc}{$H+}
 
 interface
 
-uses GConsts;
-type
-  TIndex = -xmax .. xmax;
-  TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
-    grdproc, xgrdproc);
+const
+  {#
+   # Primitive type identifiers
+   #}
 
-  { Type of types }
-  TType = (notyp, ints, reals, bools, chars, arrays, records,
-    semafors, channels, monvars, condvars, synchros, adrs,
-    procs, entrys, enums, bitsets,
-    protvars, protq);
-  TTypeSet = set of TType;
+  ptyInt = 1;
+  ptyBool = 2;
+  ptyChar = 3;
+  ptyReal = 4;
+  ptyBitset = 5;
+
+type
+
+  { Type of primitive type identifiers. }
+  TPrimType = ptyInt..ptyBitset;
 
 implementation
 
 end.
-

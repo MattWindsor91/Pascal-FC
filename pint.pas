@@ -26,6 +26,7 @@ uses
   StrUtils,
   PCodeOps,
   PCodeObj,
+  PCodeTyp,
   GConsts,
   GTypes,
   GTables,
