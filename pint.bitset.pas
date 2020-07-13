@@ -37,10 +37,9 @@ const
 
 type
   { Type of bitsets. }
-  { TODO(@MattWindsor91): rename to, eg, TBitset }
-  Powerset = set of 0..bsmsb;
+  TBitset = set of 0..bsmsb;
 
-TBitsetHelper = type helper for Powerset
+TBitsetHelper = type helper for TBitset
   { Returns a string representation of the bitset 'bs'. }
   function AsString: string;
 

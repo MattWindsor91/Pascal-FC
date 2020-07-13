@@ -49,7 +49,7 @@ type
   TStackRecord = record
     case tp: TType of
       ints: (i: integer);
-      bitsets: (bs: powerset);
+      bitsets: (bs: TBitset);
       reals: (r: real)
   end;
   TStackAddress = 1..stmax;
@@ -107,7 +107,7 @@ type
     procedure PushReal(r: real);
 
     { Pushes a bitset to the current frame. }
-    procedure PushBitset(bs: Powerset);
+    procedure PushBitset(bs: TBitset);
 
     { Pushes a record to the current frame. }
     procedure PushRecord(s: TStackRecord);
@@ -119,7 +119,7 @@ type
     function PopReal: real;
 
     { Pops a bitset from the current frame. }
-    function PopBitset: Powerset;
+    function PopBitset: TBitset;
 
     { Pops a record from the current frame. }
     function PopRecord: TStackRecord;
@@ -136,7 +136,7 @@ TStackZoneHelper = type helper for TStackZone
   function LoadReal(a: TStackAddress): real;
 
   { Reads a bitset from the stack zone at address 'a'. }
-  function LoadBitset(a: TStackAddress): Powerset;
+  function LoadBitset(a: TStackAddress): TBitset;
 
   { Reads a stack record from the stack zone at address 'a'. }
   function LoadRecord(a: TStackAddress): TStackRecord;
@@ -148,7 +148,7 @@ TStackZoneHelper = type helper for TStackZone
   procedure StoreReal(a: TStackAddress; r: real);
 
   { Writes a bitset 'bs' to the stack zone at address 'a'. }
-  procedure StoreBitset(a: TStackAddress; bs: Powerset);
+  procedure StoreBitset(a: TStackAddress; bs: TBitset);
 
   { Writes a stack record 'r' to the stack zone at address 'a'. }
   procedure StoreRecord(a: TStackAddress; r: TStackRecord);
@@ -191,7 +191,7 @@ begin
   Result := self[a].r;
 end;
 
-function TStackZoneHelper.LoadBitset(a: TStackAddress): Powerset;
+function TStackZoneHelper.LoadBitset(a: TStackAddress): TBitset;
 begin
   if self[a].tp <> bitsets then
     raise EPfcStackType.Create('expected bitset');
@@ -211,7 +211,7 @@ begin
   self[a].r := r;
 end;
 
-procedure TStackZoneHelper.StoreBitset(a: TStackAddress; bs: Powerset);
+procedure TStackZoneHelper.StoreBitset(a: TStackAddress; bs: TBitset);
 begin
   self[a].tp := bitsets;
   self[a].bs := bs;
@@ -279,7 +279,7 @@ begin
   zone^.StoreReal(frameTop, r);
 end;
 
-procedure TStackSegment.PushBitset(bs: Powerset);
+procedure TStackSegment.PushBitset(bs: TBitset);
 begin
   Advance;
   zone^.StoreBitset(frameTop, bs);
@@ -305,7 +305,7 @@ begin
   Dec(frameTop);
 end;
 
-function TStackSegment.PopBitset: Powerset;
+function TStackSegment.PopBitset: TBitset;
 begin
   CheckBounds;
   Result := zone^.LoadBitset(frameTop);

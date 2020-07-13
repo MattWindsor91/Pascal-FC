@@ -958,7 +958,7 @@ var
     end;
 
     { Pushes a bitset 'bs' onto the stack segment for process 'p'. }
-    procedure PushBitset(p: TProcessID; bs: Powerset);
+    procedure PushBitset(p: TProcessID; bs: TBitset);
     begin
       IncStackPointer(p);
       stack.StoreBitset(processes[p].t, bs);
@@ -992,7 +992,7 @@ var
     end;
 
     { Pops a bitset from the stack segment for process 'p'. }
-    function PopBitset(p: TProcessID): Powerset;
+    function PopBitset(p: TProcessID): TBitset;
     begin
       Result := stack.LoadBitset(processes[p].t);
       DecStackPointer(p);
@@ -1154,8 +1154,8 @@ var
     { Runs a bitset arith operation 'ao'. }
     procedure RunBitsetArithOp(p: TProcessID; ao: TArithOp);
     var
-      l: Powerset;    { LHS of arith operation }
-      r: Powerset;    { RHS of arith operation }
+      l: TBitset;    { LHS of arith operation }
+      r: TBitset;    { RHS of arith operation }
     begin
       { Operands are pushed in reverse order }
       r := PopBitset(p);
@@ -1190,8 +1190,8 @@ var
     { Runs a bitset relational operation 'ro'. }
     procedure RunBitsetRelOp(p: TProcessID; ro: TRelOp);
     var
-      l: Powerset;    { LHS of relational operation }
-      r: Powerset;    { RHS of relational operation }
+      l: TBitset;    { LHS of relational operation }
+      r: TBitset;    { RHS of relational operation }
     begin
       { Operands are pushed in reverse order }
       r := PopBitset(p);
@@ -1226,8 +1226,8 @@ var
     { Runs a bitset logical operation 'lo'. }
     procedure RunBitsetLogicOp(p: TProcessID; lo: TLogicOp);
     var
-      l: Powerset; { LHS of logical operation }
-      r: Powerset; { LHS of logical operation }
+      l: TBitset; { LHS of logical operation }
+      r: TBitset; { LHS of logical operation }
     begin
       r := PopBitset(p);
       l := PopBitset(p);
@@ -1255,7 +1255,7 @@ var
     { Runs the 'int' standard function on process 'p'. }
     procedure RunInt(p: TProcessID);
     var
-      bits: Powerset;
+      bits: TBitset;
     begin
       bits := PopBitset(p);
       PushInteger(p, bits.AsInteger);
@@ -2329,7 +2329,7 @@ var
       See the entry for 'pBtest' in the 'PCodeOps' unit for details. }
     procedure RunBtest(p: TProcessID);
     var
-      bits: Powerset; { Bitset to test }
+      bits: TBitset; { Bitset to test }
       bit: integer; { Bit to test }
     begin
       bits := PopBitset(p);

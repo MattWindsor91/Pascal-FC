@@ -66,7 +66,7 @@ TArithOpHelper = type helper for TArithOp
   { Returns the result of an arithmetic operation on bitsets 'l' and 'r'.
     (Currently, only subtract is supported, and has the semantics of set
      difference.) }
-  function EvalBitset(l, r: Powerset): Powerset;
+  function EvalBitset(l, r: TBitset): TBitset;
 
   { Returns the result of an arithmetic operation on integers 'l' and 'r'.
     Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
@@ -80,7 +80,7 @@ end;
 { Evaluation of logic operators. }
 TLogicOpHelper = type helper for TLogicOp
   { Returns the result of a logical binary operation on bitsets 'l' and 'r'. }
-  function EvalBitset(l, r: Powerset): Powerset;
+  function EvalBitset(l, r: TBitset): TBitset;
 
   { Returns the result of a logical binary operation on booleans 'l' and 'r'. }
   function EvalBool(l, r: boolean): boolean;
@@ -89,7 +89,7 @@ end;
 { Evaluation of relational operators. }
 TRelOpHelper = type helper for TRelOp
   { Returns the result of a relational operation on bitsets 'l' and 'r'. }
-  function EvalBitset(l, r: Powerset): boolean;
+  function EvalBitset(l, r: TBitset): boolean;
 
   { Returns the result of a relational operation on integers 'l' and 'r'. }
   function EvalInt(l, r: integer): boolean;
@@ -134,7 +134,7 @@ end;
 
 {# TArithOpHelper #}
 
-function TArithOpHelper.EvalBitset(l, r: Powerset): Powerset;
+function TArithOpHelper.EvalBitset(l, r: TBitset): TBitset;
 begin
   case self of
     { Only sub is supported so far, and it doesn't overflow }
@@ -174,7 +174,7 @@ end;
 
 {# TRelOpHelper #}
 
-function TRelOpHelper.EvalBitset(l, r: Powerset): boolean;
+function TRelOpHelper.EvalBitset(l, r: TBitset): boolean;
 begin
   case self of
     roEq: result := l = r;
@@ -218,7 +218,7 @@ end;
 
 {# TLogicOpHelper #}
 
-function TLogicOpHelper.EvalBitset(l, r: Powerset): Powerset;
+function TLogicOpHelper.EvalBitset(l, r: TBitset): TBitset;
 begin
   case self of
     loAnd: result := l * r;

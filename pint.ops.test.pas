@@ -98,13 +98,13 @@ var
 begin
   { AssertEquals doesn't seem to overload for bitsets, so we do a stringifying
     comparison instead. }
-  want := Powerset([1, 2, 3, 4]).AsString;
+  want := TBitset([1, 2, 3, 4]).AsString;
   got := aoSub.EvalBitset([1, 2, 3, 4], []).AsString;
   AssertEquals('Bitset [1234]-[] gives wrong result', want, got);
-  want := Powerset([]).AsString;
+  want := TBitset([]).AsString;
   got := aoSub.EvalBitset([], [3, 4, 5, 6]).AsString;
   AssertEquals('Bitset []-[3456] gives wrong result', want, got);
-  want := Powerset([1, 2]).AsString;
+  want := TBitset([1, 2]).AsString;
   got := aoSub.EvalBitset([1, 2, 3, 4], [3, 4, 5, 6]).AsString;
   AssertEquals('Bitset [1234]-[3456] gives wrong result', want, got);
 end;
