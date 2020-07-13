@@ -1252,6 +1252,15 @@ var
       Result := Chr(x);
     end;
 
+    { Runs the 'int' standard function on process 'p'. }
+    procedure RunInt(p: TProcessID);
+    var
+      bits: Powerset;
+    begin
+      bits := PopBitset(p);
+      PushInteger(p, bits.AsInteger);
+    end;
+
     procedure RunStfun(p: TProcessID; y: integer);
     begin
       with processes[p] do
@@ -1353,25 +1362,7 @@ var
             raise EPfcSetBound.Create('set bounds error?');
         end;  (* f21 *)
 
-        24:  (* int - bitset to integer *)
-        begin
-          h1 := 0;
-          if bsmsb = intmsb then
-            if intmsb in stack[t].bs then
-              h1 := 1;
-          h2 := 0;  (* running total *)
-          h3 := 1;  (* place value *)
-          for h4 := 0 to bsmsb - h1 do
-          begin
-            if h4 in stack[t].bs then
-              h2 := h2 + h3;
-            h3 := h3 * 2;
-          end;
-          if h1 <> 0 then
-            stack[t].i := (h2 - maxint) - 1
-          else
-            stack[t].i := h2;
-        end;
+        24: RunInt(p);
 
         25:  (* clock *)
         begin

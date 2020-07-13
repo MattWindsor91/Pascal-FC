@@ -43,6 +43,9 @@ type
 TBitsetHelper = type helper for Powerset
   { Returns a string representation of the bitset 'bs'. }
   function AsString: string;
+
+  { Converts a bitset to an integer. }
+  function AsInteger: integer;
 end;
 
 implementation
@@ -57,4 +60,17 @@ implementation
         Result[bsmsb - i + 1] := '1';
   end;
 
+  function TBitsetHelper.AsInteger: integer;
+  var
+    place: integer;
+    i: 0..bsmsb;
+  begin
+    result := 0;
+    place := 1;
+    for i := 0 to bsmsb do
+    begin
+      if i in self then result := result + place;
+      place := place * 2;
+    end;
+  end;
 end.
