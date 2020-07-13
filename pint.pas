@@ -1,5 +1,6 @@
-(*
-Copyright 1990 Alan Burns and Geoff Davies
+{
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -16,10 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*)
-{$Mode OBJFPC}
+}
 
 program pint;
+
+{$mode objfpc}
 
 uses
   SysUtils,
@@ -30,13 +32,13 @@ uses
   GConsts,
   GTypes,
   GTables,
-  IBitset,
-  IConsts,
-  IError,
-  IOp,
-  IStack,
-  ITypes,
-  IReader;
+  Pint.Bitset,
+  Pint.Consts,
+  Pint.Errors,
+  Pint.Ops,
+  Pint.Stack,
+  Pint.Types,
+  Pint.Reader;
 
 (* Pascal-FC interpreter *)
 

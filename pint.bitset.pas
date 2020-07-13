@@ -19,12 +19,12 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Interpreter: bitsets
+{ Interpreter: Bitsets
 
   Pascal-FC supports 8-bit bitsets as a primitive type.  This unit contains
   interpreter support for these bitsets. }
 
-unit IBitset;
+unit Pint.Bitset;
 
 {$mode objfpc}{$H+}
 {$modeswitch TypeHelpers}

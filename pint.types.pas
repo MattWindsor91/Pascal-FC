@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 { Interpreter: Miscellaneous base types }
 
-unit ITypes;
+unit Pint.Types;
 
 {$mode objfpc}{$H+}
 
@@ -30,7 +30,7 @@ interface
 uses
   SysUtils,
   GConsts,
-  IConsts;
+  Pint.Consts;
 
 
 type

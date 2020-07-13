@@ -19,8 +19,8 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Constants used only by PInt }
-unit IConsts;
+{ Interpreter: Constants }
+unit Pint.Consts;
 
 {$mode objfpc}{$H+}
 
@@ -37,7 +37,6 @@ const
   pmax = 20;
 
   minreal = 1e-37;       { smallest real (for division) }
-  bsmsb = 7;             { most sig. bit in target bitset }
   sfsize = 6;            { size of "frame" in a select statement }
 implementation
 

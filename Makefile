@@ -1,20 +1,36 @@
 all: pfccomp pint
 
 cunits := cconsts.pas
-iunits := ibitset.pas iconsts.pas ierror.pas itypes.pas istack.pas iop.pas
+
+# Interpreter units
+PINTUNITS := \
+  pint.bitset.pas \
+  pint.consts.pas \
+  pint.errors.pas \
+  pint.ops.pas \
+  pint.stack.pas \
+  pint.types.pas
+PINTTESTUNITS := \
+  pint.bitset.test.pas \
+  pint.ops.test.pas \
+  pint.stack.test.pas \
+
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
 punits := pcodeobj.pas pcodeops.pas pcodetyp.pas
-tunits := tbitset.pas top.pas tstack.pas tstrutil.pas
+
+TESTUNITS := \
+  ${PINTTESTUNITS} \
+  tstrutil.pas
 
 FLAGS := -Mobjfpc -g
 
 pfccomp: pfccomp.pas ${gunits} ${cunits} ${punits}
 	fpc ${FLAGS} $<
 
-pint: pint.pas ${gunits} ${iunits} ${punits}
+pint: pint.pas ${gunits} ${PINTUNITS} ${punits}
 	fpc ${FLAGS}l $<
 
-tconsole: tconsole.pas ${gunits} ${iunits} ${tunits}
+tconsole: tconsole.pas ${gunits} ${PINTUNITS} ${TUNITS}
 	fpc ${FLAGS} $<
 
 install: pfccomp pint

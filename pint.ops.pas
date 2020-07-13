@@ -22,14 +22,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 { Interpreter: Operators
 
   This unit describes various operators and their semantics. }
-unit IOp;
+unit Pint.Ops;
 
 {$mode objfpc}{$H+}
 {$modeswitch TypeHelpers}
 
 interface
 
-uses IBitset, IConsts, GConsts, IError;
+uses GConsts, Pint.Bitset, Pint.Consts, Pint.Errors;
 
 type
   { Enumeratinon of arithmetic binary operators. }

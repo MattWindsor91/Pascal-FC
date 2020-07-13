@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
   'TStackZone', most of the stack abstraction (pushing, popping, etc). is done
   at the process level: the operations here are more low-level and focus on
   direct reading and writing on stack zones. }
-unit IStack;
+unit Pint.Stack;
 
 {$mode objfpc}{$H+}
 {$modeswitch TypeHelpers}
@@ -36,11 +36,11 @@ interface
 
 uses
   SysUtils,
-  IBitset,
-  IConsts,
-  IError,
-  ITypes,
-  GTypes;
+  GTypes,
+  Pint.Bitset,
+  Pint.Consts,
+  Pint.Errors,
+  Pint.Types;
 
 type
   { TODO: When 'pint' stops accessing the stack directly, make these

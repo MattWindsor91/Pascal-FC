@@ -19,14 +19,9 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Interpreter: Errors
+{ Interpreter: Errors }
 
-  Increasingly, we use exceptions to model interpreter-halting errors.
-  Some old-style 'process status code' error handling still exists, but is being
-  phased out.
-}
-
-unit IError;
+unit PInt.Errors;
 
 {$mode objfpc}{$H+}
 

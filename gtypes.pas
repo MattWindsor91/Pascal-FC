@@ -31,8 +31,16 @@ interface
 uses GConsts;
 type
   TIndex = -xmax .. xmax;
+
+  { Enumeration of top-level objects. }
   TMyObject = (konstant, variable, type1, prozedure, funktion, monproc, address,
     grdproc, xgrdproc);
+
+  { Helper functions for objects. }
+  TMyObjectHelper = type helper for TMyObject
+    { Gets the string representation of an object. }
+    function ToString: string;
+  end;
 
   { Type of types. }
   TType = (notyp, ints, reals, bools, chars, arrays, records,
@@ -48,6 +56,20 @@ type
   end;
 
 implementation
+  function TMyObjectHelper.ToString: string;
+  begin
+    case self of
+      konstant: Result := 'constant';
+      variable: Result := 'variable';
+      type1: Result := 'type id';
+      prozedure: Result := 'procedure';
+      funktion: Result := 'function';
+      monproc: Result := 'monproc';
+      address: Result := 'address';
+      grdproc: Result := 'grdproc';
+      xgrdproc: Result := 'xgrdproc'
+    end;
+  end;
 
   function TTypeHelper.ToString: string;
   begin

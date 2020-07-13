@@ -19,17 +19,15 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Test cases: Stack
-
-  This test case tests the IStack unit. }
-unit TStack;
+{ Test cases: Pint.Stack }
+unit Pint.Stack.Test;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, IError, IStack;
+  Classes, SysUtils, fpcunit, testregistry, Pint.Errors, Pint.Stack;
 
 type
   TStackTestCase = class(TTestCase)

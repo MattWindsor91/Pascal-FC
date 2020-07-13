@@ -27,9 +27,9 @@ program TConsole;
 uses
   Classes,
   ConsoleTestRunner,
-  TBitset,
-  TOp,
-  TStack,
+  Pint.Bitset.Test,
+  Pint.Ops.Test,
+  Pint.Stack.Test,
   TStrUtil;
 
 var

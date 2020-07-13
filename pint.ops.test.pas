@@ -19,10 +19,8 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Test cases: Op
-
-  This test case tests the IOp unit. }
-unit TOp;
+{ Test cases: Pint.Ops }
+unit Pint.Ops.Test;
 
 {$mode objfpc}{$H+}
 
@@ -31,7 +29,7 @@ unit TOp;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, IOp, IBitset;
+  Classes, SysUtils, fpcunit, testregistry, Pint.Ops, Pint.Bitset;
 
 type
   TArithOpTestCase = class(TTestCase)

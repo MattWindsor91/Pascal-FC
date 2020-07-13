@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
   This unit contains the TReader class for reading numbers from a character
   input expressed as an ICharReader. }
 
-unit IReader;
+unit Pint.Reader;
 
 {$mode objfpc}{$H+}
 

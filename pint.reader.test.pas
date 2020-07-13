@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -19,18 +19,16 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Test cases: Interpreter: Number Readers
+{ Test cases: Pint.Reader }
 
-  This test case tests the IReader unit. }
-
-unit TReader;
+unit Pint.Reader.Test;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry, IReader;
+  Classes, SysUtils, fpcunit, testutils, testregistry, Pint.Reader;
 
 type
 

@@ -19,17 +19,15 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Test cases: Bitset
-
-  This test case tests the IBitset unit. }
-unit TBitset;
+{ Test cases: Pint.Bitset }
+unit Pint.Bitset.Test;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, IBitset;
+  Classes, SysUtils, fpcunit, testregistry, Pint.Bitset;
 
 type
   TBitsetTestCase = class(TTestCase)

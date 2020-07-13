@@ -5587,19 +5587,8 @@ var
 
 
   procedure writeobj(anyobj: TMyObject);
-
   begin
-    case anyobj of
-      konstant: Write(listfile, 'constant    ');
-      variable: Write(listfile, 'variable    ');
-      type1: Write(listfile, 'type id     ');
-      prozedure: Write(listfile, 'procedure   ');
-      funktion: Write(listfile, 'function    ');
-      monproc: Write(listfile, 'monproc     ');
-      address: Write(listfile, 'address     ');
-      grdproc: Write(listfile, 'grdproc     ');
-      xgrdproc: Write(listfile, 'xgrdproc    ')
-    end; (* case *)
+    Write(listfile, anyobj.ToString);
   end;  (* procedure writeobj *)
 
 
