@@ -2591,44 +2591,31 @@ var
     stack.StoreInteger(4, objrec.genbtab[1].last);
 
     try { Exception trampoline for Deadlock }
+      processes[0] := TProcess.Create(
+        {active} True,
+        {clearresource} False,
+        {stackbase} 0,
+        {stacksize} stmax - pmax * stkincr,
+        {t} objrec.genbtab[2].vsize - 1,
+        {b} 0
+      );
+      Jump(0, objrec.gentab[stack[4].i].taddr);
 
-      with processes[0] do
-      begin
-        stackbase := 0;
-        b := 0;
-        suspend := 0;
-        display[1] := 0;
-        pc := objrec.gentab[stack[4].i].taddr;
-        active := True;
-        termstate := False;
-        stacksize := stmax - pmax * stkincr;
-        curmon := 0;
-        wakeup := 0;
-        wakestart := 0;
-        onselect := False;
-        t := objrec.genbtab[2].vsize - 1;
-        CheckStackOverflow(0);
-        for h1 := 5 to t do
-          stack.StoreInteger(h1, 0);
-      end;
+      CheckStackOverflow(0);
+      for h1 := 5 to processes[0].t do
+        stack.StoreInteger(h1, 0);
       for curpr := 1 to pmax do
-        with processes[curpr] do
-        begin
-          active := False;
-          termstate := False;
-          display[1] := 0;
-          pc := 0;
-          suspend := 0;
-          curmon := 0;
-          wakeup := 0;
-          wakestart := 0;
-          stackbase := processes[curpr - 1].stacksize + 1;
-          b := stackbase;
-          stacksize := stackbase + stkincr - 1;
-          t := b - 1;
-          onselect := False;
-          clearresource := True;
-        end;
+      begin
+        h2 := processes[curpr - 1].stacksize + 1;
+        processes[curpr] := TProcess.Create(
+          {active} False,
+          {clearresource} True,
+          {stackbase} h2,
+          {stacksize} h2 + stkincr,
+          {t} h2 - 1,
+          {b} h2
+        );
+      end;
       npr := 0;
       procmax := 0;
       curpr := 0;

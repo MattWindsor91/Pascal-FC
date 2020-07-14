@@ -30,7 +30,8 @@ interface
 uses
   SysUtils,
   GConsts,
-  Pint.Consts;
+  Pint.Consts,
+  Pint.Stack;
 
 
 type
@@ -44,7 +45,8 @@ type
   end;
 
   { Record for a single Pascal-FC process. }
-  TProcess = record
+  TProcess = class
+  public
     { Stack pointers }
     t: integer;         { The current stack pointer. }
     stackbase: integer; { The start of this process's segment on the stack. }
@@ -62,7 +64,9 @@ type
     wakeup, wakestart: integer;
     clearresource: boolean;
 
-    varptr: 0..tmax
+    varptr: 0..tmax;
+  
+  constructor Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
   end;
 
   { Pointer to a TProcess. }
@@ -74,5 +78,22 @@ type
 
 implementation
 
+  constructor TProcess.Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+  begin
+    active := activate;
+    termstate := False;
+    onselect := False;
+    clearresource := cr;
+    stackbase := nsb;
+    b := nb;
+    stacksize := nss;
+    t := nt;
+    display[1] := 0;
+    pc := 0;
+    suspend := 0;
+    curmon := 0;
+    wakeup := 0;
+    wakestart := 0;
+  end;
 end.
 

@@ -39,8 +39,7 @@ uses
   GTypes,
   Pint.Bitset,
   Pint.Consts,
-  Pint.Errors,
-  Pint.Types;
+  Pint.Errors;
 
 type
   { TODO: When 'pint' stops accessing the stack directly, make these
@@ -52,7 +51,7 @@ type
       bitsets: (bs: TBitset);
       reals: (r: real)
   end;
-  TStackAddress = 1..stmax;
+  TStackAddress = 0..stmax;
 
   { An addressed heap of typed stack records.
 
