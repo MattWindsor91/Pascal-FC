@@ -27,6 +27,7 @@ uses
   GConsts,
   PCodeObj,
   PCodeOps,
+  PCode.Stfun,
   PCodeTyp,
   CConsts, GTables, GTypes, GStrUtil;
 
@@ -1009,6 +1010,39 @@ var
         auxref := 0;
       end;
     end; (* enter *)
+
+    { Enters a standard function into the table. }
+    procedure EnterStfun(keyword: ShortString; tp: TType; id: TStfunId);
+    begin
+      Enter(keyword, funktion, tp, Ord(id));
+    end;
+
+    procedure EnterStfuns;
+    begin
+    EnterStfun('abs'       , notyp, sfAbs);
+    EnterStfun('sqr'       , notyp, sfSqr);
+    EnterStfun('odd'       , bools, sfOdd);
+    EnterStfun('chr'       , chars, sfChr);
+    EnterStfun('ord'       , ints, sfOrd);
+    EnterStfun('succ'      , notyp, sfSucc);
+    EnterStfun('pred'      , notyp, sfPred);
+    EnterStfun('round'     , ints, sfRound);
+    EnterStfun('trunc'     , ints, sfTrunc);
+    EnterStfun('sin'       , reals, sfSin);
+    EnterStfun('cos'       , reals, sfCos);
+    EnterStfun('exp'       , reals, sfExp);
+    EnterStfun('ln'        , reals, sfLn);
+    EnterStfun('sqrt'      , reals, sfSqrt);
+    EnterStfun('arctan'    , reals, sfArctan);
+    EnterStfun('eof'       , bools, sfEof);
+    EnterStfun('eoln'      , bools, sfEoln);
+    EnterStfun('random'    , ints, sfRandom);
+    EnterStfun('empty'     , bools, sfEmpty);
+    EnterStfun('bits'      , bitsets, sfBits);
+    EnterStfun('int'       , ints, sfInt);
+    EnterStfun('clock'     , ints, sfClock);
+
+    end;
 
     procedure enterarray(tp: TType; l, h: integer);
 
@@ -5291,6 +5325,7 @@ var
       test(fsys + [period], [], ersym);
     end;   (* blocK *)
 
+
   begin  (* Pfcfront *)
     writeln;
     writeln;
@@ -5402,28 +5437,7 @@ var
     enter('synchronous', type1, synchros, synchrosize);
     enter('bitset'     , type1, bitsets, bitsetsize);
 
-    enter('abs'       , funktion, notyp, 0);
-    enter('sqr'       , funktion, notyp, 2);
-    enter('odd'       , funktion, bools, 4);
-    enter('chr'       , funktion, chars, 5);
-    enter('ord'       , funktion, ints, 6);
-    enter('succ'      , funktion, notyp, 7);
-    enter('pred'      , funktion, notyp, 8);
-    enter('round'     , funktion, ints, 9);
-    enter('trunc'     , funktion, ints, 10);
-    enter('sin'       , funktion, reals, 11);
-    enter('cos'       , funktion, reals, 12);
-    enter('exp'       , funktion, reals, 13);
-    enter('ln'        , funktion, reals, 14);
-    enter('sqrt'      , funktion, reals, 15);
-    enter('arctan'    , funktion, reals, 16);
-    enter('eof'       , funktion, bools, 17);
-    enter('eoln'      , funktion, bools, 18);
-    enter('random'    , funktion, ints, 19);
-    enter('empty'     , funktion, bools, 20);
-    enter('bits'      , funktion, bitsets, 21);
-    enter('int'       , funktion, ints, 24);
-    enter('clock'     , funktion, ints, 25);
+    EnterStfuns;
     enter('read'      , prozedure, notyp, 1);
     enter('readln'    , prozedure, notyp, 2);
     enter('write'     , prozedure, notyp, 3);

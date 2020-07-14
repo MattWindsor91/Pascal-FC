@@ -28,6 +28,7 @@ uses
   StrUtils,
   PCodeOps,
   PCodeObj,
+  PCode.Stfun,
   PCodeTyp,
   GConsts,
   GTypes,
@@ -1264,74 +1265,66 @@ var
     procedure RunStfun(p: TProcessID; y: integer);
     begin
       with processes[p] do
-      case y of
-        0:
+      case TStfunId(y) of
+        sfAbs:
           stack[t].i := abs(stack[t].i);
-        1:
+        sfAbsR:
           stack[t].r := abs(stack[t].r);
-        2:    (* integer sqr *)
+        sfSqr:
           if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := sqr(stack[t].i);
-        3:    (* real sqr *)
+        sfSqrR:    (* real sqr *)
           if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := sqr(stack[t].r);
-        4:
+        sfOdd:
           stack[t].i := btoi(odd(stack[t].i));
-        5: { check character overflow }
+        sfChr: { check character overflow }
           AsChar(stack[t].i);
-        6: ;
-        7:  (* succ *)
+        sfOrd: ;
+        sfSucc:
           stack[t].i := stack[t].i + 1;
-        8: (* pred *)
+        sfPred:
           stack[t].i := stack[t].i - 1;
-        9:    (* round *)
+        sfRound:    (* round *)
           if abs(stack[t].r) >= (intmax + 0.5) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := round(stack[t].r);
-        10:  (* trunc *)
+        sfTrunc:  (* trunc *)
           if abs(stack[t].r) >= (intmax + 1.0) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].i := trunc(stack[t].r);
-        11:
+        sfSin:
           stack[t].r := sin(stack[t].r);
-        12:
+        sfCos:
           stack[t].r := cos(stack[t].r);
-        13:
+        sfExp:
           stack[t].r := exp(stack[t].r);
-        14:  (* ln *)
+        sfLn:
           if stack[t].r <= 0.0 then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := ln(stack[t].r);
-        15:  (* sqrt *)
+        sfSqrt:
           if stack[t].r < 0.0 then
             raise EPfcMathOverflow.Create('overflow detected')
           else
             stack[t].r := sqrt(stack[t].r);
-        16:
+        sfArctan:
           stack[t].r := arctan(stack[t].r);
-
-        17:
-        begin
-          PushBoolean(p, EOF(input));
-        end;
-
-        18:
-        begin
-          PushBoolean(p, eoln(input));
-        end;
-        19:
+        sfEof: PushBoolean(p, EOF(input));
+        sfEoln: PushBoolean(p, eoln(input));
+        sfRandom:
         begin
           h1 := abs(stack[t].i) + 1;
           stack[t].i := trunc(random * h1);
         end;
-        20:  (* empty *)
+        sfEmpty:
         begin
           h1 := stack[t].i;
           if stack[h1].i = 0 then
@@ -1339,7 +1332,7 @@ var
           else
             stack.StoreInteger(t, 0);
         end;  (* f21 *)
-        21:  (* bits *)
+        sfBits:  (* bits *)
         begin
           h1 := stack[t].i;
           stack[t].bs := [];
@@ -1360,15 +1353,10 @@ var
           end;
           if h1 <> 0 then
             raise EPfcSetBound.Create('set bounds error?');
-        end;  (* f21 *)
+        end;
 
-        24: RunInt(p);
-
-        25:  (* clock *)
-        begin
-          PushInteger(p, sysclock);
-        end;  (* f25 *)
-
+        sfInt: RunInt(p);
+        sfClock: PushInteger(p, sysclock);
       end;
     end;
 
