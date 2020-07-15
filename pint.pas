@@ -1060,7 +1060,7 @@ var
       for level := y downto x do
       begin
         processes[p].display[level] := base;
-        base := stack.LoadInteger(base + offCallLastBase)
+        base := stack.LoadInteger(base + offCallLastDisplay)
       end;
     end;
 
@@ -2226,16 +2226,20 @@ var
       
       See the entry for 'pAcpt2' in the 'PCodeOps' unit for details. }
     procedure RunAcpt2(p: TProcessID);
+    var
+      { TODO(@MattWindsor91): types }
+      entry: integer;
+      procID: integer;
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      h1 := PopInteger(p); (* h1 points to entry *)
-      procwake(h1);
+      entry := PopInteger(p); (* h1 points to entry *)
+      procwake(entry);
 
-      if stack[h1].i <> 0 then
+      if stack[entry].i <> 0 then
       begin  (* queue non-empty *)
-        h2 := procqueue.proclist[stack[h1].i].proc;  (* h2 has proc id *)
-        stack[h1 + 1].i := processes[h2].pc;
-        stack[h1 + 2].i := h2;
+        procID := procqueue.proclist[stack[entry].i].proc;  (* h2 has proc id *)
+        stack[entry + 1].i := processes[procID].pc;
+        stack[entry + 2].i := procID;
       end;
     end;
 

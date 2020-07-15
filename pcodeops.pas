@@ -45,7 +45,7 @@ const
 
     For each level 'l' from 'y' down to 'x', set this process's display for 'l'
     to the base pointer found first by taking the process's current base
-    pointer, then loading each previously-stored base pointer further down
+    pointer, then loading each previously-stored display pointer further down
     the call stack.
 
     x: Code level of called subroutine.

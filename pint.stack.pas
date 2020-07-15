@@ -43,9 +43,15 @@ uses
 
 const
 
+  { Offset from the base pointer of a frame to the program counter of the last
+    frame. }
+  offCallLastPC = 1;
+  { Offset from the base pointer of a frame to the display pointer of the
+    previous level. }
+  offCallLastDisplay = 2;
   { Offset from the base pointer of a frame to the base pointer of the last
     frame. }
-  offCallLastBase = 2;
+  offCallLastBase = 3;
 
 type
   { TODO: When 'pint' stops accessing the stack directly, make these
