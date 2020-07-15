@@ -923,45 +923,24 @@ var
         stack.StoreInteger(curmon, 0);
     end;
 
-    { Checks to see if process 'p' will overflow its stack if we push
-      'nItems' items onto it. }
-    procedure CheckStackOverflow(p: TProcessID; nItems: integer = 0);
-    begin
-      with processes[p] do
-        if (t + nItems) > stacksize then
-          raise EPfcStackOverflow.Create('stack overflow');
-    end;
-
-    { Increments the stack pointer for process 'p', checking for overflow. }
-    procedure IncStackPointer(p: TProcessID; n: integer = 1);
-    begin
-      processes[p].t := processes[p].t + n;
-      CheckStackOverflow(p);
-    end;
-
-    procedure DecStackPointer(p: TProcessID; n: integer = 1);
-    begin
-      processes[p].t := processes[p].t - n;
-    end;
-
     { Pushes an integer 'i' onto the stack segment for process 'p'. }
     procedure PushInteger(p: TProcessID; i: integer);
     begin
-      IncStackPointer(p);
+      processes[p].IncStackPointer;
       stack.StoreInteger(processes[p].t, i);
     end;
 
     { Pushes a real 'r' onto the stack segment for process 'p'. }
     procedure PushReal(p: TProcessID; r: real);
     begin
-      IncStackPointer(p);
+      processes[p].IncStackPointer;
       stack.StoreReal(processes[p].t, r);
     end;
 
     { Pushes a bitset 'bs' onto the stack segment for process 'p'. }
     procedure PushBitset(p: TProcessID; bs: TBitset);
     begin
-      IncStackPointer(p);
+      processes[p].IncStackPointer;
       stack.StoreBitset(processes[p].t, bs);
     end;
 
@@ -974,7 +953,7 @@ var
     { Pushes a stack record 'r' onto the stack segment for process 'p'. }
     procedure PushRecord(p: TProcessID; r: TStackRecord);
     begin
-      IncStackPointer(p);
+      processes[p].IncStackPointer;
       stack.StoreRecord(processes[p].t, r);
     end;
 
@@ -989,28 +968,28 @@ var
     function PopInteger(p: TProcessID): integer;
     begin
       Result := PeekInteger(p);
-      DecStackPointer(p);
+      processes[p].DecStackPointer;
     end;
 
     { Pops a bitset from the stack segment for process 'p'. }
     function PopBitset(p: TProcessID): TBitset;
     begin
       Result := stack.LoadBitset(processes[p].t);
-      DecStackPointer(p);
+      processes[p].DecStackPointer;
     end;
 
     { Pops a real from the stack segment for process 'p'. }
     function PopReal(p: TProcessID): real;
     begin
       Result := stack.LoadReal(processes[p].t);
-      DecStackPointer(p);
+      processes[p].DecStackPointer;
     end;
 
     { Pops a record from the stack segment for process 'p'. }
     function PopRecord(p: TProcessID): TStackRecord;
     begin
       Result := stack.LoadRecord(processes[p].t);
-      DecStackPointer(p);
+      processes[p].DecStackPointer;
     end;
 
     { Pops a Boolean from the stack segment for process 'p'. }
@@ -1037,8 +1016,7 @@ var
       Result := processes[p].b;
     end;
 
-    { Sets 'p''s base pointer to the given value, placing the previous base
-      address in 'oldBase'. }
+    { Sets 'p''s base pointer to the given value. }
     procedure SetBase(p: TProcessID; newBase: TStackAddress);
     begin
       processes[p].b := newBase;
@@ -1492,10 +1470,10 @@ var
       { TODO: is this correct?
         Hard to tell if it's an intentional overstatement of what the
         stack space will grow to. }
-      CheckStackOverflow(p, vsize);
+      processes[p].CheckStackOverflow(vsize);
 
       { Reserving space for the new stack base, program counter, and level(?). }
-      IncStackPointer(p, 3);
+      processes[p].IncStackPointer(3);
       PushInteger(p, vsize - 1);
       PushInteger(p, tabAddr);
     end;
@@ -1531,7 +1509,7 @@ var
       else
         oldBase := Base(p);
 
-      DecStackPointer(p, y - 4);
+      processes[p].DecStackPointer(y - 4);
       { This should have been put on the stack by a previous mark operation. }
       tabAddr := PopInteger(p);
       cap := PopInteger(p);
@@ -1541,7 +1519,7 @@ var
       level := tabRec.lev;
 
       { Move to the new base pointer. }
-      DecStackPointer(p, 2);
+      processes[p].DecStackPointer(2);
       processes[p].display[level + 1] := Sp(p);
       AdvanceBase(p);
 
@@ -1551,11 +1529,11 @@ var
       PushInteger(p, oldBase);
 
       { Initialise local variables, maybe? }
-      IncStackPointer(p, y);
+      processes[p].IncStackPointer(y);
       for i := 1 to cap - y do
         PushInteger(p, 0);
 
-      processes[p].pc := tabRec.taddr;
+      Jump(p, tabRec.taddr);
     end;
 
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
@@ -1785,9 +1763,9 @@ var
     begin
       ReturnToBase(p);
       { Above us is the programme counter, display address, and base address. }
-      IncStackPointer(p, 3);
+      processes[p].IncStackPointer(3);
       SetBase(p, PopInteger(p));
-      DecStackPointer(p); { Ignore display address }
+      processes[p].DecStackPointer; { Ignore display address }
       PopJump(p);
     end;
 
@@ -1797,7 +1775,7 @@ var
     procedure RunRetproc(p: TProcessID);
     begin
       Ret(p);
-      DecStackPointer(p); { TODO(@MattWindsor91): work out where this comes from }
+      processes[p].DecStackPointer; { TODO(@MattWindsor91): work out where this comes from }
       { Are we returning from the main procedure? }
       if processes[p].pc = 0 then
         Deactivate(p);
@@ -2601,7 +2579,7 @@ var
       );
       Jump(0, objrec.gentab[stack[4].i].taddr);
 
-      CheckStackOverflow(0);
+      processes[0].CheckStackOverflow;
       for h1 := 5 to processes[0].t do
         stack.StoreInteger(h1, 0);
       for curpr := 1 to pmax do

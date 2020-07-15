@@ -31,6 +31,7 @@ uses
   SysUtils,
   GConsts,
   Pint.Consts,
+  Pint.Errors,
   Pint.Stack;
 
 
@@ -44,8 +45,12 @@ type
     Next: qpointer
   end;
 
-  { Record for a single Pascal-FC process. }
+  { A Pascal-FC process. }
   TProcess = class
+  { TODO(@MattWindsor91): make bits of TProcess private as and when possible. }
+  private
+
+
   public
     { Stack pointers }
     t: integer;         { The current stack pointer. }
@@ -66,7 +71,17 @@ type
 
     varptr: 0..tmax;
   
-  constructor Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+    constructor Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+
+    { Checks to see if process 'p' will overflow its stack if we push
+      'nItems' items onto it. }
+    procedure CheckStackOverflow(nItems: integer = 0);
+
+    { Increments the stack pointer for process 'p', checking for overflow. }
+    procedure IncStackPointer(n: integer = 1);
+
+    { Decrements the stack pointer for process 'p'. }
+    procedure DecStackPointer(n: integer = 1);
   end;
 
   { Pointer to a TProcess. }
@@ -78,22 +93,45 @@ type
 
 implementation
 
-  constructor TProcess.Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
-  begin
-    active := activate;
-    termstate := False;
-    onselect := False;
-    clearresource := cr;
-    stackbase := nsb;
-    b := nb;
-    stacksize := nss;
-    t := nt;
-    display[1] := 0;
-    pc := 0;
-    suspend := 0;
-    curmon := 0;
-    wakeup := 0;
-    wakestart := 0;
-  end;
+constructor TProcess.Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+begin
+  active := activate;
+  termstate := False;
+  onselect := False;
+  clearresource := cr;
+  stackbase := nsb;
+  b := nb;
+  stacksize := nss;
+  t := nt;
+  display[1] := 0;
+  pc := 0;
+  suspend := 0;
+  curmon := 0;
+  wakeup := 0;
+  wakestart := 0;
+end;
+
+{ TODO(@MattWindsor91): replace all of these with their TStackSegment
+  equivalents, once we have no direct stack bashing. }
+
+procedure TProcess.CheckStackOverflow(nItems: integer = 0);
+begin
+  if self.t + nItems > self.stacksize then
+    raise EPfcStackOverflow.Create('stack overflow');
+end;
+
+procedure TProcess.IncStackPointer(n: integer = 1);
+begin
+  self.t := self.t + n;
+  self.CheckStackOverflow;
+end;
+
+procedure TProcess.DecStackPointer(n: integer = 1);
+begin
+  self.t := self.t - n;
+end;
+
+
+
 end.
 
