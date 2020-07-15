@@ -82,6 +82,11 @@ type
 
     { Decrements the stack pointer for process 'p'. }
     procedure DecStackPointer(n: integer = 1);
+
+    { Unconditionally jumps this process to program counter 'newPC'.
+
+      This procedure also implements the 'jmp' instruction, with Y-value 'newPC'. }
+    procedure Jump(newPC: integer);
   end;
 
   { Pointer to a TProcess. }
@@ -131,6 +136,11 @@ begin
   self.t := self.t - n;
 end;
 
+procedure TProcess.Jump(newPC: integer);
+begin
+  { TODO(@MattWindsor91): bounds check }
+  self.pc := newPC;
+end;
 
 
 end.

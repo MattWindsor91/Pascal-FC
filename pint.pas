@@ -1349,14 +1349,6 @@ var
       PushInteger(p, ix + y);
     end;
 
-    { Unconditionally jumps process 'p' to program counter 'pc'.
-
-      This procedure also implements the 'jmp' instruction, with Y-value 'pc'. }
-    procedure Jump(p: TProcessID; pc: Integer);
-    begin
-      processes[p].pc := pc;
-    end;
-
     { Pops an integer from 'p''s stack and jumps to it. }
     procedure PopJump(p: TProcessID);
     var
@@ -1367,7 +1359,7 @@ var
         This is a workaround for that case, but ideally that stack entry should
         be initialised instead. }
       r := PopRecord(p);
-      Jump(p, r.i);
+      processes[p].Jump(r.i);
     end;
 
     { No RunJmp: use Jump instead. }
@@ -1382,7 +1374,7 @@ var
       { Can't convert this to PopBoolean, as it'll change the semantics
         to 'jump if not true'. }
       condition := PopInteger(p);
-      if condition = fals then Jump(p, y);
+      if condition = fals then processes[p].Jump(y);
     end;
 
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
@@ -1397,7 +1389,7 @@ var
       testValue := PopInteger(p);
 
       if caseValue = testValue then
-        Jump(p, y)
+        processes[p].Jump(y)
       else
         PushInteger(p, testValue);
     end;
@@ -1436,7 +1428,7 @@ var
         PushInteger(p, lcTo);
       end
       else
-        Jump(p, y);
+        processes[p].Jump(y);
     end;
 
     { Executes a 'for2up' instruction on process 'p', with Y-value 'y'.
@@ -1461,7 +1453,7 @@ var
         PushInteger(p, lcAddr);
         PushInteger(p, lcFrom);
         PushInteger(p, lcTo);
-        Jump(p, y);
+        processes[p].Jump(y);
       end
     end;
 
@@ -1533,7 +1525,7 @@ var
       for i := 1 to cap - y do
         PushInteger(p, 0);
 
-      Jump(p, tabRec.taddr);
+      processes[p].Jump(tabRec.taddr);
     end;
 
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
@@ -2114,7 +2106,7 @@ var
     procedure RunMexec(p: TProcessID; y: TYArgument);
     begin
       PushInteger(p, processes[p].pc);
-      Jump(p, y);
+      processes[p].Jump(y);
     end;
 
     { There is no RunMretn, as it is literally just a popjump. }
@@ -2268,7 +2260,7 @@ var
     procedure RunRep2c(p: TProcessID; y: TYArgument);
     begin
       stack.IncInteger(PopInteger(p));
-      Jump(p, y);
+      processes[p].Jump(y);
     end;
 
     { Raises an exception if 'bit' is not a valid bit. }
@@ -2336,7 +2328,7 @@ var
       See the entry for 'pPrtjmp' in the 'PCodeOps' unit for details. }
     procedure RunPrtjmp(p: TProcessID; y: TYArgument);
     begin
-      if stack[processes[p].curmon + 2].i = 0 then Jump(p, y);
+      if stack[processes[p].curmon + 2].i = 0 then processes[p].Jump(y);
     end;
 
     { Executes a 'prtsel' instruction on process 'p'.
@@ -2410,7 +2402,7 @@ var
         stack[processes[p].curmon + 2].i := 1;
         PushInteger(p, processes[p].pc);
         PushInteger(p, -1);
-        Jump(p, y);
+        processes[p].Jump(y);
       end;
     end;
 
@@ -2428,7 +2420,7 @@ var
           pSignal: RunSignal(p);
           pStfun: RunStfun(p, ir.y);
           pIxrec: RunIxrec(p, ir.y);
-          pJmp: Jump(p, ir.y);
+          pJmp: processes[p].Jump(ir.y);
           pJmpiz: RunJmpiz(p, ir.y);
           pCase1: RunCase1(p, ir.y);
           pCase2: RunCase2(p);
@@ -2577,7 +2569,7 @@ var
         {t} objrec.genbtab[2].vsize - 1,
         {b} 0
       );
-      Jump(0, objrec.gentab[stack[4].i].taddr);
+      processes[0].Jump(objrec.gentab[stack[4].i].taddr);
 
       processes[0].CheckStackOverflow;
       for h1 := 5 to processes[0].t do
