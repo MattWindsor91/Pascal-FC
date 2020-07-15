@@ -19,9 +19,9 @@ along with Pascal-FC; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 }
 
-{ Interpreter: Miscellaneous base types }
+{ Interpreter: Process type }
 
-unit Pint.Types;
+unit Pint.Process;
 
 {$mode objfpc}{$H+}
 

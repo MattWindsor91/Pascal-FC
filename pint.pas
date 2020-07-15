@@ -38,7 +38,7 @@ uses
   Pint.Errors,
   Pint.Ops,
   Pint.Stack,
-  Pint.Types,
+  Pint.Process,
   Pint.Reader;
 
 (* Pascal-FC interpreter *)

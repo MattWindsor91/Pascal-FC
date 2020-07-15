@@ -8,8 +8,8 @@ PINTUNITS := \
   pint.consts.pas \
   pint.errors.pas \
   pint.ops.pas \
-  pint.stack.pas \
-  pint.types.pas
+  pint.process.pas \
+  pint.stack.pas
 PINTTESTUNITS := \
   pint.bitset.test.pas \
   pint.ops.test.pas \
