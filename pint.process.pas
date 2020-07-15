@@ -59,7 +59,12 @@ type
     b: integer;
 
     pc: integer;        { Program counter. }
-    display: array[1..lmax] of integer;
+
+    { The process's 'display', which contains(?), when executing a subroutine at
+      a particular level, the base pointers at that and all preceding levels.
+    }
+    display: array[1..lmax] of TStackAddress;
+
     suspend: integer;   { The address of the semaphore being awaited, if <>0. }
     chans: integer;
     repindex: integer;
@@ -87,6 +92,9 @@ type
 
       This procedure also implements the 'jmp' instruction, with Y-value 'newPC'. }
     procedure Jump(newPC: integer);
+
+    { Calculates an address given in the form of a symbol level and offset address. }
+    function DisplayAddress(level: integer; addr: TStackAddress): TStackAddress;
   end;
 
   { Pointer to a TProcess. }
@@ -142,6 +150,10 @@ begin
   self.pc := newPC;
 end;
 
+function TProcess.DisplayAddress(level: integer; addr : TStackAddress): TStackAddress;
+begin
+  Result := self.display[level] + addr;
+end;
 
 end.
 

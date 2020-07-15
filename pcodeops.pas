@@ -1,6 +1,6 @@
 {
-Copyright 1990 Alan Burns and Geoff Davies
-          2018 Matt Windsor
+Copyright 1990      Alan Burns and Geoff Davies
+          2018-2020 Matt Windsor
 
 This file is part of Pascal-FC.
 
@@ -36,8 +36,23 @@ const
   pLdval = 1;
   { 002 Load indirect }
   pLdind = 2;
-  { 003 Update display }
+
+  { 003 Update display
+    
+    This appears to be issued when returning from a subroutine at a lower level
+    than the calling subroutine, and brings the display back in line with the
+    base pointers stored in the stack.
+
+    For each level 'l' from 'y' down to 'x', set this process's display for 'l'
+    to the base pointer found first by taking the process's current base
+    pointer, then loading each previously-stored base pointer further down
+    the call stack.
+
+    x: Code level of called subroutine.
+    y: Code level of calling subroutine; must be higher than 'x'.
+  }
   pUpdis = 3;
+
   { 004 Cobegin }
   pCobeg = 4;
   { 005 Coend }

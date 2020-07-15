@@ -998,12 +998,6 @@ var
       Result := itob(PopInteger(p));
     end;
 
-    { TODO: work out precisely what this function does }
-    function LocalAddress(p: TProcessID; x, y: integer): integer;
-    begin
-      Result := processes[p].display[x] + y;
-    end;
-
     { Gets the stack pointer. }
     function Sp(p: TProcessID): TStackAddress;
     begin
@@ -1036,14 +1030,14 @@ var
 
     procedure RunLdadr(p: TProcessID; x, y: integer);
     begin
-      PushInteger(p, LocalAddress(p, x, y));
+      PushInteger(p, processes[p].DisplayAddress(x, y));
     end;
 
     procedure RunLdval(p: TProcessID; x, y: integer);
     var
       rec : TStackRecord;
     begin
-      rec := stack.LoadRecord(LocalAddress(p, x, y));
+      rec := stack.LoadRecord(processes[p].DisplayAddress(x, y));
       PushRecord(p, rec);
     end;
 
@@ -1052,21 +1046,22 @@ var
       addr : integer;
       rec : TStackRecord;
     begin
-      addr := stack.LoadInteger(LocalAddress(p, x, y));
+      addr := stack.LoadInteger(processes[p].DisplayAddress(x, y));
       rec := stack.LoadRecord(addr);
       PushRecord(p, rec);
     end;
 
-    procedure RunUpdis(p: TProcessID; x, y: integer);
+    procedure RunUpdis(p: TProcessID; x: TXArgument; y: TYArgument);
+    var
+      level : integer;
+      base : TStackAddress;
     begin
-      h1 := y;
-      h2 := x;
-      h3 := processes[p].b;
-      repeat
-        processes[p].display[h1] := h3;
-        h1 := h1 - 1;
-        h3 := stack.LoadInteger(h3 + 2)
-      until h1 = h2;
+      base := processes[p].b;
+      for level := y downto x do
+      begin
+        processes[p].display[level] := base;
+        base := stack.LoadInteger(base + offCallLastBase)
+      end;
     end;
 
     procedure RunCoend;
@@ -2251,7 +2246,7 @@ var
     procedure RunRep1c(p: TProcessID; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      stack.StoreInteger(LocalAddress(p, x, y), processes[p].repindex);
+      stack.StoreInteger(processes[p].DisplayAddress(x, y), processes[p].repindex);
     end;
 
     { Executes a 'rep2c' instruction on process 'p', with Y-argument 'y'.

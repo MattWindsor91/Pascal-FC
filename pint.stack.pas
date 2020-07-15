@@ -41,6 +41,12 @@ uses
   Pint.Consts,
   Pint.Errors;
 
+const
+
+  { Offset from the base pointer of a frame to the base pointer of the last
+    frame. }
+  offCallLastBase = 2;
+
 type
   { TODO: When 'pint' stops accessing the stack directly, make these
           representations private. }
