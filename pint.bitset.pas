@@ -31,13 +31,17 @@ unit Pint.Bitset;
 
 interface
 
+uses Pint.Errors;
+
 const
   { Most significant bit in bitsets. }
   bsmsb = 7;
 
 type
+  TBit = 0..bsmsb;
+
   { Type of bitsets. }
-  TBitset = set of 0..bsmsb;
+  TBitset = set of TBit;
 
 TBitsetHelper = type helper for TBitset
   { Returns a string representation of the bitset 'bs'. }
@@ -46,6 +50,9 @@ TBitsetHelper = type helper for TBitset
   { Converts a bitset to an integer. }
   function AsInteger: integer;
 end;
+
+{ Converts an integer to a bitset. }
+function Bits(x: integer): TBitset;
 
 implementation
 
@@ -71,5 +78,23 @@ implementation
       if i in self then result := result + place;
       place := place * 2;
     end;
+  end;
+
+  function Bits(x: integer): TBitset;
+  var
+    i: TBit;
+  begin 
+    { TODO(@MattWindsor91): simplify this? }
+    Result := [];
+    if x < 0 then
+      raise EPfcSetBound.CreateFmt('cannot represent -ve number %D as bitset', [x]);
+    for i := 0 to bsmsb do
+    begin
+      if (x mod 2) = 1 then
+        Result := Result + [i];
+      x := x div 2;
+    end;
+    if x <> 0 then
+      raise EPfcSetBound.Create('number too big for bitset');
   end;
 end.

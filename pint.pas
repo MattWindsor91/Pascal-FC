@@ -37,9 +37,10 @@ uses
   Pint.Consts,
   Pint.Errors,
   Pint.Ops,
+  Pint.Reader,
   Pint.Stack,
-  Pint.Process,
-  Pint.Reader;
+  Pint.Stfun,
+  Pint.Process;
 
 (* Pascal-FC interpreter *)
 
@@ -1120,124 +1121,10 @@ var
       p.PushBoolean(lo.EvalBool(l, r));
     end;
 
-    function AsChar(x: integer): char;
-    begin
-      if not (x in [charl..charh]) then
-        raise EPfcCharBound.CreateFmt('expected char, but got out-of-bounds %D', [x]);
-      Result := Chr(x);
-    end;
-
-    procedure RunOdd(p: TProcess);
-    var
-      i: integer;
-    begin
-      i := p.PopInteger;
-      p.PushBoolean(Odd(i));
-    end;
-
-    { Runs the 'int' standard function on process 'p'. }
-    procedure RunInt(p: TProcess);
-    var
-      bits: TBitset;
-    begin
-      bits := p.PopBitset;
-      p.PushInteger(bits.AsInteger);
-    end;
-
     procedure RunStfun(p: TProcess; y: integer);
     begin
-      case TStfunId(y) of
-        sfAbs:
-          stack.StoreInteger(p.t, abs(stack[p.t].i));
-        sfAbsR:
-          stack[p.t].r := abs(stack[p.t].r);
-        sfSqr:
-          if (intmax div abs(stack[p.t].i)) < abs(stack[p.t].i) then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack.StoreInteger(p.t, sqr(stack[p.t].i));
-        sfSqrR:    (* real sqr *)
-          if (realmax / abs(stack[p.t].r)) < abs(stack[p.t].r) then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack[p.t].r := sqr(stack[p.t].r);
-        sfOdd: RunOdd(p);
-        sfChr: { check character overflow }
-          AsChar(stack[p.t].i);
-        sfOrd: ;
-        sfSucc:
-          stack.StoreInteger(p.t, stack[p.t].i + 1);
-        sfPred:
-          stack.StoreInteger(p.t, stack[p.t].i - 1);
-        sfRound:    (* round *)
-          if abs(stack[p.t].r) >= (intmax + 0.5) then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack.StoreInteger(p.t, round(stack[p.t].r));
-        sfTrunc:  (* trunc *)
-          if abs(stack[p.t].r) >= (intmax + 1.0) then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack.StoreInteger(p.t, trunc(stack[p.t].r));
-        sfSin:
-          stack[p.t].r := sin(stack[p.t].r);
-        sfCos:
-          stack[p.t].r := cos(stack[p.t].r);
-        sfExp:
-          stack[p.t].r := exp(stack[p.t].r);
-        sfLn:
-          if stack[p.t].r <= 0.0 then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack[p.t].r := ln(stack[p.t].r);
-        sfSqrt:
-          if stack[p.t].r < 0.0 then
-            raise EPfcMathOverflow.Create('overflow detected')
-          else
-            stack[p.t].r := sqrt(stack[p.t].r);
-        sfArctan:
-          stack[p.t].r := arctan(stack[p.t].r);
-        sfEof: p.PushBoolean(EOF(input));
-        sfEoln: p.PushBoolean(eoln(input));
-        sfRandom:
-        begin
-          h1 := abs(stack[p.t].i) + 1;
-          stack.StoreInteger(p.t, trunc(random * h1));
-        end;
-        sfEmpty:
-        begin
-          h1 := stack[p.t].i;
-          if stack[h1].i = 0 then
-            stack.StoreInteger(p.t, 1)
-          else
-            stack.StoreInteger(p.t, 0);
-        end;  (* f21 *)
-        sfBits:  (* bits *)
-        begin
-          h1 := stack[p.t].i;
-          stack[p.t].bs := [];
-          h3 := 0;
-          if h1 < 0 then
-          begin
-            if bsmsb < intmsb then
-              raise EPfcSetBound.CreateFmt('bsmsb (%D) < intmsb (%D)', [bsmsb, intmsb]);
-            stack[p.t].bs := [bsmsb];
-            h1 := (h1 + 1) + maxint;
-            h3 := 1;
-          end;
-          for h2 := 0 to bsmsb - h3 do
-          begin
-            if (h1 mod 2) = 1 then
-              stack[p.t].bs := stack[p.t].bs + [h2];
-            h1 := h1 div 2;
-          end;
-          if h1 <> 0 then
-            raise EPfcSetBound.Create('set bounds error?');
-        end;
-
-        sfInt: RunInt(p);
-        sfClock: p.PushInteger(sysclock);
-      end;
+      { See unit 'Pint.Stfun'. }
+      RunStandardFunction(p, TStfunId(y), sysclock);
     end;
 
     { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.

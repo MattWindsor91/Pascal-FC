@@ -85,15 +85,21 @@ type
     # Stack
     #}
 
-    { Checks to see if process 'p' will overflow its stack if we push
+    { Checks to see if this process will overflow its stack if we push
       'nItems' items onto it. }
     procedure CheckStackOverflow(nItems: integer = 0);
 
-    { Increments the stack pointer for process 'p', checking for overflow. }
-    procedure IncStackPointer(n: integer = 1);
+    { Increments the stack pointer for this process, checking for overflow. }
+    procedure IncStackPointer(delta: integer = 1);
 
-    { Decrements the stack pointer for process 'p'. }
-    procedure DecStackPointer(n: integer = 1);
+    { Decrements the stack pointer for this process. }
+    procedure DecStackPointer(delta: integer = 1);
+
+    { Increments the integer under this process's stack pointer. }
+    procedure IncInteger(delta: integer = 1);
+
+    { Decrements the integer under this process's stack pointer. }
+    procedure DecInteger(delta: integer = 1);
 
     { Pushes an integer 'i' onto the stack segment for this process. }
     procedure PushInteger(i: integer);
@@ -196,15 +202,31 @@ begin
     raise EPfcStackOverflow.Create('stack overflow');
 end;
 
-procedure TProcess.IncStackPointer(n: integer = 1);
+procedure TProcess.IncStackPointer(delta: integer = 1);
 begin
-  t := t + n;
+  t := t + delta;
   CheckStackOverflow;
 end;
 
-procedure TProcess.DecStackPointer(n: integer = 1);
+procedure TProcess.DecStackPointer(delta: integer = 1);
 begin
-  t := t - n;
+  t := t - delta;
+end;
+
+procedure TProcess.IncInteger(delta: integer = 1);
+var
+  i: integer;
+begin
+  i := stack.LoadInteger(t);
+  stack.StoreInteger(t, i + delta);
+end;
+
+procedure TProcess.DecInteger(delta: integer = 1);
+var
+  i: integer;
+begin
+  i := stack.LoadInteger(t);
+  stack.StoreInteger(t, i - delta);
 end;
 
 procedure TProcess.PushInteger(i: integer);
