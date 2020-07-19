@@ -48,6 +48,8 @@ procedure TStackTestCase.TestStoreInteger;
 var
   readback: integer;
 begin
+  SetLength(s, 10);
+
   s.StoreInteger(1, 42);
   readback := s.LoadInteger(1);
   AssertEquals('Integer storage at 1 seems to have failed', 42, readback);
@@ -68,6 +70,7 @@ var
   i: integer;
   readback: integer;
 begin
+  SetLength(s, 10);
   s.StoreInteger(1, 0);
 
   s.IncInteger(1);
@@ -89,7 +92,9 @@ procedure TStackTestCase.TestPushIntegerPopInteger;
 var
   seg: TStackSegment;
 begin
-  seg := TStackSegment.Create(@s, 1, 100);
+  SetLength(s, 10);
+
+  seg := TStackSegment.Create(s, 1, 100);
 
   seg.PushInteger(27);
   seg.PushInteger(53);
@@ -104,7 +109,9 @@ procedure TStackTestCase.TestPopEmptyInteger;
 var
   seg: TStackSegment;
 begin
-  seg := TStackSegment.Create(@s, 1, 100);
+  SetLength(s, 10);
+
+  seg := TStackSegment.Create(s, 1, 100);
 
   try
     seg.PopInteger;
@@ -123,7 +130,9 @@ procedure TStackTestCase.TestPushRealPopInteger;
 var
   seg: TStackSegment;
 begin
-  seg := TStackSegment.Create(@s, 1, 100);
+  SetLength(s, 10);
+
+  seg := TStackSegment.Create(s, 1, 100);
   seg.PushReal(2.5);
 
   try

@@ -594,12 +594,12 @@ var
 
 
     (* join queue of processes which have executed a "sleep" *)
-    procedure joineventq(waketime: integer);
+    procedure joineventq(p: TProcess; waketime: integer);
     var
       thisnode, frontpointer, backpointer: qpointer;
       foundplace: boolean;
     begin
-      with processes[curpr] do
+      with p do
       begin
         wakeup := waketime;
         if wakestart = 0 then
@@ -1801,7 +1801,7 @@ var
               suspend := -h2;
               onselect := True;
               if wakeup <> 0 then
-                joineventq(wakeup);
+                joineventq(p, wakeup);
             end; (* sleep on open-guard channels/entries *)
           end (* no call *)
           else
@@ -2025,10 +2025,11 @@ var
       time: integer; { TODO(@MattWindsor91): units? }
     begin
       time := p.PopInteger;
+
       if time <= 0 then
         stepcount := 0
       else
-        joineventq(time + sysclock);
+        joineventq(p, time + sysclock);
     end;
 
     { Executes a 'procv' instruction on process 'p'.
@@ -2414,7 +2415,6 @@ var
         stepcount := stepcount - 1;
       with processes[curpr] do
       begin
-
         ir := objrec.gencode[pc];
 
         pc := pc + 1;
@@ -2443,6 +2443,7 @@ var
     writeln;
     writeln;
     initqueue;
+    SetLength(stack, stmax);
     stack.StoreInteger(1, 0);
     stack.StoreInteger(2, 0);
     stack.StoreInteger(3, -1);

@@ -30,7 +30,7 @@ pfccomp: pfccomp.pas ${gunits} ${cunits} ${punits}
 pint: pint.pas ${gunits} ${PINTUNITS} ${punits}
 	fpc ${FLAGS}l $<
 
-tconsole: tconsole.pas ${gunits} ${PINTUNITS} ${TUNITS}
+tconsole: tconsole.pas ${gunits} ${PINTUNITS} ${TESTUNITS}
 	fpc ${FLAGS} $<
 
 install: pfccomp pint

@@ -74,10 +74,7 @@ type
 
     This type is called 'TStackZone' to disambiguate from the Free Pascal/Delphi
     'TStack' type. }
-  TStackZone = array[TStackAddress] of TStackRecord;
-
-  { Pointer to a stack zone. }
-  PStackZone = ^TStackZone;
+  TStackZone = array of TStackRecord;
 
   { TODO: add segment tracking to TStackZone. }
 
@@ -88,7 +85,7 @@ type
 
   private
 
-    zone: PStackZone; { Zone in which this segment is allocated. }
+    zone: TStackZone; { Zone in which this segment is allocated. }
 
     { Checks if this segment will go out of bounds if we push 'nItems' items. }
     procedure CheckBoundsAfter(nItems: integer);
@@ -110,7 +107,7 @@ type
 
     { End TODO }
 
-    constructor Create(z: PStackZone; bot, top: TStackAddress);
+    constructor Create(z: TStackZone; bot, top: TStackAddress);
 
     { Pops an integer to the current frame. }
     procedure PushInteger(i: integer);
@@ -277,7 +274,7 @@ begin
   self[a].i := self[a].i + delta;
 end;
 
-constructor TStackSegment.Create(z: PStackZone; bot, top: TStackAddress);
+constructor TStackSegment.Create(z: TStackZone; bot, top: TStackAddress);
 begin
   zone := z;
 
@@ -313,52 +310,52 @@ end;
 procedure TStackSegment.PushInteger(i: integer);
 begin
   Advance;
-  zone^.StoreInteger(frameTop, i);
+  zone.StoreInteger(frameTop, i);
 end;
 
 procedure TStackSegment.PushReal(r: real);
 begin
   Advance;
-  zone^.StoreReal(frameTop, r);
+  zone.StoreReal(frameTop, r);
 end;
 
 procedure TStackSegment.PushBitset(bs: TBitset);
 begin
   Advance;
-  zone^.StoreBitset(frameTop, bs);
+  zone.StoreBitset(frameTop, bs);
 end;
 
 procedure TStackSegment.PushRecord(s: TStackRecord);
 begin
   Advance;
-  zone^.StoreRecord(frameTop, s);
+  zone.StoreRecord(frameTop, s);
 end;
 
 function TStackSegment.PopInteger: integer;
 begin
   CheckBounds;
-  Result := zone^.LoadInteger(frameTop);
+  Result := zone.LoadInteger(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopReal: real;
 begin
   CheckBounds;
-  Result := zone^.LoadReal(frameTop);
+  Result := zone.LoadReal(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopBitset: TBitset;
 begin
   CheckBounds;
-  Result := zone^.LoadBitset(frameTop);
+  Result := zone.LoadBitset(frameTop);
   Dec(frameTop);
 end;
 
 function TStackSegment.PopRecord: TStackRecord;
 begin
   CheckBounds;
-  Result := zone^.LoadRecord(frameTop);
+  Result := zone.LoadRecord(frameTop);
   Dec(frameTop);
 end;
 
