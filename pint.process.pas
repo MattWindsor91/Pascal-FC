@@ -30,10 +30,10 @@ interface
 uses
   SysUtils,
   GConsts,
+  Pint.Bitset,
   Pint.Consts,
   Pint.Errors,
   Pint.Stack;
-
 
 type
   TProcessID = 0..pmax;
@@ -52,6 +52,9 @@ type
 
 
   public
+    { The stack zone onto which this process's stack is mapped. }
+    stack: TStackZone;
+
     { Stack pointers }
     t: integer;         { The current stack pointer. }
     stackbase: integer; { The start of this process's segment on the stack. }
@@ -76,7 +79,11 @@ type
 
     varptr: 0..tmax;
   
-    constructor Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+    constructor Create(stk: TStackZone; activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+
+    {#
+    # Stack
+    #}
 
     { Checks to see if process 'p' will overflow its stack if we push
       'nItems' items onto it. }
@@ -88,10 +95,60 @@ type
     { Decrements the stack pointer for process 'p'. }
     procedure DecStackPointer(n: integer = 1);
 
+    { Pushes an integer 'i' onto the stack segment for this process. }
+    procedure PushInteger(i: integer);
+
+    { Pushes a real 'r' onto the stack segment for this process. }
+    procedure PushReal(r: real);
+
+    { Pushes a bitset 'bs' onto the stack segment for this process. }
+    procedure PushBitset(bs: TBitset);
+
+    { Pushes a Boolean 'bl' onto the stack segment for this process. }
+    procedure PushBoolean(bl: boolean);
+
+    { Pushes a stack record 'r' onto the stack segment for this process. }
+    procedure PushRecord(r: TStackRecord);
+
+    { Reads an integer at this process's stack pointer without popping. }
+    function PeekInteger: integer;
+
+    { Pops an integer from the stack segment for this process. }
+    function PopInteger: integer;
+
+    { Pops a bitset from the stack segment for this process. }
+    function PopBitset: TBitset;
+
+    { Pops a real from the stack segment for this process. }
+    function PopReal: real;
+
+    { Pops a record from the stack segment for this process. }
+    function PopRecord: TStackRecord;
+
+    { Pops a Boolean from the stack segment for this process. }
+    function PopBoolean: boolean;
+
+    {#
+     # Stack control
+     #}
+
+    { Sets this process's base pointer to the stack pointer. }
+    procedure MarkBase;
+
+    { Sets this process's stack pointer to the base pointer. }
+    procedure RecallBase;
+
+    {#
+     # Other
+     #}
+
     { Unconditionally jumps this process to program counter 'newPC'.
 
       This procedure also implements the 'jmp' instruction, with Y-value 'newPC'. }
     procedure Jump(newPC: integer);
+
+    { Pops an address from the stack, and unconditionally jumps to it. }
+    procedure PopJump;
 
     { Calculates an address given in the form of a symbol level and offset address. }
     function DisplayAddress(level: integer; addr: TStackAddress): TStackAddress;
@@ -106,8 +163,10 @@ type
 
 implementation
 
-constructor TProcess.Create(activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+
+constructor TProcess.Create(stk: TStackZone; activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
 begin
+  stack := stk;
   active := activate;
   termstate := False;
   onselect := False;
@@ -124,6 +183,10 @@ begin
   wakestart := 0;
 end;
 
+{#
+ # Stack
+ #}
+
 { TODO(@MattWindsor91): replace all of these with their TStackSegment
   equivalents, once we have no direct stack bashing. }
 
@@ -135,20 +198,122 @@ end;
 
 procedure TProcess.IncStackPointer(n: integer = 1);
 begin
-  self.t := self.t + n;
-  self.CheckStackOverflow;
+  t := t + n;
+  CheckStackOverflow;
 end;
 
 procedure TProcess.DecStackPointer(n: integer = 1);
 begin
-  self.t := self.t - n;
+  t := t - n;
 end;
+
+procedure TProcess.PushInteger(i: integer);
+begin
+  IncStackPointer;
+  stack.StoreInteger(t, i);
+end;
+
+procedure TProcess.PushReal(r: real);
+begin
+  IncStackPointer;
+  stack.StoreReal(t, r);
+end;
+
+procedure TProcess.PushBitset(bs: TBitset);
+begin
+  IncStackPointer;
+  stack.StoreBitset(t, bs);
+end;
+
+procedure TProcess.PushBoolean(bl: boolean);
+begin
+  IncStackPointer;
+  stack.StoreBoolean(t, bl);
+end;
+
+procedure TProcess.PushRecord(r: TStackRecord);
+begin
+  IncStackPointer;
+  stack.StoreRecord(t, r);
+end;
+
+function TProcess.PeekInteger: integer;
+begin
+  { TODO(@MattWindsor91): backport to IStack. }
+  Result := stack.LoadInteger(t);
+end;
+
+function TProcess.PopInteger: integer;
+begin
+  Result := PeekInteger;
+  DecStackPointer;
+end;
+
+function TProcess.PopBitset: TBitset;
+begin
+  Result := stack.LoadBitset(t);
+  DecStackPointer;
+end;
+
+function TProcess.PopReal: real;
+begin
+  Result := stack.LoadReal(t);
+  DecStackPointer;
+end;
+
+function TProcess.PopRecord: TStackRecord;
+begin
+  Result := stack.LoadRecord(t);
+  DecStackPointer;
+end;
+
+function TProcess.PopBoolean: boolean;
+begin
+  Result := stack.LoadBoolean(t);
+  DecStackPointer;
+end;
+
+{#
+ # Stack frame movement
+ #}
+
+{ Sets 'p''s base pointer to the stack pointer. }
+procedure TProcess.MarkBase;
+begin
+  b := t;
+end;
+
+{ Sets 'p''s stack pointer to the base pointer. }
+procedure TProcess.RecallBase;
+begin
+  t := b;
+end;
+
+{#
+ # Program counter
+ #}
 
 procedure TProcess.Jump(newPC: integer);
 begin
   { TODO(@MattWindsor91): bounds check }
   self.pc := newPC;
 end;
+
+procedure TProcess.PopJump;
+var
+  r: TStackRecord;
+begin
+  { TODO(@MattWindsor91): at the bottom of the process stack, the program
+    counter stack entry is present but its type is not properly set.
+    This is a workaround for that case, but ideally that stack entry should
+    be initialised instead. }
+  r := PopRecord;
+  Jump(r.i);
+end;
+
+{#
+ # Other
+ #}
 
 function TProcess.DisplayAddress(level: integer; addr : TStackAddress): TStackAddress;
 begin

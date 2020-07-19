@@ -103,20 +103,6 @@ var
     end;
   end;
 
-  function itob(i: integer): boolean;
-  begin
-    Result := i = tru;
-  end;
-
-
-  function btoi(b: boolean): integer;
-  begin
-    if b then
-      Result := tru
-    else
-      Result := fals;
-  end;
-
 
   procedure printname(Name: ShortString; var tofile: Text);
 
@@ -168,7 +154,7 @@ var
             ints,
             enums: Write(tofile, sub: 1);
             chars: Write(tofile, '''', chr(sub), '''');
-            bools: Write(tofile, itob(sub))
+            bools: Write(tofile, sub = tru)
           end;
           Write(tofile, ']');
           tp := eltyp;
@@ -501,7 +487,7 @@ var
 
                 bools:
 
-                  writeln(pmdfile, Name, ' = ', itob(stack[taddr].i));
+                  writeln(pmdfile, Name, ' = ', stack.LoadBoolean(taddr));
 
                 chars:
 
@@ -839,7 +825,7 @@ var
       getnode(newnode);
       procqueue.proclist[newnode].proc := curpr;
       if stack[add].i < 1 then
-        stack[add].i := newnode
+        stack.StoreInteger(add, newnode)
       else
       begin
         temp := stack[add].i;
@@ -899,7 +885,7 @@ var
       begin
         node := stack[add].i;
         pr := procqueue.proclist[node].proc;
-        stack[add].i := procqueue.proclist[node].link;
+        stack.StoreInteger(add, procqueue.proclist[node].link);
         disposenode(node);
 
         processes[pr].suspend := 0;
@@ -917,92 +903,12 @@ var
       begin
         procwake(curmon);
         if stack[curmon].i = 0 then
-          stack[curmon].i := -1;
+          stack.StoreInteger(curmon, -1);
       end
       else
         stack.StoreInteger(curmon, 0);
     end;
 
-    { Pushes an integer 'i' onto the stack segment for process 'p'. }
-    procedure PushInteger(p: TProcessID; i: integer);
-    begin
-      processes[p].IncStackPointer;
-      stack.StoreInteger(processes[p].t, i);
-    end;
-
-    { Pushes a real 'r' onto the stack segment for process 'p'. }
-    procedure PushReal(p: TProcessID; r: real);
-    begin
-      processes[p].IncStackPointer;
-      stack.StoreReal(processes[p].t, r);
-    end;
-
-    { Pushes a bitset 'bs' onto the stack segment for process 'p'. }
-    procedure PushBitset(p: TProcessID; bs: TBitset);
-    begin
-      processes[p].IncStackPointer;
-      stack.StoreBitset(processes[p].t, bs);
-    end;
-
-    { Pushes a Boolean 'b' onto the stack segment for process 'p'. }
-    procedure PushBoolean(p: TProcessID; b: boolean);
-    begin
-      PushInteger(p, btoi(b));
-    end;
-
-    { Pushes a stack record 'r' onto the stack segment for process 'p'. }
-    procedure PushRecord(p: TProcessID; r: TStackRecord);
-    begin
-      processes[p].IncStackPointer;
-      stack.StoreRecord(processes[p].t, r);
-    end;
-
-    { Reads an integer at the stack pointer of 'p' without popping. }
-    function PeekInteger(p: TProcessID): integer;
-    begin
-      { TODO(@MattWindsor91): backport to IStack. }
-      Result := stack.LoadInteger(processes[p].t);
-    end;
-
-    { Pops an integer from the stack segment for process 'p'. }
-    function PopInteger(p: TProcessID): integer;
-    begin
-      Result := PeekInteger(p);
-      processes[p].DecStackPointer;
-    end;
-
-    { Pops a bitset from the stack segment for process 'p'. }
-    function PopBitset(p: TProcessID): TBitset;
-    begin
-      Result := stack.LoadBitset(processes[p].t);
-      processes[p].DecStackPointer;
-    end;
-
-    { Pops a real from the stack segment for process 'p'. }
-    function PopReal(p: TProcessID): real;
-    begin
-      Result := stack.LoadReal(processes[p].t);
-      processes[p].DecStackPointer;
-    end;
-
-    { Pops a record from the stack segment for process 'p'. }
-    function PopRecord(p: TProcessID): TStackRecord;
-    begin
-      Result := stack.LoadRecord(processes[p].t);
-      processes[p].DecStackPointer;
-    end;
-
-    { Pops a Boolean from the stack segment for process 'p'. }
-    function PopBoolean(p: TProcessID): boolean;
-    begin
-      Result := itob(PopInteger(p));
-    end;
-
-    { Gets the stack pointer. }
-    function Sp(p: TProcessID): TStackAddress;
-    begin
-      Result := processes[p].t;
-    end;
 
     { Gets the base pointer. }
     function Base(p: TProcessID): TStackAddress;
@@ -1016,74 +922,69 @@ var
       processes[p].b := newBase;
     end;
 
-    { Sets 'p''s base pointer to the stack pointer. }
-    procedure AdvanceBase(p: TProcessID);
+    procedure RunLdadr(p: TProcess; x, y: integer);
     begin
-      SetBase(p, processes[p].t);
+      p.PushInteger(p.DisplayAddress(x, y))
     end;
 
-    { Sets 'p''s stack pointer to the base pointer. }
-    procedure ReturnToBase(p: TProcessID);
-    begin
-      processes[p].t := processes[p].b;
-    end;
-
-    procedure RunLdadr(p: TProcessID; x, y: integer);
-    begin
-      PushInteger(p, processes[p].DisplayAddress(x, y));
-    end;
-
-    procedure RunLdval(p: TProcessID; x, y: integer);
+    procedure PushRecordAt(p: TProcess; addr: TStackAddress);
     var
       rec : TStackRecord;
     begin
-      rec := stack.LoadRecord(processes[p].DisplayAddress(x, y));
-      PushRecord(p, rec);
-    end;
-
-    procedure RunLdind(p: TProcessID; x, y: integer);
-    var
-      addr : integer;
-      rec : TStackRecord;
-    begin
-      addr := stack.LoadInteger(processes[p].DisplayAddress(x, y));
       rec := stack.LoadRecord(addr);
-      PushRecord(p, rec);
+      p.PushRecord(rec);
     end;
 
-    procedure RunUpdis(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunLdval(p: TProcess; x, y: integer);
+    begin
+      PushRecordAt(p, p.DisplayAddress(x, y));
+    end;
+
+    procedure RunLdind(p: TProcess; x, y: integer);
+    var
+      addr : TStackAddress;
+    begin
+      addr := stack.LoadInteger(p.DisplayAddress(x, y));
+      PushRecordAt(p, addr)
+    end;
+
+    procedure RunUpdis(p: TProcess; x: TXArgument; y: TYArgument);
     var
       level : integer;
       base : TStackAddress;
     begin
-      base := processes[p].b;
-      for level := y downto x do
+      base := p.b;
+      for level := y downto x+1 do
       begin
-        processes[p].display[level] := base;
-        base := stack.LoadInteger(base + offCallLastDisplay)
+        p.display[level] := base;
+        { TODO(@MattWindsor91):
+          This is another situation where we can end up in uninitialised
+          stack. }
+        base := stack.LoadRecord(base + offCallLastDisplay).i;
       end;
     end;
 
     procedure RunCoend;
     begin
+      { TODO(@MattWindsor91): what is this actually doing?  is it correct? }
       procmax := npr;
       processes[0].active := False;
       stepcount := 0;
     end;
 
-    procedure RunWait(p: TProcessID);
+    procedure RunWait(p: TProcess);
     var
       semAddr: TStackAddress;
       semVal: integer;
     begin
-      semAddr := PopInteger(p);
+      semAddr := p.PopInteger;
 
       semVal := stack.LoadInteger(semAddr);
       if semVal > 0 then
         stack.StoreInteger(semAddr, semVal - 1)
       else
       begin
-        processes[p].suspend := semAddr;
+        p.suspend := semAddr;
         stepcount := 0;
       end;
     end;
@@ -1111,12 +1012,12 @@ var
         Result := nil;
     end;
 
-    procedure RunSignal(p: TProcessID);
+    procedure RunSignal(p: TProcess);
     var
       semAddr: integer;
       toWake: PProcess;
     begin
-      semAddr := PopInteger(p);
+      semAddr := p.PopInteger;
 
       toWake := FindWaitingProcess(semAddr);
       if toWake = nil then
@@ -1126,97 +1027,97 @@ var
     end;
 
     { Runs a bitset arith operation 'ao'. }
-    procedure RunBitsetArithOp(p: TProcessID; ao: TArithOp);
+    procedure RunBitsetArithOp(p: TProcess; ao: TArithOp);
     var
       l: TBitset;    { LHS of arith operation }
       r: TBitset;    { RHS of arith operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopBitset(p);
-      l := PopBitset(p);
-      PushBitset(p, ao.EvalBitset(l, r));
+      r := p.PopBitset;
+      l := p.PopBitset;
+      p.PushBitset(ao.EvalBitset(l, r));
     end;
 
     { Runs an integer arith operation 'ao'. }
-    procedure RunIntArithOp(p: TProcessID; ao: TArithOp);
+    procedure RunIntArithOp(p: TProcess; ao: TArithOp);
     var
       l: integer;    { LHS of arith operation }
       r: integer;    { RHS of arith operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopInteger(p);
-      l := PopInteger(p);
-      PushInteger(p, ao.EvalInt(l, r));
+      r := p.PopInteger;
+      l := p.PopInteger;
+      p.PushInteger( ao.EvalInt(l, r));
     end;
 
     { Runs an real arith operation 'ao'. }
-    procedure RunRealArithOp(p: TProcessID; ao: TArithOp);
+    procedure RunRealArithOp(p: TProcess; ao: TArithOp);
     var
       l: real;       { LHS of arith operation }
       r: real;       { RHS of arith operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopReal(p);
-      l := PopReal(p);
-      PushReal(p, ao.EvalReal(l, r));
+      r := p.PopReal;
+      l := p.PopReal;
+      p.PushReal(ao.EvalReal(l, r));
     end;
 
     { Runs a bitset relational operation 'ro'. }
-    procedure RunBitsetRelOp(p: TProcessID; ro: TRelOp);
+    procedure RunBitsetRelOp(p: TProcess; ro: TRelOp);
     var
       l: TBitset;    { LHS of relational operation }
       r: TBitset;    { RHS of relational operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopBitset(p);
-      l := PopBitset(p);
-      PushBoolean(p, ro.EvalBitset(l, r));
+      r := p.PopBitset;
+      l := p.PopBitset;
+      p.PushBoolean(ro.EvalBitset(l, r));
     end;
 
     { Runs an integer relational operation 'ro'. }
-    procedure RunIntRelOp(p: TProcessID; ro: TRelOp);
+    procedure RunIntRelOp(p: TProcess; ro: TRelOp);
     var
       l: integer;    { LHS of relational operation }
       r: integer;    { RHS of relational operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopInteger(p);
-      l := PopInteger(p);
-      PushBoolean(p, ro.EvalInt(l, r));
+      r := p.PopInteger;
+      l := p.PopInteger;
+      p.PushBoolean(ro.EvalInt(l, r));
     end;
 
     { Runs an real relational operation 'ro'. }
-    procedure RunRealRelOp(p: TProcessID; ro: TRelOp);
+    procedure RunRealRelOp(p: TProcess; ro: TRelOp);
     var
       l: real;       { LHS of relational operation }
       r: real;       { RHS of relational operation }
     begin
       { Operands are pushed in reverse order }
-      r := PopReal(p);
-      l := PopReal(p);
-      PushBoolean(p, ro.EvalReal(l, r));
+      r := p.PopReal;
+      l := p.PopReal;
+      p.PushBoolean(ro.EvalReal(l, r));
     end;
 
     { Runs a bitset logical operation 'lo'. }
-    procedure RunBitsetLogicOp(p: TProcessID; lo: TLogicOp);
+    procedure RunBitsetLogicOp(p: TProcess; lo: TLogicOp);
     var
       l: TBitset; { LHS of logical operation }
       r: TBitset; { LHS of logical operation }
     begin
-      r := PopBitset(p);
-      l := PopBitset(p);
-      PushBitset(p, lo.EvalBitset(l, r));
+      r := p.PopBitset;
+      l := p.PopBitset;
+      p.PushBitset(lo.EvalBitset(l, r));
     end;
 
     { Runs a boolean logical operation 'lo'. }
-    procedure RunBoolLogicOp(p: TProcessID; lo: TLogicOp);
+    procedure RunBoolLogicOp(p: TProcess; lo: TLogicOp);
     var
       l: boolean; { LHS of logical operation }
       r: boolean; { LHS of logical operation }
     begin
-      r := PopBoolean(p);
-      l := PopBoolean(p);
-      PushBoolean(p, lo.EvalBool(l, r));
+      r := p.PopBoolean;
+      l := p.PopBoolean;
+      p.PushBoolean(lo.EvalBool(l, r));
     end;
 
     function AsChar(x: integer): char;
@@ -1226,102 +1127,108 @@ var
       Result := Chr(x);
     end;
 
+    procedure RunOdd(p: TProcess);
+    var
+      i: integer;
+    begin
+      i := p.PopInteger;
+      p.PushBoolean(Odd(i));
+    end;
+
     { Runs the 'int' standard function on process 'p'. }
-    procedure RunInt(p: TProcessID);
+    procedure RunInt(p: TProcess);
     var
       bits: TBitset;
     begin
-      bits := PopBitset(p);
-      PushInteger(p, bits.AsInteger);
+      bits := p.PopBitset;
+      p.PushInteger(bits.AsInteger);
     end;
 
-    procedure RunStfun(p: TProcessID; y: integer);
+    procedure RunStfun(p: TProcess; y: integer);
     begin
-      with processes[p] do
       case TStfunId(y) of
         sfAbs:
-          stack[t].i := abs(stack[t].i);
+          stack.StoreInteger(p.t, abs(stack[p.t].i));
         sfAbsR:
-          stack[t].r := abs(stack[t].r);
+          stack[p.t].r := abs(stack[p.t].r);
         sfSqr:
-          if (intmax div abs(stack[t].i)) < abs(stack[t].i) then
+          if (intmax div abs(stack[p.t].i)) < abs(stack[p.t].i) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].i := sqr(stack[t].i);
+            stack.StoreInteger(p.t, sqr(stack[p.t].i));
         sfSqrR:    (* real sqr *)
-          if (realmax / abs(stack[t].r)) < abs(stack[t].r) then
+          if (realmax / abs(stack[p.t].r)) < abs(stack[p.t].r) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].r := sqr(stack[t].r);
-        sfOdd:
-          stack[t].i := btoi(odd(stack[t].i));
+            stack[p.t].r := sqr(stack[p.t].r);
+        sfOdd: RunOdd(p);
         sfChr: { check character overflow }
-          AsChar(stack[t].i);
+          AsChar(stack[p.t].i);
         sfOrd: ;
         sfSucc:
-          stack[t].i := stack[t].i + 1;
+          stack.StoreInteger(p.t, stack[p.t].i + 1);
         sfPred:
-          stack[t].i := stack[t].i - 1;
+          stack.StoreInteger(p.t, stack[p.t].i - 1);
         sfRound:    (* round *)
-          if abs(stack[t].r) >= (intmax + 0.5) then
+          if abs(stack[p.t].r) >= (intmax + 0.5) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].i := round(stack[t].r);
+            stack.StoreInteger(p.t, round(stack[p.t].r));
         sfTrunc:  (* trunc *)
-          if abs(stack[t].r) >= (intmax + 1.0) then
+          if abs(stack[p.t].r) >= (intmax + 1.0) then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].i := trunc(stack[t].r);
+            stack.StoreInteger(p.t, trunc(stack[p.t].r));
         sfSin:
-          stack[t].r := sin(stack[t].r);
+          stack[p.t].r := sin(stack[p.t].r);
         sfCos:
-          stack[t].r := cos(stack[t].r);
+          stack[p.t].r := cos(stack[p.t].r);
         sfExp:
-          stack[t].r := exp(stack[t].r);
+          stack[p.t].r := exp(stack[p.t].r);
         sfLn:
-          if stack[t].r <= 0.0 then
+          if stack[p.t].r <= 0.0 then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].r := ln(stack[t].r);
+            stack[p.t].r := ln(stack[p.t].r);
         sfSqrt:
-          if stack[t].r < 0.0 then
+          if stack[p.t].r < 0.0 then
             raise EPfcMathOverflow.Create('overflow detected')
           else
-            stack[t].r := sqrt(stack[t].r);
+            stack[p.t].r := sqrt(stack[p.t].r);
         sfArctan:
-          stack[t].r := arctan(stack[t].r);
-        sfEof: PushBoolean(p, EOF(input));
-        sfEoln: PushBoolean(p, eoln(input));
+          stack[p.t].r := arctan(stack[p.t].r);
+        sfEof: p.PushBoolean(EOF(input));
+        sfEoln: p.PushBoolean(eoln(input));
         sfRandom:
         begin
-          h1 := abs(stack[t].i) + 1;
-          stack[t].i := trunc(random * h1);
+          h1 := abs(stack[p.t].i) + 1;
+          stack.StoreInteger(p.t, trunc(random * h1));
         end;
         sfEmpty:
         begin
-          h1 := stack[t].i;
+          h1 := stack[p.t].i;
           if stack[h1].i = 0 then
-            stack.StoreInteger(t, 1)
+            stack.StoreInteger(p.t, 1)
           else
-            stack.StoreInteger(t, 0);
+            stack.StoreInteger(p.t, 0);
         end;  (* f21 *)
         sfBits:  (* bits *)
         begin
-          h1 := stack[t].i;
-          stack[t].bs := [];
+          h1 := stack[p.t].i;
+          stack[p.t].bs := [];
           h3 := 0;
           if h1 < 0 then
           begin
             if bsmsb < intmsb then
               raise EPfcSetBound.CreateFmt('bsmsb (%D) < intmsb (%D)', [bsmsb, intmsb]);
-            stack[t].bs := [bsmsb];
+            stack[p.t].bs := [bsmsb];
             h1 := (h1 + 1) + maxint;
             h3 := 1;
           end;
           for h2 := 0 to bsmsb - h3 do
           begin
             if (h1 mod 2) = 1 then
-              stack[t].bs := stack[t].bs + [h2];
+              stack[p.t].bs := stack[p.t].bs + [h2];
             h1 := h1 div 2;
           end;
           if h1 <> 0 then
@@ -1329,32 +1236,19 @@ var
         end;
 
         sfInt: RunInt(p);
-        sfClock: PushInteger(p, sysclock);
+        sfClock: p.PushInteger(sysclock);
       end;
     end;
 
     { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'ixrec' in the 'PCodeOps' unit for details. }
-    procedure RunIxrec(p: TProcessID; y: TYArgument);
+    procedure RunIxrec(p: TProcess; y: TYArgument);
     var
       ix: integer; { Unsure what this actually is. }
     begin
-      ix := PopInteger(p);
-      PushInteger(p, ix + y);
-    end;
-
-    { Pops an integer from 'p''s stack and jumps to it. }
-    procedure PopJump(p: TProcessID);
-    var
-      r: TStackRecord;
-    begin
-      { TODO(@MattWindsor91): at the bottom of the process stack, the program
-        counter stack entry is present but its type is not properly set.
-        This is a workaround for that case, but ideally that stack entry should
-        be initialised instead. }
-      r := PopRecord(p);
-      processes[p].Jump(r.i);
+      ix := p.PopInteger;
+      p.PushInteger(ix + y);
     end;
 
     { No RunJmp: use Jump instead. }
@@ -1362,41 +1256,41 @@ var
     { Executes a 'jmpiz' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pJmpiz' in the 'PCodeOps' unit for details. }
-    procedure RunJmpiz(p: TProcessID; y: TYArgument);
+    procedure RunJmpiz(p: TProcess; y: TYArgument);
     var
       condition: integer;
     begin
       { Can't convert this to PopBoolean, as it'll change the semantics
         to 'jump if not true'. }
-      condition := PopInteger(p);
-      if condition = fals then processes[p].Jump(y);
+      condition := p.PopInteger;
+      if condition = fals then p.Jump(y);
     end;
 
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pCase1' in the 'PCodeOps' unit for details. }
-    procedure RunCase1(p: TProcessID; y: TYArgument);
+    procedure RunCase1(p: TProcess; y: TYArgument);
     var
       caseValue: integer; { The value of this leg of the case (popped first). }
       testValue: integer; { The value tested by the cases (popped second). }
     begin
-      caseValue := PopInteger(p);
-      testValue := PopInteger(p);
+      caseValue := p.PopInteger;
+      testValue := p.PopInteger;
 
       if caseValue = testValue then
-        processes[p].Jump(y)
+        p.Jump(y)
       else
-        PushInteger(p, testValue);
+        p.PushInteger(testValue);
     end;
 
     { Executes a 'case2' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pCase2' in the 'PCodeOps' unit for details. }
-    procedure RunCase2(p: TProcessID);
+    procedure RunCase2(p: TProcess);
     var
       caseValue: integer;
     begin
-      caseValue := PopInteger(p);
+      caseValue := p.PopInteger;
       raise EPfcMissingCase.CreateFmt('label of %D not found in case', [caseValue]);
     end;
 
@@ -1405,31 +1299,31 @@ var
     { Executes a 'for1up' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pFor1up' in the 'PCodeOps' unit for details. }
-    procedure RunFor1up(p: TProcessID; y: TYArgument);
+    procedure RunFor1up(p: TProcess; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
       lcFrom: integer; { Lowest value of loop counter, inclusive }
       lcTo: integer; { Highest value of loop counter, inclusive }
     begin
-      lcTo := PopInteger(p);
-      lcFrom := PopInteger(p);
-      lcAddr := PopInteger(p);
+      lcTo := p.PopInteger;
+      lcFrom := p.PopInteger;
+      lcAddr := p.PopInteger;
 
       if lcFrom <= lcTo then
       begin
         stack.StoreInteger(lcAddr, lcFrom);
-        PushInteger(p, lcAddr);
-        PushInteger(p, lcFrom);
-        PushInteger(p, lcTo);
+        p.PushInteger(lcAddr);
+        p.PushInteger(lcFrom);
+        p.PushInteger(lcTo);
       end
       else
-        processes[p].Jump(y);
+        p.Jump(y);
     end;
 
     { Executes a 'for2up' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pFor2up' in the 'PCodeOps' unit for details. }
-    procedure RunFor2up(p: TProcessID; y: TYArgument);
+    procedure RunFor2up(p: TProcess; y: TYArgument);
     var
       lcAddr: integer; { Address of loop counter }
       lcFrom: integer; { Lowest value of loop counter, inclusive }
@@ -1437,47 +1331,48 @@ var
 
       lcNext: integer; { Loop counter on next iteration }
     begin
-      lcTo := PopInteger(p);
-      lcFrom := PopInteger(p);
-      lcAddr := PopInteger(p);
+      lcTo := p.PopInteger;
+      lcFrom := p.PopInteger;
+      lcAddr := p.PopInteger;
 
       lcNext := stack.LoadInteger(lcAddr) + 1;
       if lcNext <= lcTo then
       begin
         stack.StoreInteger(lcAddr, lcNext);
-        PushInteger(p, lcAddr);
-        PushInteger(p, lcFrom);
-        PushInteger(p, lcTo);
-        processes[p].Jump(y);
+        p.PushInteger(lcAddr);
+        p.PushInteger(lcFrom);
+        p.PushInteger(lcTo);
+        p.Jump(y);
       end
     end;
 
-    procedure MarkStack(p: TProcessID; vsize: integer; tabAddr: TStackAddress);
+    procedure MarkStack(p: TProcess; vsize: integer; tabAddr: TStackAddress);
     begin
       { TODO: is this correct?
         Hard to tell if it's an intentional overstatement of what the
         stack space will grow to. }
-      processes[p].CheckStackOverflow(vsize);
+      p.CheckStackOverflow(vsize);
 
       { Reserving space for the new stack base, program counter, and level(?). }
-      processes[p].IncStackPointer(3);
-      PushInteger(p, vsize - 1);
-      PushInteger(p, tabAddr);
+      p.IncStackPointer(3);
+      p.PushInteger(vsize - 1);
+      p.PushInteger(tabAddr);
     end;
 
-    procedure StartProcessBuild;
+    function StartProcessBuild: TProcess;
     begin
       if npr = pmax then raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
 
       npr := npr + 1;
       concflag := True;
       curpr := npr;
+      Result := processes[curpr];
     end;
 
     { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
       See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
-    procedure RunCallsub(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunCallsub(p: TProcess; x: TXArgument; y: TYArgument);
     var
       tabAddr: integer; { Address to subroutine in symbol table }
       tabRec: TTabRec;  { Record of subroutine }
@@ -1489,48 +1384,48 @@ var
     begin
       if x = 1 then
       begin  (* process *)
-        processes[p].active := True;
+        p.active := True;
         oldBase := Base(0);
         concflag := False;
       end
       else
-        oldBase := Base(p);
+        oldBase := p.b;
 
-      processes[p].DecStackPointer(y - 4);
+      p.DecStackPointer(y - 4);
       { This should have been put on the stack by a previous mark operation. }
-      tabAddr := PopInteger(p);
-      cap := PopInteger(p);
+      tabAddr := p.PopInteger;
+      cap := p.PopInteger;
 
       { TODO(@MattWindsor91): what does this piece of code actually do? }
       tabRec := objrec.gentab[tabAddr];
       level := tabRec.lev;
 
       { Move to the new base pointer. }
-      processes[p].DecStackPointer(2);
-      processes[p].display[level + 1] := Sp(p);
-      AdvanceBase(p);
+      p.DecStackPointer(2);
+      p.display[level + 1] := p.t;
+      p.MarkBase;
 
       { Store information needed to return back at the end of the procedure. }
-      PushInteger(p, processes[p].pc);
-      PushInteger(p, processes[p].display[level]);
-      PushInteger(p, oldBase);
+      p.PushInteger(p.pc);
+      p.PushInteger(p.display[level]);
+      p.PushInteger(oldBase);
 
       { Initialise local variables, maybe? }
-      processes[p].IncStackPointer(y);
+      p.IncStackPointer(y);
       for i := 1 to cap - y do
-        PushInteger(p, 0);
+        p.PushInteger(0);
 
-      processes[p].Jump(tabRec.taddr);
+      p.Jump(tabRec.taddr);
     end;
 
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
 
       See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
-    procedure RunMrkstk(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunMrkstk(p: TProcess; x: TXArgument; y: TYArgument);
     begin
-      if x = 1 then StartProcessBuild;
-      MarkStack(curpr, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
+      if x = 1 then p := StartProcessBuild;
+      MarkStack(p, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
     end;
 
     { Calculates an array index pointer from the given base pointer, index,
@@ -1543,7 +1438,7 @@ var
     { Executes an 'ixary' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pIxary' in the 'PCodeOps' unit for details. }
-    procedure RunIxary(p: TProcessID; y: TYArgument);
+    procedure RunIxary(p: TProcess; y: TYArgument);
     var
       arrTypeID: integer;
       arrbaseAddr: TStackAddress;
@@ -1553,7 +1448,7 @@ var
       hbound: integer;
       elsize: integer;
     begin
-      ix := PopInteger(p);
+      ix := p.PopInteger;
 
       arrTypeID := y;
       arrRec := objrec.genatab[arrTypeID];
@@ -1567,14 +1462,14 @@ var
         raise EPfcIndexBound.CreateFmt('Index %D > hi-bound %D', [ix, hbound]);
 
       elsize := arrRec.elsize;
-      arrbaseAddr := PopInteger(p);
-      PushInteger(p, ArrayIndexPointer(arrBaseAddr, ix, lbound, elsize));
+      arrbaseAddr := p.PopInteger;
+      p.PushInteger(ArrayIndexPointer(arrBaseAddr, ix, lbound, elsize));
     end;
 
     { Executes a 'ldblk' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pLdblk' in the 'PCodeOps' unit for details. }
-    procedure RunLdblk(p: TProcessID; y: TYArgument);
+    procedure RunLdblk(p: TProcess; y: TYArgument);
     var
       srcStart: TStackAddress;  { Start of block to copy. }
       off: cardinal;            { Current offset in block to copy. }
@@ -1582,22 +1477,22 @@ var
       { TODO(@MattWindsor91):
         If we had a way of pre-allocating a space on a process's stack, then
         we could implement this as a special case of Cpblk. }
-      srcStart := PopInteger(p);
+      srcStart := p.PopInteger;
       for off := 0 to y - 1 do
-        PushRecord(p, stack.LoadRecord(srcStart + off));
+        p.PushRecord(stack.LoadRecord(srcStart + off));
     end;
 
     { Executes a 'cpblk' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pCpblk' in the 'PCodeOps' unit for details. }
-    procedure RunCpblk(p: TProcessID; y: TYArgument);
+    procedure RunCpblk(p: TProcess; y: TYArgument);
     var
       srcStart: TStackAddress;  { Start of source block. }
       dstStart: TStackAddress;  { Start of destination block. }
       off: cardinal;            { Current offset in block to copy. }
     begin
-      dstStart := PopInteger(p);
-      srcStart := PopInteger(p);
+      dstStart := p.PopInteger;
+      srcStart := p.PopInteger;
       for off := 0 to y - 1 do
         stack.StoreRecord(dstStart + off, stack.LoadRecord(srcStart + off));
     end;
@@ -1605,12 +1500,13 @@ var
     { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pIfloat' in the 'PCodeOps' unit for details. }
-    procedure RunIfloat(p: TProcessID; y: TYArgument);
+    procedure RunIfloat(p: TProcess; y: TYArgument);
     var
       loc: TStackAddress;  { Location to convert to float. }
       i: integer;          { The integer to convert. }
     begin
-      loc := processes[p].t - y;
+      { TODO(@MattWindsor): scroll t down by y temporarily }
+      loc := p.t - y;
       i := stack.LoadInteger(loc);
       stack.StoreReal(loc, i);
     end;
@@ -1618,7 +1514,7 @@ var
     { Executes a 'readip' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pReadip' in the 'PCodeOps' unit for details. }
-    procedure RunReadip(p: TProcessID; y: TYArgument);
+    procedure RunReadip(p: TProcess; y: TYArgument);
     var
       dest: TStackAddress; { Destination of item being read. }
     begin
@@ -1626,7 +1522,7 @@ var
       { TODO(@MattWindsor91): wrong files used? }
       if EOF(input) then raise EPfcEOF.Create('reading past end of file');
 
-      dest := PopInteger(p);
+      dest := p.PopInteger;
 
       case y of
         ptyInt:
@@ -1652,19 +1548,19 @@ var
 
     { Pops from 'p''s stack an item with type 'typ', then writes it on stdout
       with the minimum width 'minWidth'. }
-    procedure PopWrite(p: TProcessID; typ: TPrimType; minWidth: integer);
+    procedure PopWrite(p: TProcess; typ: TPrimType; minWidth: integer);
     begin
       case typ of
         ptyInt:
-          Write(PopInteger(p): minWidth);
+          Write(p.PopInteger: minWidth);
         ptyBool:
-          Write(itob(PopInteger(p)): minWidth);
+          Write(p.PopBoolean: minWidth);
         ptyChar:
-          Write(AsChar(PopInteger(p)): minWidth);
+          Write(AsChar(p.PopInteger): minWidth);
         ptyReal:
-          Write(PopReal(p): minWidth);
+          Write(p.PopReal: minWidth);
         ptyBitset:
-          Write(PopBitset(p).AsString: minWidth);
+          Write(p.PopBitset.AsString: minWidth);
       end;
     end;
 
@@ -1672,7 +1568,7 @@ var
       Y-value 'y'.
 
       See the entry for 'pWrstr' in the 'PCodeOps' unit for details. }
-    procedure RunWrstr(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunWrstr(p: TProcess; x: TXArgument; y: TYArgument);
     var
       padLen: integer;   { Target string length, plus any padding. }
       strBase: integer;  { Base index of string in string table. }
@@ -1680,8 +1576,8 @@ var
       str: ansistring;   { The string itself. }
     begin
       padLen := 0;
-      if x = 1 then padLen := PopInteger(p);
-      strLen := PopInteger(p);
+      if x = 1 then padLen := p.PopInteger;
+      strLen := p.PopInteger;
       strBase := y;
       RetrieveString(str, strBase, strLen);
       Write(str: padLen);
@@ -1690,7 +1586,7 @@ var
     { Executes a 'wrval' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pWrval' in the 'PCodeOps' unit for details. }
-    procedure RunWrval(p: TProcessID; y: TYArgument);
+    procedure RunWrval(p: TProcess; y: TYArgument);
     begin
       PopWrite(p, y, 0);
     end;
@@ -1698,107 +1594,106 @@ var
     { Executes a 'wrfrm' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pWrfrm' in the 'PCodeOps' unit for details. }
-    procedure RunWrfrm(p: TProcessID; y: TYArgument);
+    procedure RunWrfrm(p: TProcess; y: TYArgument);
     var
       width: integer; { Minimum width of field to format }
     begin
-      width := PopInteger(p);
+      width := p.PopInteger;
       PopWrite(p, y, width);
     end;
 
     { Executes a 'w2frm' instruction on process 'p'.
 
       See the entry for 'pW2frm' in the 'PCodeOps' unit for details. }
-    procedure RunW2frm(p: TProcessID);
+    procedure RunW2frm(p: TProcess);
     var
       width: integer;
       prec: integer;
       val: real;
     begin
-      prec := PopInteger(p);
-      width := PopInteger(p);
-      val := PopReal(p);
+      prec := p.PopInteger;
+      width := p.PopInteger;
+      val := p.PopReal;
       Write(val: width: prec);
     end;
 
     { Executes a 'store' instruction on process 'p'.
 
       See the entry for 'pStore' in the 'PCodeOps' unit for details. }
-    procedure RunStore(p: TProcessID);
+    procedure RunStore(p: TProcess);
     var
       rec: TStackRecord;
       addr: TStackAddress;
     begin
-      rec := PopRecord(p);
-      addr := PopInteger(p);
+      rec := p.PopRecord;
+      addr := p.PopInteger;
       stack.StoreRecord(addr, rec);
     end;
 
     { Deactivates the current process, and deactivates the main process if no
       further processes remain. }
-    procedure Deactivate(p: TProcessID);
+    procedure Deactivate(p: TProcess);
     begin
       npr := npr - 1;
-      processes[p].active := False;
+      p.active := False;
       stepcount := 0;
       processes[0].active := (npr = 0);
     end;
 
-
     { The part of the return convention common to both procedures and functions. }
-    procedure Ret(p: TProcessID);
+    procedure Ret(p: TProcess);
     begin
-      ReturnToBase(p);
+      p.RecallBase;
       { Above us is the programme counter, display address, and base address. }
-      processes[p].IncStackPointer(3);
-      SetBase(p, PopInteger(p));
-      processes[p].DecStackPointer; { Ignore display address }
-      PopJump(p);
+      p.IncStackPointer(3);
+      p.b := p.PopInteger;
+      p.DecStackPointer; { Ignore display address }
+      p.PopJump;
     end;
 
     { Executes a 'retproc' instruction on process 'p'.
 
       See the entry for 'pRetproc' in the 'PCodeOps' unit for details. }
-    procedure RunRetproc(p: TProcessID);
+    procedure RunRetproc(p: TProcess);
     begin
       Ret(p);
-      processes[p].DecStackPointer; { TODO(@MattWindsor91): work out where this comes from }
+      p.DecStackPointer; { TODO(@MattWindsor91): work out where this comes from }
+
       { Are we returning from the main procedure? }
-      if processes[p].pc = 0 then
-        Deactivate(p);
+      if p.pc = 0 then Deactivate(p);
     end;
 
     { Executes a 'repadr' instruction on process 'p'.
 
       See the entry for 'pRepadr' in the 'PCodeOps' unit for details. }
-    procedure RunRepadr(p: TProcessID);
+    procedure RunRepadr(p: TProcess);
     var
       addr: TStackAddress;
     begin
-      addr := PopInteger(p);
-      PushRecord(p, stack.LoadRecord(addr));
+      addr := p.PopInteger;
+      PushRecordAt(p, addr);
     end;
 
     { Executes a 'notop' instruction on process 'p'.
 
       See the entry for 'pNotop' in the 'PCodeOps' unit for details. }
-    procedure RunNotop(p: TProcessID);
+    procedure RunNotop(p: TProcess);
     var
       b: boolean;
     begin
-      b := PopBoolean(p);
-      PushBoolean(p, not b);
+      b := p.PopBoolean;
+      p.PushBoolean(not b);
     end;
 
     { Executes a 'negate' instruction on process 'p'.
 
       See the entry for 'pNegate' in the 'PCodeOps' unit for details. }
-    procedure RunNegate(p: TProcessID);
+    procedure RunNegate(p: TProcess);
     var
       i: integer;
     begin
-      i := PopInteger(p);
-      PushInteger(p, -i);
+      i := p.PopInteger;
+      p.PushInteger(-i);
     end;
 
     { Executes a 'rdlin' instruction.
@@ -1815,12 +1710,12 @@ var
       Y-value 'y'.
 
       See the entry for 'pSelec0' in the 'PCodeOps' unit for details. }
-    procedure RunSelec0(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunSelec0(p: TProcess; x: TXArgument; y: TYArgument);
     var
       foundcall: boolean;
     begin
       { TODO(@MattWindsor91): refactor. }
-      with processes[p] do
+      with p do
       begin
         h1 := t;
         h2 := 0;
@@ -1852,9 +1747,9 @@ var
             if stack[h4].i = 0 then
             begin  (* timeout alternative *)
               if stack[h4 + 3].i < 0 then
-                stack[h4 + 3].i := sysclock
+                stack.StoreInteger(h4 + 3, sysclock)
               else
-                stack[h4 + 3].i := stack[h4 + 3].i + sysclock;
+                stack.StoreInteger(h4 + 3, stack[h4 + 3].i + sysclock);
               if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
               begin
                 wakeup := stack[h4 + 3].i;
@@ -1888,17 +1783,17 @@ var
                 if h4 <> 0 then  (* 0 means timeout *)
                 begin
                   if stack[h1 + 2].i = 2 then
-                    stack[h4].i := -stack[h1 + 1].i (* query sleep *)
+                    stack.StoreInteger(h4, -stack[h1 + 1].i (* query sleep *))
                   else
                   if stack[h1 + 2].i = 0 then
-                    stack[h4].i := h1 + 1
+                    stack.StoreInteger(h4, h1 + 1)
                   else
                   if stack[h1 + 2].i = 1 then
                     stack[h4] := stack[h1 + 1]  (* shriek sleep *)
                   else
-                    stack[h4].i := -1;  (* entry sleep *)
+                    stack.StoreInteger(h4, -1);  (* entry sleep *)
                   stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
-                  stack[h4 + 2].i := curpr;
+                  stack.StoreInteger(h4 + 2, curpr);
                 end; (* if h4 <> 0 *)
                 h1 := h1 + sfsize;
               end;  (* for loop *)
@@ -1921,7 +1816,7 @@ var
                 raise EPfcChannel.Create('channel rendezvous error')
               else
               begin  (* rendezvous *)
-                stack[h1].i := abs(stack[h1].i);
+                stack.StoreInteger(h1, abs(stack[h1].i));
                 if stack[h4 + 2].i = 0 then
                   stack[stack[h1].i] := stack[h4 + 1]
                 else
@@ -1953,155 +1848,149 @@ var
       Y-value 'y'.
 
       See the entry for 'pChanwr' in the 'PCodeOps' unit for details. }
-    procedure RunChanwr(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunChanwr(p: TProcess; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): refactor. }
-      with processes[p] do
-      begin
-        h1 := stack[t - 1].i;   (* h1 now points to channel *)
-        h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
-        h3 := stack[t].i;   (* base address of source (for x=1) *)
-        if h2 > 0 then
-          raise EPfcChannel.Create('multiple writers on channel');
-        if h2 = 0 then
-        begin  (* first *)
-          if x = 0 then
-            stack[h1].i := t
-          else
-            stack[h1].i := h3;
-          stack[h1 + 1].i := pc;
-          stack[h1 + 2].i := curpr;
-          chans := t - 1;
-          suspend := -1;
-          stepcount := 0;
-        end  (* first *)
+      h1 := stack[p.t - 1].i;   (* h1 now points to channel *)
+      h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
+      h3 := stack[p.t].i;   (* base address of source (for x=1) *)
+      if h2 > 0 then
+        raise EPfcChannel.Create('multiple writers on channel');
+      if h2 = 0 then
+      begin  (* first *)
+        if x = 0 then
+          stack.StoreInteger(h1, p.t)
         else
-        begin  (* second *)
-          h2 := abs(h2);  (* readers leave negated address *)
-          if x = 0 then
-            stack[h2] := stack[t]
-          else
+          stack.StoreInteger(h1, h3);
+        stack.StoreInteger(h1 + 1, p.pc);
+        stack.StoreInteger(h1 + 2, curpr);
+        p.chans := p.t - 1;
+        p.suspend := -1;
+        stepcount := 0;
+      end  (* first *)
+      else
+      begin  (* second *)
+        h2 := abs(h2);  (* readers leave negated address *)
+        if x = 0 then
+          stack[h2] := stack[p.t]
+        else
+        begin
+          h4 := 0;  (* loop control for block copy *)
+          while h4 < y do
           begin
-            h4 := 0;  (* loop control for block copy *)
-            while h4 < y do
-            begin
-              stack[h2 + h4] := stack[h3 + h4];
-              h4 := h4 + 1;
-            end;  (* while *)
-          end;  (* x was 1 *)
-          wakenon(h1);
-        end;  (* second *)
-        t := t - 2;
-      end;
+            stack[h2 + h4] := stack[h3 + h4];
+            h4 := h4 + 1;
+          end;  (* while *)
+        end;  (* x was 1 *)
+        wakenon(h1);
+      end;  (* second *)
+      p.t := p.t - 2;
     end;
 
     { Executes a 'chanrd' instruction on process 'p', with Y-value 'y'.
 
       See the entry for 'pChanrd' in the 'PCodeOps' unit for details. }
-    procedure RunChanrd(p: TProcessID; y: TYArgument);
+    procedure RunChanrd(p: TProcess; y: TYArgument);
     begin
       { TODO(@MattWindsor91): refactor. }
-      with processes[p] do { gld }
-      begin
-        h3 := PopInteger(p);
-        h1 := PopInteger(p);
-        h2 := stack[h1].i;
-        if h2 < 0 then
-          raise EPfcChannel.Create('multiple readers on channel');
-        if h2 = 0 then
-        begin  (* first *)
-          stack[h1].i := -h3;
-          stack[h1 + 1].i := pc;
-          stack[h1 + 2].i := curpr;
-          chans := t - 1;
-          suspend := -1;
-          stepcount := 0;
-        end  (* first *)
-        else
-        begin  (* second *)
-          h2 := abs(h2);
-          h4 := 0;
-          while h4 < y do
-          begin
-            stack[h3 + h4] := stack[h2 + h4];
-            h4 := h4 + 1;
-          end;
-          wakenon(h1);
+      h3 := p.PopInteger;
+      h1 := p.PopInteger;
+      h2 := stack[h1].i;
+      if h2 < 0 then
+        raise EPfcChannel.Create('multiple readers on channel');
+      if h2 = 0 then
+      begin  (* first *)
+        stack.StoreInteger(h1, -h3);
+        stack.StoreInteger(h1 + 1, p.pc);
+        stack.StoreInteger(h1 + 2, curpr);
+        p.chans := p.t - 1;
+        p.suspend := -1;
+        stepcount := 0;
+      end  (* first *)
+      else
+      begin  (* second *)
+        h2 := abs(h2);
+        h4 := 0;
+        while h4 < y do
+        begin
+          stack[h3 + h4] := stack[h2 + h4];
+          h4 := h4 + 1;
         end;
+        wakenon(h1);
       end;
     end;
 
     { Executes a 'delay' instruction on process 'p'.
     
       See the entry for 'pDelay' in the 'PCodeOps' unit for details. }
-    procedure RunDelay(p: TProcessID);
+    procedure RunDelay(p: TProcess);
     var
       mon: TStackAddress; { address of monitor to delay }
     begin
-      mon := PopInteger(p);
+      mon := p.PopInteger;
       joinqueue(mon);
-      if processes[p].curmon <> 0 then
-        releasemon(processes[p].curmon);
+      if p.curmon <> 0 then
+        releasemon(p.curmon);
     end;
 
-    procedure Resume(p: TProcessID; mon: TStackAddress);
+    procedure Resume(p: TProcess; mon: TStackAddress);
     begin
       procwake(mon);
-      if processes[p].curmon <> 0 then
-        joinqueue(processes[p].curmon + 1);
+      if p.curmon <> 0 then
+        joinqueue(p.curmon + 1);
     end;
 
     { Executes a 'resum' instruction on process 'p'.
     
       See the entry for 'pResum' in the 'PCodeOps' unit for details. }
-    procedure RunResum(p: TProcessID);
+    procedure RunResum(p: TProcess);
     var
       mon: TStackAddress; { address of monitor to resume }
     begin
-      mon := PopInteger(p);
+      mon := p.PopInteger;
       if stack[mon].i > 0 then Resume(p, mon);
     end;
 
     { Pushes a new current monitor address onto the stack, replacing
       it with the previous current monitor address. }
-    procedure SwapMonitor(p: TProcessID);
+    procedure SwapMonitor(p: TProcess);
     var
       mon: TStackAddress; { address of monitor to enter }
     begin
-      mon := PopInteger(p);
-      PushInteger(p, processes[p].curmon);
-      processes[p].curmon := mon;
+      mon := p.PopInteger;
+      p.PushInteger(p.curmon);
+      p.curmon := mon;
     end;
 
     { Executes an 'enmon' instruction on process 'p'.
     
       See the entry for 'pEnmon' in the 'PCodeOps' unit for details. }
-    procedure RunEnmon(p: TProcessID);
+    procedure RunEnmon(p: TProcess);
     begin
       SwapMonitor(p);
 
-      if stack[processes[p].curmon].i = 0 then
-        stack[processes[p].curmon].i := -1
+      if stack[p.curmon].i = 0 then
+        stack.StoreInteger(p.curmon, -1)
       else
-        joinqueue(processes[p].curmon);
+        joinqueue(p.curmon);
     end;
 
     { Executes an 'exmon' instruction on process 'p'.
     
       See the entry for 'pExmon' in the 'PCodeOps' unit for details. }
-    procedure RunExmon(p: TProcessID);
+    procedure RunExmon(p: TProcess);
     begin
-      releasemon(processes[p].curmon);
-      processes[p].curmon := PopInteger(p);
+      releasemon(p.curmon);
+      p.curmon := p.PopInteger;
     end;
 
     { Executes an 'mexec' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pMexec' in the 'PCodeOps' unit for details. }
-    procedure RunMexec(p: TProcessID; y: TYArgument);
+    procedure RunMexec(p: TProcess; y: TYArgument);
     begin
-      PushInteger(p, processes[p].pc);
-      processes[p].Jump(y);
+      p.PushInteger(p.pc);
+      p.Jump(y);
     end;
 
     { There is no RunMretn, as it is literally just a popjump. }
@@ -2115,27 +2004,27 @@ var
     { Executes an 'lobnd' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pLobnd' in the 'PCodeOps' unit for details. }
-    procedure RunLobnd(p: TProcessID; y: TYArgument);
+    procedure RunLobnd(p: TProcess; y: TYArgument);
     begin
-      CheckGe(PeekInteger(p), y);
+      CheckGe(p.PeekInteger, y);
     end;
 
     { Executes an 'hibnd' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pHibnd' in the 'PCodeOps' unit for details. }
-    procedure RunHibnd(p: TProcessID; y: TYArgument);
+    procedure RunHibnd(p: TProcess; y: TYArgument);
     begin
-      CheckGe(y, PeekInteger(p));
+      CheckGe(y, p.PeekInteger);
     end;
 
     { Executes a 'sleap' instruction on process 'p'.
     
       See the entry for 'pSleap' in the 'PCodeOps' unit for details. }
-    procedure RunSleap(p: TProcessID);
+    procedure RunSleap(p: TProcess);
     var
       time: integer; { TODO(@MattWindsor91): units? }
     begin
-      time := PopInteger(p);
+      time := p.PopInteger;
       if time <= 0 then
         stepcount := 0
       else
@@ -2145,13 +2034,13 @@ var
     { Executes a 'procv' instruction on process 'p'.
     
       See the entry for 'pProcv' in the 'PCodeOps' unit for details. }
-    procedure RunProcv(p: TProcessID);
+    procedure RunProcv(p: TProcess);
     var
       vp: TStackAddress;
     begin
       { TODO(@MattWindsor91): refactor. }
-      vp := PopInteger(p);
-      processes[p].varptr := vp;
+      vp := p.PopInteger;
+      p.varptr := vp;
       if stack.LoadInteger(vp) <> 0 then
         raise EPfcProcMultiActivate.Create('multiple activation of a process');
       stack.StoreInteger(vp, curpr);
@@ -2160,10 +2049,10 @@ var
     { Executes an 'ecall' instruction on process 'p', with Y-argument 'y'.
       
       See the entry for 'pEcall' in the 'PCodeOps' unit for details. }
-    procedure RunEcall(p: TProcessID; y: TYArgument);
+    procedure RunEcall(p: TProcess; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      with processes[p] do
+      with p do
       begin
         h1 := t - y;
         t := h1 - 2;
@@ -2185,11 +2074,11 @@ var
               stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
             wakenon(h3);
           end;
-          stack[h3 + 1].i := pc;
-          stack[h3 + 2].i := curpr;
+          stack.StoreInteger(h3 + 1, pc);
+          stack.StoreInteger(h3 + 2, curpr);
         end;
         joinqueue(h3);
-        stack[t + 1].i := h3;
+        stack.StoreInteger(t + 1, h3);
         chans := t + 1;
         suspend := -1;
       end;
@@ -2198,17 +2087,17 @@ var
     { Executes an 'acpt1' instruction on process 'p', with Y-argument 'y'.
       
       See the entry for 'pAcpt1' in the 'PCodeOps' unit for details. }
-    procedure RunAcpt1(p: TProcessID; y: TYArgument);
+    procedure RunAcpt1(p: TProcess; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      h1 := PopInteger(p);    (* h1 points to entry *)
+      h1 := p.PopInteger;    (* h1 points to entry *)
       if stack[h1].i = 0 then
       begin  (* no calls - sleep *)
-        stack[h1].i := -1;
-        stack[h1 + 1].i := processes[p].pc;
-        stack[h1 + 2].i := curpr;
-        processes[p].suspend := -1;
-        processes[p].chans := processes[p].t + 1;
+        stack.StoreInteger(h1, -1);
+        stack.StoreInteger(h1 + 1, p.pc);
+        stack.StoreInteger(h1 + 2, curpr);
+        p.suspend := -1;
+        p.chans := p.t + 1;
         stepcount := 0;
       end
       else
@@ -2225,21 +2114,21 @@ var
     { Executes an 'acpt2' instruction on process 'p'.
       
       See the entry for 'pAcpt2' in the 'PCodeOps' unit for details. }
-    procedure RunAcpt2(p: TProcessID);
+    procedure RunAcpt2(p: TProcess);
     var
       { TODO(@MattWindsor91): types }
       entry: integer;
       procID: integer;
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      entry := PopInteger(p); (* h1 points to entry *)
+      entry := p.PopInteger; (* h1 points to entry *)
       procwake(entry);
 
       if stack[entry].i <> 0 then
       begin  (* queue non-empty *)
         procID := procqueue.proclist[stack[entry].i].proc;  (* h2 has proc id *)
-        stack[entry + 1].i := processes[procID].pc;
-        stack[entry + 2].i := procID;
+        stack.StoreInteger(entry + 1, processes[procID].pc);
+        stack.StoreInteger(entry + 2, procID);
       end;
     end;
 
@@ -2247,19 +2136,19 @@ var
       and Y-argument 'y'.
       
       See the entry for 'pRep1c' in the 'PCodeOps' unit for details. }
-    procedure RunRep1c(p: TProcessID; x: TXArgument; y: TYArgument);
+    procedure RunRep1c(p: TProcess; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): understand, then refactor }
-      stack.StoreInteger(processes[p].DisplayAddress(x, y), processes[p].repindex);
+      stack.StoreInteger(p.DisplayAddress(x, y), p.repindex);
     end;
 
     { Executes a 'rep2c' instruction on process 'p', with Y-argument 'y'.
     
       See the entry for 'pRep2c' in the 'PCodeOps' unit for details. }
-    procedure RunRep2c(p: TProcessID; y: TYArgument);
+    procedure RunRep2c(p: TProcess; y: TYArgument);
     begin
-      stack.IncInteger(PopInteger(p));
-      processes[p].Jump(y);
+      stack.IncInteger(p.PopInteger);
+      p.Jump(y);
     end;
 
     { Raises an exception if 'bit' is not a valid bit. }
@@ -2272,40 +2161,40 @@ var
     { Executes a 'power2' instruction on process 'p'.
     
       See the entry for 'pPower2' in the 'PCodeOps' unit for details. }
-    procedure RunPower2(p: TProcessID);
+    procedure RunPower2(p: TProcess);
     var
       bit: integer; { Bit to set (must be 0..MSB) }
     begin
-      bit := PopInteger(p);
+      bit := p.PopInteger;
       CheckBitInBounds(bit);
-      PushBitset(p, [bit]);
+      p.PushBitset([bit]);
     end;
 
     { Executes a 'btest' instruction on process 'p'.
     
       See the entry for 'pBtest' in the 'PCodeOps' unit for details. }
-    procedure RunBtest(p: TProcessID);
+    procedure RunBtest(p: TProcess);
     var
       bits: TBitset; { Bitset to test }
       bit: integer; { Bit to test }
     begin
-      bits := PopBitset(p);
-      bit := PopInteger(p);
+      bits := p.PopBitset;
+      bit := p.PopInteger;
       CheckBitInBounds(bit);
-      PushBoolean(p, bit in bits);
-      PushBitset(p, bits);
+      p.PushBoolean(bit in bits);
+      p.PushBitset(bits);
     end;
 
     { Executes a 'wrbas' instruction on process 'p'.
     
       See the entry for 'pWrbas' in the 'PCodeOps' unit for details. }
-    procedure RunWrbas(p: TProcessID);
+    procedure RunWrbas(p: TProcess);
     var
       bas: integer; { TODO(@MattWindsor91): what is this? }
       val: real;
     begin
-      bas := PopInteger(p);
-      val := PopReal(p);
+      bas := p.PopInteger;
+      val := p.PopReal;
       if bas = 8 then
         Write(val: 11: 8)
       else
@@ -2315,7 +2204,7 @@ var
     { Executes a 'sinit' instruction on process 'p'.
     
       See the entry for 'pSinit' in the 'PCodeOps' unit for details. }
-    procedure RunSinit(p: TProcessID);
+    procedure RunSinit(p: TProcess);
     begin
       if curpr <> 0 then
         raise EPfcProcSemiInit.Create('tried to initialise semaphore from process');
@@ -2325,20 +2214,20 @@ var
     { Executes an 'prtjmp' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pPrtjmp' in the 'PCodeOps' unit for details. }
-    procedure RunPrtjmp(p: TProcessID; y: TYArgument);
+    procedure RunPrtjmp(p: TProcess; y: TYArgument);
     begin
-      if stack[processes[p].curmon + 2].i = 0 then processes[p].Jump(y);
+      if stack.LoadInteger(p.curmon + 2) = 0 then p.Jump(y);
     end;
 
     { Executes a 'prtsel' instruction on process 'p'.
     
       See the entry for 'pPrtsel' in the 'PCodeOps' unit for details. }
-    procedure RunPrtsel(p: TProcessID);
+    procedure RunPrtsel(p: TProcess);
     var
       foundcall: boolean;
     begin
       { TODO(@MattWindsor91): understand and refactor }
-      h1 := processes[p].t;
+      h1 := p.t;
       h2 := 0;
       foundcall := False;
       while stack[h1].i <> -1 do
@@ -2362,52 +2251,52 @@ var
         end;
       end;  (* barriers to check *)
       if not foundcall then
-        releasemon(processes[p].curmon)
+        releasemon(p.curmon)
       else
       begin
         h3 := stack[h1 + h3 + 1].i;
         procwake(h3);
       end;
-      processes[p].t := h1 - 1;
-      stack.StoreInteger(processes[p].curmon + 2, 0);
-      PopJump(p);
+      p.t := h1 - 1;
+      stack.StoreInteger(p.curmon + 2, 0);
+      p.PopJump;
     end;
 
     
     { Executes a 'prtslp' instruction on process 'p'.
     
       See the entry for 'pPrtslp' in the 'PCodeOps' unit for details. }
-    procedure RunPrtslp(p: TProcessID);
+    procedure RunPrtslp(p: TProcess);
     begin
-      JoinQueue(PopInteger(p));
+      JoinQueue(p.PopInteger);
     end;
 
     { Executes a 'prtex' instruction on process 'p', with X-value 'x'.
     
       See the entry for 'pPrtex' in the 'PCodeOps' unit for details. }
-    procedure RunPrtex(p: TProcessID; x: TXArgument);
+    procedure RunPrtex(p: TProcess; x: TXArgument);
     begin
-      processes[p].clearresource := (x = 0);
-      processes[p].curmon := PopInteger(p);
+      p.clearresource := (x = 0);
+      p.curmon := p.PopInteger;
     end;
 
     { Executes a 'prtcnd' instruction on process 'p', with Y-value 'y'.
     
       See the entry for 'pPrtcnd' in the 'PCodeOps' unit for details. }
-    procedure RunPrtcnd(p: TProcessID; y: TYArgument);
+    procedure RunPrtcnd(p: TProcess; y: TYArgument);
     begin
-      if processes[p].clearresource then
+      if p.clearresource then
       begin
-        stack[processes[p].curmon + 2].i := 1;
-        PushInteger(p, processes[p].pc);
-        PushInteger(p, -1);
-        processes[p].Jump(y);
+        stack.StoreInteger(p.curmon + 2, 1);
+        p.PushInteger(p.pc);
+        p.PushInteger(-1);
+        p.Jump(y);
       end;
     end;
 
-    procedure RunInstruction(p: TProcessID; ir: TObjOrder);
+    procedure RunInstruction(p: TProcess; ir: TObjOrder);
     begin
-      with processes[p] do
+      with p do
         case ir.f of
           pLdadr: RunLdadr(p, ir.x, ir.y);
           pLdval: RunLdval(p, ir.x, ir.y);
@@ -2419,7 +2308,7 @@ var
           pSignal: RunSignal(p);
           pStfun: RunStfun(p, ir.y);
           pIxrec: RunIxrec(p, ir.y);
-          pJmp: processes[p].Jump(ir.y);
+          pJmp: p.Jump(ir.y);
           pJmpiz: RunJmpiz(p, ir.y);
           pCase1: RunCase1(p, ir.y);
           pCase2: RunCase2(p);
@@ -2430,8 +2319,8 @@ var
           pIxary: RunIxary(p, ir.y);
           pLdblk: RunLdblk(p, ir.y);
           pCpblk: RunCpblk(p, ir.y);
-          pLdconI: PushInteger(p, ir.y);
-          pLdconR: PushReal(p, objrec.genrconst[ir.y]);
+          pLdconI: p.PushInteger(ir.y);
+          pLdconR: p.PushReal(objrec.genrconst[ir.y]);
           pIfloat: RunIfloat(p, ir.y);
           pReadip: RunReadip(p, ir.y);
           pWrstr: RunWrstr(p, ir.x, ir.y);
@@ -2478,7 +2367,7 @@ var
           pEnmon: RunEnmon(p);
           pExmon: RunExmon(p);
           pMexec: RunMexec(p, ir.y);
-          pMretn: PopJump(p);
+          pMretn: p.PopJump;
           pLobnd: RunLobnd(p, ir.y);
           pHibnd: RunHibnd(p, ir.y);
           pPref: { Not implemented };
@@ -2534,7 +2423,7 @@ var
       if concflag then
         curpr := npr;
 
-      RunInstruction(curpr, ir);
+      RunInstruction(processes[curpr], ir);
 
       checkclock;
 
@@ -2561,6 +2450,7 @@ var
 
     try { Exception trampoline for Deadlock }
       processes[0] := TProcess.Create(
+        stack,
         {active} True,
         {clearresource} False,
         {stackbase} 0,
@@ -2577,6 +2467,7 @@ var
       begin
         h2 := processes[curpr - 1].stacksize + 1;
         processes[curpr] := TProcess.Create(
+          stack,
           {active} False,
           {clearresource} True,
           {stackbase} h2,

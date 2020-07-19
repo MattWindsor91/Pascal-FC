@@ -36,6 +36,7 @@ interface
 
 uses
   SysUtils,
+  GConsts,
   GTypes,
   Pint.Bitset,
   Pint.Consts,
@@ -140,6 +141,9 @@ type
   (Eventually, the zone will become an object and these functions will become
    methods.) }
 TStackZoneHelper = type helper for TStackZone
+  { Reads a boolean from the stack zone at address 'a'. }
+  function LoadBoolean(a: TStackAddress): boolean;
+
   { Reads an integer from the stack zone at address 'a'. }
   function LoadInteger(a: TStackAddress): integer;
 
@@ -154,6 +158,9 @@ TStackZoneHelper = type helper for TStackZone
 
   { Writes an integer 'i' to the stack zone at address 'a'. }
   procedure StoreInteger(a: TStackAddress; i: integer);
+
+  { Writes an boolean 'b' to the stack zone at address 'a'. }
+  procedure StoreBoolean(a: TStackAddress; b: boolean);
 
   { Writes a real 'r' to the stack zone at address 'a'. }
   procedure StoreReal(a: TStackAddress; r: real);
@@ -177,10 +184,29 @@ end;
 
 implementation
 
-procedure CheckInt(var s: TStackZone; a: TStackAddress);
+function Itob(i: integer): boolean;
 begin
-  if s[a].tp <> ints then
-    raise EPfcStackType.Create('expected integer');
+  Result := i = tru;
+end;
+
+function Btoi(b: boolean): integer;
+begin
+  if b then
+    Result := tru
+  else
+    Result := fals;
+end;
+
+procedure CheckType(var s: TStackZone; a: TStackAddress; want: TType);
+var
+  got: TType;
+begin
+  got := s[a].tp;
+  { TODO(@MattWindsor91): the lack of check when the stack address is untyped
+    is to deal with, I think, uninitialised variables.  Ideally, these shouldn't
+    exist/should be preallocated. }
+  if got <> want then
+    raise EPfcStackType.CreateFmt('addr %D is type %S; want %S', [a, got.ToString, want.ToString]);
 end;
 
 function TStackZoneHelper.LoadRecord(a: TStackAddress): TStackRecord;
@@ -190,23 +216,24 @@ end;
 
 function TStackZoneHelper.LoadInteger(a: TStackAddress): integer;
 begin
-  CheckInt(self, a);
+  CheckType(self, a, ints);
   Result := self[a].i;
+end;
+
+function TStackZoneHelper.LoadBoolean(a: TStackAddress): boolean;
+begin
+  Result := Itob(self.LoadInteger(a));
 end;
 
 function TStackZoneHelper.LoadReal(a: TStackAddress): real;
 begin
-  if self[a].tp <> reals then
-    raise EPfcStackType.Create('expected real');
-
+  CheckType(self, a, reals);
   Result := self[a].r;
 end;
 
 function TStackZoneHelper.LoadBitset(a: TStackAddress): TBitset;
 begin
-  if self[a].tp <> bitsets then
-    raise EPfcStackType.Create('expected bitset');
-
+  CheckType(self, a, bitsets);
   Result := self[a].bs;
 end;
 
@@ -214,6 +241,11 @@ procedure TStackZoneHelper.StoreInteger(a: TStackAddress; i: integer);
 begin
   self[a].tp := ints;
   self[a].i := i;
+end;
+
+procedure TStackZoneHelper.StoreBoolean(a: TStackAddress; b: boolean);
+begin
+  StoreInteger(a, Btoi(b));
 end;
 
 procedure TStackZoneHelper.StoreReal(a: TStackAddress; r: real);
@@ -235,13 +267,13 @@ end;
 
 procedure TStackZoneHelper.IncInteger(a: TStackAddress);
 begin
-  CheckInt(self, a);
+  CheckType(self, a, ints);
   Inc(self[a].i);
 end;
 
 procedure TStackZoneHelper.AddInteger(a: TStackAddress; delta: integer);
 begin
-  CheckInt(self, a);
+  CheckType(self, a, ints);
   self[a].i := self[a].i + delta;
 end;
 
