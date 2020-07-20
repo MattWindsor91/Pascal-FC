@@ -1392,10 +1392,10 @@ var
       loc: TStackAddress;  { Location to convert to float. }
       i: integer;          { The integer to convert. }
     begin
-      { TODO(@MattWindsor): scroll t down by y temporarily }
-      loc := p.t - y;
-      i := stack.LoadInteger(loc);
-      stack.StoreReal(loc, i);
+      p.DecStackPointer(y);
+      i := p.PopInteger;
+      p.PushReal(i);
+      p.IncStackPointer(y);
     end;
 
     { Executes a 'readip' instruction on process 'p', with Y-value 'y'.
