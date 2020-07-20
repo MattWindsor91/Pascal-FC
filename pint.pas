@@ -910,19 +910,6 @@ var
         stack.StoreInteger(curmon, 0);
     end;
 
-
-    { Gets the base pointer. }
-    function Base(p: TProcessID): TStackAddress;
-    begin
-      Result := processes[p].b;
-    end;
-
-    { Sets 'p''s base pointer to the given value. }
-    procedure SetBase(p: TProcessID; newBase: TStackAddress);
-    begin
-      processes[p].b := newBase;
-    end;
-
     procedure RunLdadr(p: TProcess; x, y: integer);
     begin
       p.PushInteger(p.DisplayAddress(x, y))
@@ -1246,39 +1233,16 @@ var
       p.PushInteger(tabAddr);
     end;
 
-    function StartProcessBuild: TProcess;
-    begin
-      if npr = pmax then raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
-
-      npr := npr + 1;
-      concflag := True;
-      curpr := npr;
-      Result := processes[curpr];
-    end;
-
-    { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
-      Y-value 'y'.
-      See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
-    procedure RunCallsub(p: TProcess; x: TXArgument; y: TYArgument);
+    procedure CallSub(p: TProcess; oldBase, baseOffset: TStackAddress);
     var
       tabAddr: integer; { Address to subroutine in symbol table }
       tabRec: TTabRec;  { Record of subroutine }
       level: integer; { Level of subroutine. }
 
-      oldBase: TStackAddress; { Used to hold the base to save to the stack }
       i: integer;
       cap: integer; { TODO(@MattWindsor91): work out exactly what this is}
     begin
-      if x = 1 then
-      begin  (* process *)
-        p.active := True;
-        oldBase := Base(0);
-        concflag := False;
-      end
-      else
-        oldBase := p.b;
-
-      p.DecStackPointer(y - 4);
+      p.DecStackPointer(baseOffset - 4);
       { This should have been put on the stack by a previous mark operation. }
       tabAddr := p.PopInteger;
       cap := p.PopInteger;
@@ -1298,11 +1262,49 @@ var
       p.PushInteger(oldBase);
 
       { Initialise local variables, maybe? }
-      p.IncStackPointer(y);
-      for i := 1 to cap - y do
+      p.IncStackPointer(baseOffset);
+      for i := 1 to cap - baseOffset do
         p.PushInteger(0);
 
       p.Jump(tabRec.taddr);
+    end;
+
+    { Starts the bring-up of a new process, as part of the MrkStk instruction.
+      Returns the process being initialised, which should be the subject of the
+      rest of the MrkStk.
+    
+      This bring-up is finished by the 'EndProcessBuild' procedure called
+      during a CallSub. }
+    function StartProcessBuild: TProcess;
+    begin
+      if npr = pmax then raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
+
+      npr := npr + 1;
+      concflag := True;
+      curpr := npr;
+      Result := processes[curpr];
+    end;
+
+    function EndProcessBuild(p: TProcess) : TStackAddress;
+    begin
+      p.active := True;
+      concflag := False;
+      Result := processes[0].b;
+    end;
+
+    { Executes a 'callsub' instruction on process 'p', with X-value 'x' and
+      Y-value 'y'.
+      See the entry for 'pCallsub' in the 'PCodeOps' unit for details. }
+    procedure RunCallsub(p: TProcess; x: TXArgument; y: TYArgument);
+    var
+      oldBase: TStackAddress; { Used to hold the base to save to the stack }
+    begin
+      if x = 1 then
+        oldBase := EndProcessBuild(p)
+      else
+        oldBase := p.b;
+      
+      CallSub(p, oldBase, y);
     end;
 
     { Executes a 'mrkstk' instruction on process 'p', with X-value 'x' and
