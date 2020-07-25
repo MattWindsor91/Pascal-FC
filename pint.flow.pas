@@ -58,6 +58,30 @@ procedure RunFor2up(p: TProcess; y: TYArgument);
 
 implementation
 
+type
+  { Type of for-loop headers, as represented on the stack during a loop. }
+  TForLoop = record
+    addr: TStackAddress; { Address of loop counter }
+    cFrom: integer; { Lowest value of loop counter, inclusive }
+    cTo: integer; { Highest value of loop counter, inclusive }
+  end;
+
+{ Pops a for-loop header from the stack of 'p'. }
+function PopFor(p: TProcess): TForLoop;
+begin
+  Result.cTo := p.PopInteger;
+  Result.cFrom := p.PopInteger;
+  Result.addr := p.PopInteger;
+end;
+
+{ Pushes a for-loop header to the stack of 'p'. }
+procedure PushFor(p: TProcess; f: TForLoop);
+begin
+  p.PushInteger(f.addr);
+  p.PushInteger(f.cFrom);
+  p.PushInteger(f.cTo);
+end;
+
 procedure RunJmpiz(p: TProcess; y: TYArgument);
 var
   condition: integer;
@@ -93,20 +117,14 @@ end;
 
 procedure RunFor1up(p: TProcess; y: TYArgument);
 var
-  lcAddr: integer; { Address of loop counter }
-  lcFrom: integer; { Lowest value of loop counter, inclusive }
-  lcTo: integer; { Highest value of loop counter, inclusive }
+  f: TForLoop;
 begin
-  lcTo := p.PopInteger;
-  lcFrom := p.PopInteger;
-  lcAddr := p.PopInteger;
+  f := PopFor(p);
 
-  if lcFrom <= lcTo then
+  if f.cFrom <= f.cTo then
   begin
-    p.stack.StoreInteger(lcAddr, lcFrom);
-    p.PushInteger(lcAddr);
-    p.PushInteger(lcFrom);
-    p.PushInteger(lcTo);
+    p.stack.StoreInteger(f.addr, f.cFrom);
+    PushFor(p, f);
   end
   else
     p.Jump(y);
@@ -114,23 +132,16 @@ end;
 
 procedure RunFor2up(p: TProcess; y: TYArgument);
 var
-  lcAddr: integer; { Address of loop counter }
-  lcFrom: integer; { Lowest value of loop counter, inclusive }
-  lcTo: integer; { Highest value of loop counter, inclusive }
-
-  lcNext: integer; { Loop counter on next iteration }
+  f: TForLoop;
+  cNext: integer; { Loop counter on next iteration }
 begin
-  lcTo := p.PopInteger;
-  lcFrom := p.PopInteger;
-  lcAddr := p.PopInteger;
+  f := PopFor(p);
 
-  lcNext := p.stack.LoadInteger(lcAddr) + 1;
-  if lcNext <= lcTo then
+  cNext := p.stack.LoadInteger(f.addr) + 1;
+  if cNext <= f.cTo then
   begin
-    p.stack.StoreInteger(lcAddr, lcNext);
-    p.PushInteger(lcAddr);
-    p.PushInteger(lcFrom);
-    p.PushInteger(lcTo);
+    p.stack.StoreInteger(f.addr, cNext);
+    PushFor(p, f);
     p.Jump(y);
   end;
 end;
