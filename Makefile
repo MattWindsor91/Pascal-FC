@@ -7,6 +7,7 @@ PINTUNITS := \
   pint.bitset.pas \
   pint.consts.pas \
   pint.errors.pas \
+  pint.flow.pas \
   pint.ops.pas \
   pint.process.pas \
   pint.stack.pas \

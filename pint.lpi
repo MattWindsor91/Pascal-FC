@@ -26,7 +26,7 @@
         <Mode0 Name="default"/>
       </Modes>
     </RunParams>
-    <Units Count="16">
+    <Units Count="17">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -102,6 +102,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Pint.Stfun"/>
       </Unit15>
+      <Unit16>
+        <Filename Value="pint.flow.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Flow"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
