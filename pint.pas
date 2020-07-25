@@ -422,7 +422,7 @@ var
           frameptr := chans;
           for loop := 1 to abs(suspend) do
           begin
-            chanptr := stack[frameptr].i;
+            chanptr := stack.LoadInteger(frameptr);
             if chanptr <> 0 then  (* 0 means timeout *)
             begin
 
@@ -481,11 +481,11 @@ var
               case typ of
                 ints, semafors, enums:
 
-                  writeln(pmdfile, Name, ' = ', stack[taddr].i);
+                  writeln(pmdfile, Name, ' = ', stack.LoadInteger(taddr));
 
                 reals:
 
-                  writeln(pmdfile, Name, ' = ', stack[taddr].r);
+                  writeln(pmdfile, Name, ' = ', stack.LoadReal(taddr));
 
                 bools:
 
@@ -493,7 +493,7 @@ var
 
                 chars:
 
-                  writeln(pmdfile, Name, ' = ', chr(stack[taddr].i mod 64));
+                  writeln(pmdfile, Name, ' = ', chr(stack.LoadInteger(taddr) mod 64));
 
               end;   (* case *)
             end;  (* if *)
@@ -739,14 +739,14 @@ var
         frameptr := chans;
         for loop := 1 to nchans do
         begin
-          chanptr := stack[frameptr].i;
+          chanptr := stack.LoadInteger(frameptr);
           if chanptr <> 0 then  (* timeout if 0 *)
           begin
             stack.StoreInteger(chanptr, 0);
             if chanptr = h then
               if onselect then
               begin
-                repindex := stack[frameptr + 5].i;
+                repindex := stack.LoadInteger(frameptr + 5);
                 onselect := False;
               end;
           end;
@@ -766,13 +766,13 @@ var
     var
       procn: integer;
     begin
-      procn := stack[h + 2].i;
+      procn := stack.LoadInteger(h + 2);
       with processes[procn] do
       begin
         clearchans(procn, h);
         leventqueue(procn);
         wakeup := 0;
-        pc := stack[h + 1].i;
+        pc := stack.LoadInteger(h + 1);
       end;  (* with processes[procn] *)
     end;
 
@@ -827,11 +827,11 @@ var
       stepcount := 0;
       getnode(newnode);
       procqueue.proclist[newnode].proc := curpr;
-      if stack[add].i < 1 then
+      if stack.LoadInteger(add) < 1 then
         stack.StoreInteger(add, newnode)
       else
       begin
-        temp := stack[add].i;
+        temp := stack.LoadInteger(add);
         with procqueue do
         begin
           while proclist[temp].link <> 0 do
@@ -884,9 +884,9 @@ var
     var
       pr, node: TProcessID;
     begin
-      if stack[add].i > 0 then
+      if stack.LoadInteger(add) > 0 then
       begin
-        node := stack[add].i;
+        node := stack.LoadInteger(add);
         pr := procqueue.proclist[node].proc;
         stack.StoreInteger(add, procqueue.proclist[node].link);
         disposenode(node);
@@ -899,13 +899,13 @@ var
     (* release mutual exclusion on a monitor *)
     procedure releasemon(curmon: integer);
     begin
-      if stack[curmon + 1].i > 0 then
+      if stack.LoadInteger(curmon + 1) > 0 then
         procwake(curmon + 1)
       else
-      if stack[curmon].i > 0 then
+      if stack.LoadInteger(curmon) > 0 then
       begin
         procwake(curmon);
-        if stack[curmon].i = 0 then
+        if stack.LoadInteger(curmon) = 0 then
           stack.StoreInteger(curmon, -1);
       end
       else
@@ -1396,7 +1396,6 @@ var
       See the entry for 'pIfloat' in the 'PCodeOps' unit for details. }
     procedure RunIfloat(p: TProcess; y: TYArgument);
     var
-      loc: TStackAddress;  { Location to convert to float. }
       i: integer;          { The integer to convert. }
     begin
       p.DecStackPointer(y);
@@ -1616,7 +1615,7 @@ var
       begin
         h1 := t;
         h2 := 0;
-        while stack[h1].i <> -1 do
+        while stack.LoadInteger(h1) <> -1 do
         begin
           h1 := h1 - sfsize;
           h2 := h2 + 1;
@@ -1641,23 +1640,23 @@ var
           foundcall := False;
           while not foundcall and (h1 <= h2) do
           begin
-            if stack[h4].i = 0 then
+            if stack.LoadInteger(h4) = 0 then
             begin  (* timeout alternative *)
-              if stack[h4 + 3].i < 0 then
+              if stack.LoadInteger(h4 + 3) < 0 then
                 stack.StoreInteger(h4 + 3, sysclock)
               else
-                stack.StoreInteger(h4 + 3, stack[h4 + 3].i + sysclock);
-              if (wakeup = 0) or (stack[h4 + 3].i < wakeup) then
+                stack.StoreInteger(h4 + 3, stack.LoadInteger(h4 + 3) + sysclock);
+              if (wakeup = 0) or (stack.LoadInteger(h4 + 3) < wakeup) then
               begin
-                wakeup := stack[h4 + 3].i;
-                wakestart := stack[h4 + 4].i;
+                wakeup := stack.LoadInteger(h4 + 3);
+                wakestart := stack.LoadInteger(h4 + 4);
               end;
               h3 := (h3 + 1) mod h2;
               h4 := t - (sfsize - 1) - (h3 * sfsize);
               h1 := h1 + 1;
             end
             else
-            if stack[stack[h4].i].i <> 0 then
+            if stack.LoadInteger(stack.LoadInteger(h4)) <> 0 then
               foundcall := True
             else
             begin
@@ -1676,20 +1675,20 @@ var
               chans := h1;
               for h3 := 1 to h2 do
               begin
-                h4 := stack[h1].i;  (* h4 points to channel/entry *)
+                h4 := stack.LoadInteger(h1);  (* h4 points to channel/entry *)
                 if h4 <> 0 then  (* 0 means timeout *)
                 begin
-                  if stack[h1 + 2].i = 2 then
-                    stack.StoreInteger(h4, -stack[h1 + 1].i (* query sleep *))
+                  if stack.LoadInteger(h1 + 2) = 2 then
+                    stack.StoreInteger(h4, -stack.LoadInteger(h1 + 1) (* query sleep *))
                   else
-                  if stack[h1 + 2].i = 0 then
+                  if stack.LoadInteger(h1 + 2) = 0 then
                     stack.StoreInteger(h4, h1 + 1)
                   else
-                  if stack[h1 + 2].i = 1 then
-                    stack[h4] := stack[h1 + 1]  (* shriek sleep *)
+                  if stack.LoadInteger(h1 + 2) = 1 then
+                    stack.StoreInteger(h4, stack.LoadInteger(h1 + 1))  (* shriek sleep *)
                   else
                     stack.StoreInteger(h4, -1);  (* entry sleep *)
-                  stack[h4 + 1] := stack[h1 + 4];  (* wake address *)
+                  stack.StoreInteger(h4 + 1, stack.LoadInteger(h1 + 4));  (* wake address *)
                   stack.StoreInteger(h4 + 2, curpr);
                 end; (* if h4 <> 0 *)
                 h1 := h1 + sfsize;
@@ -1705,36 +1704,36 @@ var
           begin  (* someone is waiting *)
             wakeup := 0;
             wakestart := 0;
-            h1 := stack[h4].i;  (* h1 points to channel/entry *)
-            if stack[h4 + 2].i in [0..2] then
+            h1 := stack.LoadInteger(h4);  (* h1 points to channel/entry *)
+            if stack.LoadInteger(h4 + 2) in [0..2] then
             begin  (* channel rendezvous *)
-              if ((stack[h1].i < 0) and (stack[h4 + 2].i = 2)) or
-                ((stack[h1].i > 0) and (stack[h4 + 2].i < 2)) then
+              if ((stack.LoadInteger(h1) < 0) and (stack.LoadInteger(h4 + 2) = 2)) or
+                ((stack.LoadInteger(h1) > 0) and (stack.LoadInteger(h4 + 2) < 2)) then
                 raise EPfcChannel.Create('channel rendezvous error')
               else
               begin  (* rendezvous *)
-                stack.StoreInteger(h1, abs(stack[h1].i));
-                if stack[h4 + 2].i = 0 then
-                  stack[stack[h1].i] := stack[h4 + 1]
+                stack.StoreInteger(h1, abs(stack.LoadInteger(h1)));
+                if stack.LoadInteger(h4 + 2) = 0 then
+                  stack.StoreInteger(stack.LoadInteger(stack.LoadInteger(h1)), stack.LoadInteger(h4 + 1))
                 else
                 begin  (* block copy *)
                   h3 := 0;
-                  while h3 < stack[h4 + 3].i do
+                  while h3 < stack.LoadInteger(h4 + 3) do
                   begin
-                    if stack[h4 + 2].i = 1 then
-                      stack[stack[h1].i + h3] := stack[stack[h4 + 1].i + h3]
+                    if stack.LoadInteger(h4 + 2) = 1 then
+                      stack.StoreInteger(stack.LoadInteger(h1) + h3, stack.LoadInteger(stack.LoadInteger(h4 + 1) + h3))
                     else
-                      stack[stack[h4 + 1].i + h3] := stack[stack[h1].i + h3];
+                      stack.StoreInteger(stack.LoadInteger(h4 + 1) + h3, stack.LoadInteger(stack.LoadInteger(h1) + h3));
                     h3 := h3 + 1;
                   end;  (* while *)
                 end;  (* block copy *)
-                pc := stack[h4 + 4].i;
-                repindex := stack[h4 + 5].i;  (* recover repindex *)
+                pc := stack.LoadInteger(h4 + 4);
+                repindex := stack.LoadInteger(h4 + 5);  (* recover repindex *)
                 wakenon(h1);  (* wake the other process *)
               end;  (* rendezvous *)
             end  (* channel rendezvous *)
             else
-              pc := stack[h4 + 4].i;  (* entry *)
+              pc := stack.LoadInteger(h4 + 4);  (* entry *)
           end;  (* someone was waiting *)
         end;  (* calls to check *)
         t := t - 1 - (h2 * sfsize);
@@ -1748,9 +1747,9 @@ var
     procedure RunChanwr(p: TProcess; x: TXArgument; y: TYArgument);
     begin
       { TODO(@MattWindsor91): refactor. }
-      h1 := stack[p.t - 1].i;   (* h1 now points to channel *)
-      h2 := stack[h1].i;   (* h2 now has value in channel[1] *)
-      h3 := stack[p.t].i;   (* base address of source (for x=1) *)
+      h1 := stack.LoadInteger(p.t - 1);   (* h1 now points to channel *)
+      h2 := stack.LoadInteger(h1);   (* h2 now has value in channel[1] *)
+      h3 := stack.LoadInteger(p.t);   (* base address of source (for x=1) *)
       if h2 > 0 then
         raise EPfcChannel.Create('multiple writers on channel');
       if h2 = 0 then
@@ -1769,13 +1768,13 @@ var
       begin  (* second *)
         h2 := abs(h2);  (* readers leave negated address *)
         if x = 0 then
-          stack[h2] := stack[p.t]
+          stack.StoreRecord(h2, Stack.LoadRecord(p.t))
         else
         begin
           h4 := 0;  (* loop control for block copy *)
           while h4 < y do
           begin
-            stack[h2 + h4] := stack[h3 + h4];
+            stack.StoreRecord(h2 + h4, stack.LoadRecord(h3 + h4));
             h4 := h4 + 1;
           end;  (* while *)
         end;  (* x was 1 *)
@@ -1792,7 +1791,7 @@ var
       { TODO(@MattWindsor91): refactor. }
       h3 := p.PopInteger;
       h1 := p.PopInteger;
-      h2 := stack[h1].i;
+      h2 := stack.LoadInteger(h1);
       if h2 < 0 then
         raise EPfcChannel.Create('multiple readers on channel');
       if h2 = 0 then
@@ -1810,7 +1809,7 @@ var
         h4 := 0;
         while h4 < y do
         begin
-          stack[h3 + h4] := stack[h2 + h4];
+          stack.StoreRecord(h3 + h4, stack.LoadRecord(h2 + h4));
           h4 := h4 + 1;
         end;
         wakenon(h1);
@@ -1845,7 +1844,7 @@ var
       mon: TStackAddress; { address of monitor to resume }
     begin
       mon := p.PopInteger;
-      if stack[mon].i > 0 then
+      if stack.LoadInteger(mon) > 0 then
         Resume(p, mon);
     end;
 
@@ -1867,7 +1866,7 @@ var
     begin
       SwapMonitor(p);
 
-      if stack[p.curmon].i = 0 then
+      if stack.LoadInteger(p.curmon) = 0 then
         stack.StoreInteger(p.curmon, -1)
       else
         joinqueue(p.curmon);
@@ -1949,13 +1948,16 @@ var
       
       See the entry for 'pEcall' in the 'PCodeOps' unit for details. }
     procedure RunEcall(p: TProcess; y: TYArgument);
+    var
+      pproc: TStackAddress;
     begin
       { TODO(@MattWindsor91): understand, then refactor }
       with p do
       begin
         h1 := t - y;
         t := h1 - 2;
-        h2 := stack[stack[h1 - 1].i].i;  (* h2 has process number *)
+        pproc := stack.LoadInteger(h1 - 1);
+        h2 := stack.LoadInteger(pproc);  (* h2 has process number *)
 
         if h2 = 0 then
           raise EPfcProcNotExist.Create('tried to ecall process zero');
@@ -1964,13 +1966,13 @@ var
         if not processes[h2].active then
           raise EPfcProcNotExist.CreateFmt('tried to ecall inactive process %D', [h2]);
 
-        h3 := processes[h2].stackbase + stack[h1].i;  (* h3 points to entry *)
-        if stack[h3].i <= 0 then
+        h3 := processes[h2].stackbase + stack.LoadInteger(h1);  (* h3 points to entry *)
+        if stack.LoadInteger(h3) <= 0 then
         begin  (* empty queue on entry *)
-          if stack[h3].i < 0 then
+          if stack.LoadInteger(h3) < 0 then
           begin  (* other process has arrived *)
             for h4 := 1 to y do
-              stack[h3 + h4 + (entrysize - 1)] := stack[h1 + h4];
+              stack.StoreRecord(h3 + h4 + (entrysize - 1), stack.LoadRecord(h1 + h4));
             wakenon(h3);
           end;
           stack.StoreInteger(h3 + 1, pc);
@@ -1990,7 +1992,7 @@ var
     begin
       { TODO(@MattWindsor91): understand, then refactor }
       h1 := p.PopInteger;    (* h1 points to entry *)
-      if stack[h1].i = 0 then
+      if stack.LoadInteger(h1) = 0 then
       begin  (* no calls - sleep *)
         stack.StoreInteger(h1, -1);
         stack.StoreInteger(h1 + 1, p.pc);
@@ -2001,11 +2003,11 @@ var
       end
       else
       begin  (* another process has arrived *)
-        h2 := stack[h1 + 2].i;  (* hs has proc number *)
+        h2 := stack.LoadInteger(h1 + 2);  (* hs has proc number *)
         h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
         for h4 := 0 to y - 1 do
 
-          stack[h1 + h4 + entrysize] := stack[h3 + h4];
+          stack.StoreRecord(h1 + h4 + entrysize, Stack.LoadRecord(h3 + h4));
 
       end;
     end;
@@ -2023,9 +2025,9 @@ var
       entry := p.PopInteger; (* h1 points to entry *)
       procwake(entry);
 
-      if stack[entry].i <> 0 then
+      if stack.LoadInteger(entry) <> 0 then
       begin  (* queue non-empty *)
-        procID := procqueue.proclist[stack[entry].i].proc;  (* h2 has proc id *)
+        procID := procqueue.proclist[stack.LoadInteger(entry)].proc;  (* h2 has proc id *)
         stack.StoreInteger(entry + 1, processes[procID].pc);
         stack.StoreInteger(entry + 2, procID);
       end;
@@ -2130,7 +2132,7 @@ var
       h1 := p.t;
       h2 := 0;
       foundcall := False;
-      while stack[h1].i <> -1 do
+      while stack.LoadInteger(h1) <> -1 do
       begin
         h1 := h1 - 1;
         h2 := h2 + 1;
@@ -2141,7 +2143,7 @@ var
         h4 := 0;  (* count of barriers tested *)
         while not foundcall and (h4 < h2) do
         begin
-          if stack[stack[h1 + h3 + 1].i].i <> 0 then
+          if stack.LoadInteger(stack.LoadInteger(h1 + h3 + 1)) <> 0 then
             foundcall := True
           else
           begin
@@ -2154,7 +2156,7 @@ var
         releasemon(p.curmon)
       else
       begin
-        h3 := stack[h1 + h3 + 1].i;
+        h3 := stack.LoadInteger(h1 + h3 + 1);
         procwake(h3);
       end;
       p.t := h1 - 1;
@@ -2357,7 +2359,7 @@ var
         {stacksize} stmax - pmax * stkincr,
         {t} objrec.genbtab[2].vsize - 1,
         {b} 0);
-      processes[0].Jump(objrec.gentab[stack[4].i].taddr);
+      processes[0].Jump(objrec.gentab[stack.LoadInteger(4)].taddr);
 
       processes[0].CheckStackOverflow;
       for h1 := 5 to processes[0].t do

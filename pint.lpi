@@ -82,6 +82,7 @@
       <Unit11>
         <Filename Value="pint.ops.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Ops"/>
       </Unit11>
       <Unit12>
         <Filename Value="pint.process.pas"/>
