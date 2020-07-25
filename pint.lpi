@@ -26,7 +26,7 @@
         <Mode0 Name="default"/>
       </Modes>
     </RunParams>
-    <Units Count="10">
+    <Units Count="16">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -42,40 +42,60 @@
         <UnitName Value="GConsts"/>
       </Unit2>
       <Unit3>
-        <Filename Value="iconsts.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="IConsts"/>
-      </Unit3>
-      <Unit4>
         <Filename Value="pcodeops.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PCodeOps"/>
-      </Unit4>
-      <Unit5>
+      </Unit3>
+      <Unit4>
         <Filename Value="gtypes.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GTypes"/>
-      </Unit5>
-      <Unit6>
+      </Unit4>
+      <Unit5>
         <Filename Value="gtables.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="GTables"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="pcode.stfun.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit6>
       <Unit7>
-        <Filename Value="istack.pas"/>
+        <Filename Value="pcodetyp.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="IStack"/>
       </Unit7>
       <Unit8>
-        <Filename Value="itypes.pas"/>
+        <Filename Value="pint.bitset.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="ITypes"/>
       </Unit8>
       <Unit9>
-        <Filename Value="ireader.pas"/>
+        <Filename Value="pint.consts.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="IReader"/>
       </Unit9>
+      <Unit10>
+        <Filename Value="pint.errors.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="pint.ops.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="pint.process.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="pint.reader.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="pint.stack.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="pint.stfun.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit15>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
