@@ -86,12 +86,13 @@ var
 
   procedure DumpExceptionCallStack(E: Exception);
   var
-    I: Integer;
+    I: integer;
     Frames: PPointer;
   begin
     Writeln('Exception when running program');
     Writeln('Stacktrace:');
-    if E <> nil then begin
+    if E <> nil then
+    begin
       Writeln('Exception class: ', E.ClassName);
       Writeln('Message: ', E.Message);
     end;
@@ -582,7 +583,7 @@ var
 
 
   procedure runprog;
-    (* place pnum in a dynamic queue node *)
+  (* place pnum in a dynamic queue node *)
     procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
     begin
       new(ptr);
@@ -796,7 +797,8 @@ var
     begin  (* getnode *)
       with procqueue do
       begin
-        if Free = 0 then raise EPfcQueue.Create('queue check');
+        if Free = 0 then
+          raise EPfcQueue.Create('queue check');
         node := Free;
         Free := proclist[node].link;
         proclist[node].link := 0;
@@ -912,12 +914,12 @@ var
 
     procedure RunLdadr(p: TProcess; x, y: integer);
     begin
-      p.PushInteger(p.DisplayAddress(x, y))
+      p.PushInteger(p.DisplayAddress(x, y));
     end;
 
     procedure PushRecordAt(p: TProcess; addr: TStackAddress);
     var
-      rec : TStackRecord;
+      rec: TStackRecord;
     begin
       rec := stack.LoadRecord(addr);
       p.PushRecord(rec);
@@ -930,19 +932,19 @@ var
 
     procedure RunLdind(p: TProcess; x, y: integer);
     var
-      addr : TStackAddress;
+      addr: TStackAddress;
     begin
       addr := stack.LoadInteger(p.DisplayAddress(x, y));
-      PushRecordAt(p, addr)
+      PushRecordAt(p, addr);
     end;
 
     procedure RunUpdis(p: TProcess; x: TXArgument; y: TYArgument);
     var
-      level : integer;
-      base : TStackAddress;
+      level: integer;
+      base: TStackAddress;
     begin
       base := p.b;
-      for level := y downto x+1 do
+      for level := y downto x + 1 do
       begin
         p.display[level] := base;
         { TODO(@MattWindsor91):
@@ -1035,7 +1037,7 @@ var
       { Operands are pushed in reverse order }
       r := p.PopInteger;
       l := p.PopInteger;
-      p.PushInteger( ao.EvalInt(l, r));
+      p.PushInteger(ao.EvalInt(l, r));
     end;
 
     { Runs an real arith operation 'ao'. }
@@ -1137,7 +1139,8 @@ var
       { Can't convert this to PopBoolean, as it'll change the semantics
         to 'jump if not true'. }
       condition := p.PopInteger;
-      if condition = fals then p.Jump(y);
+      if condition = fals then
+        p.Jump(y);
     end;
 
     { Executes a 'case1' instruction on process 'p', with Y-value 'y'.
@@ -1217,7 +1220,7 @@ var
         p.PushInteger(lcFrom);
         p.PushInteger(lcTo);
         p.Jump(y);
-      end
+      end;
     end;
 
     procedure MarkStack(p: TProcess; vsize: integer; tabAddr: TStackAddress);
@@ -1277,7 +1280,8 @@ var
       during a CallSub. }
     function StartProcessBuild: TProcess;
     begin
-      if npr = pmax then raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
+      if npr = pmax then
+        raise EPfcProcTooMany.CreateFmt('more than %D processes', [pmax]);
 
       npr := npr + 1;
       concflag := True;
@@ -1285,7 +1289,7 @@ var
       Result := processes[curpr];
     end;
 
-    function EndProcessBuild(p: TProcess) : TStackAddress;
+    function EndProcessBuild(p: TProcess): TStackAddress;
     begin
       p.active := True;
       concflag := False;
@@ -1303,7 +1307,7 @@ var
         oldBase := EndProcessBuild(p)
       else
         oldBase := p.b;
-      
+
       CallSub(p, oldBase, y);
     end;
 
@@ -1313,7 +1317,8 @@ var
       See the entry for 'pMrkstk' in the 'PCodeOps' unit for details. }
     procedure RunMrkstk(p: TProcess; x: TXArgument; y: TYArgument);
     begin
-      if x = 1 then p := StartProcessBuild;
+      if x = 1 then
+        p := StartProcessBuild;
       MarkStack(p, objrec.genbtab[objrec.gentab[y].ref].vsize, y);
     end;
 
@@ -1409,7 +1414,8 @@ var
     begin
       { TODO(@MattWindsor91): needs refactoring. }
       { TODO(@MattWindsor91): wrong files used? }
-      if EOF(input) then raise EPfcEOF.Create('reading past end of file');
+      if EOF(input) then
+        raise EPfcEOF.Create('reading past end of file');
 
       dest := p.PopInteger;
 
@@ -1417,12 +1423,12 @@ var
         ptyInt:
           stack.StoreInteger(dest, reader.ReadInt);
         ptyChar:
-          begin
-            if EOF then
-              raise EPfcEOF.Create('reading past end of file');
-            Read(ch);
-            stack.StoreInteger(dest, Ord(ch));
-          end;
+        begin
+          if EOF then
+            raise EPfcEOF.Create('reading past end of file');
+          Read(ch);
+          stack.StoreInteger(dest, Ord(ch));
+        end;
         ptyReal:
           stack.StoreReal(dest, reader.ReadReal);
       end;
@@ -1465,7 +1471,8 @@ var
       str: ansistring;   { The string itself. }
     begin
       padLen := 0;
-      if x = 1 then padLen := p.PopInteger;
+      if x = 1 then
+        padLen := p.PopInteger;
       strLen := p.PopInteger;
       strBase := y;
       RetrieveString(str, strBase, strLen);
@@ -1485,10 +1492,10 @@ var
       See the entry for 'pWrfrm' in the 'PCodeOps' unit for details. }
     procedure RunWrfrm(p: TProcess; y: TYArgument);
     var
-      width: integer; { Minimum width of field to format }
+      Width: integer; { Minimum width of field to format }
     begin
-      width := p.PopInteger;
-      PopWrite(p, y, width);
+      Width := p.PopInteger;
+      PopWrite(p, y, Width);
     end;
 
     { Executes a 'w2frm' instruction on process 'p'.
@@ -1496,14 +1503,14 @@ var
       See the entry for 'pW2frm' in the 'PCodeOps' unit for details. }
     procedure RunW2frm(p: TProcess);
     var
-      width: integer;
+      Width: integer;
       prec: integer;
       val: real;
     begin
       prec := p.PopInteger;
-      width := p.PopInteger;
+      Width := p.PopInteger;
       val := p.PopReal;
-      Write(val: width: prec);
+      Write(val: Width: prec);
     end;
 
     { Executes a 'store' instruction on process 'p'.
@@ -1549,7 +1556,8 @@ var
       p.DecStackPointer; { TODO(@MattWindsor91): work out where this comes from }
 
       { Are we returning from the main procedure? }
-      if p.pc = 0 then Deactivate(p);
+      if p.pc = 0 then
+        Deactivate(p);
     end;
 
     { Executes a 'repadr' instruction on process 'p'.
@@ -1837,7 +1845,8 @@ var
       mon: TStackAddress; { address of monitor to resume }
     begin
       mon := p.PopInteger;
-      if stack[mon].i > 0 then Resume(p, mon);
+      if stack[mon].i > 0 then
+        Resume(p, mon);
     end;
 
     { Pushes a new current monitor address onto the stack, replacing
@@ -1950,7 +1959,7 @@ var
 
         if h2 = 0 then
           raise EPfcProcNotExist.Create('tried to ecall process zero');
-        if h2 < 0 then  
+        if h2 < 0 then
           raise EPfcProcName.CreateFmt('tried to ecall negative process %D', [h2]);
         if not processes[h2].active then
           raise EPfcProcNotExist.CreateFmt('tried to ecall inactive process %D', [h2]);
@@ -2106,7 +2115,8 @@ var
       See the entry for 'pPrtjmp' in the 'PCodeOps' unit for details. }
     procedure RunPrtjmp(p: TProcess; y: TYArgument);
     begin
-      if stack.LoadInteger(p.curmon + 2) = 0 then p.Jump(y);
+      if stack.LoadInteger(p.curmon + 2) = 0 then
+        p.Jump(y);
     end;
 
     { Executes a 'prtsel' instruction on process 'p'.
@@ -2152,7 +2162,7 @@ var
       p.PopJump;
     end;
 
-    
+
     { Executes a 'prtslp' instruction on process 'p'.
     
       See the entry for 'pPrtslp' in the 'PCodeOps' unit for details. }
@@ -2322,7 +2332,8 @@ var
 
       statcounter := statcounter + 1;
       if statcounter >= statmax then
-        raise EPfcLivelock.CreateFmt('statement count max %D reached (possible livelock)', [statmax]);
+        raise EPfcLivelock.CreateFmt(
+          'statement count max %D reached (possible livelock)', [statmax]);
     end;
 
   begin (* Runprog *)
@@ -2339,15 +2350,13 @@ var
     stack.StoreInteger(4, objrec.genbtab[1].last);
 
     try { Exception trampoline for Deadlock }
-      processes[0] := TProcess.Create(
-        stack,
+      processes[0] := TProcess.Create(stack,
         {active} True,
         {clearresource} False,
         {stackbase} 0,
         {stacksize} stmax - pmax * stkincr,
         {t} objrec.genbtab[2].vsize - 1,
-        {b} 0
-      );
+        {b} 0);
       processes[0].Jump(objrec.gentab[stack[4].i].taddr);
 
       processes[0].CheckStackOverflow;
@@ -2356,15 +2365,13 @@ var
       for curpr := 1 to pmax do
       begin
         h2 := processes[curpr - 1].stacksize + 1;
-        processes[curpr] := TProcess.Create(
-          stack,
+        processes[curpr] := TProcess.Create(stack,
           {active} False,
           {clearresource} True,
           {stackbase} h2,
           {stacksize} h2 + stkincr,
           {t} h2 - 1,
-          {b} h2
-        );
+          {b} h2);
       end;
       npr := 0;
       procmax := 0;
@@ -2385,27 +2392,27 @@ var
         RunStep;
       until ps <> run;
 
-    writeln;
-
-    if ps <> fin then
-      expmd
-
-    else
-    begin
       writeln;
-      writeln('Program terminated normally');
-    end;
 
-    writeln;
+      if ps <> fin then
+        expmd
+
+      else
+      begin
+        writeln;
+        writeln('Program terminated normally');
+      end;
+
+      writeln;
 
     except
-      on E: EPfcInterpreter do begin
+      on E: EPfcInterpreter do
+      begin
         DumpExceptionCallStack(E);
         Writeln;
         expmd;
       end;
     end;
-
 
   end;  (* runprog *)
 

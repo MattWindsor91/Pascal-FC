@@ -29,6 +29,7 @@ unit GTypes;
 interface
 
 uses GConsts;
+
 type
   TIndex = -xmax .. xmax;
 
@@ -56,44 +57,45 @@ type
   end;
 
 implementation
-  function TMyObjectHelper.ToString: string;
-  begin
-    case self of
-      konstant: Result := 'constant';
-      variable: Result := 'variable';
-      type1: Result := 'type id';
-      prozedure: Result := 'procedure';
-      funktion: Result := 'function';
-      monproc: Result := 'monproc';
-      address: Result := 'address';
-      grdproc: Result := 'grdproc';
-      xgrdproc: Result := 'xgrdproc'
-    end;
-  end;
 
-  function TTypeHelper.ToString: string;
-  begin
-    case self of
-      notyp: Result := 'notyp';
-      bitsets: Result := 'bitset';
-      ints: Result := 'integer';
-      reals: Result := 'real';
-      bools: Result := 'boolean';
-      chars: Result := 'char';
-      arrays: Result := 'array';
-      records: Result := 'record';
-      semafors: Result := 'semaphore';
-      channels: Result := 'channel';
-      monvars: Result := 'monvar';
-      protvars: Result := 'resource';
-      protq: Result := 'protq';
-      condvars: Result := 'condition';
-      synchros: Result := 'synch';
-      adrs: Result := 'address';
-      procs: Result := 'process';
-      entrys: Result := 'entry';
-      enums: Result := 'enum'
-    end;
+function TMyObjectHelper.ToString: string;
+begin
+  case self of
+    konstant: Result := 'constant';
+    variable: Result := 'variable';
+    type1: Result := 'type id';
+    prozedure: Result := 'procedure';
+    funktion: Result := 'function';
+    monproc: Result := 'monproc';
+    address: Result := 'address';
+    grdproc: Result := 'grdproc';
+    xgrdproc: Result := 'xgrdproc'
   end;
+end;
+
+function TTypeHelper.ToString: string;
+begin
+  case self of
+    notyp: Result := 'notyp';
+    bitsets: Result := 'bitset';
+    ints: Result := 'integer';
+    reals: Result := 'real';
+    bools: Result := 'boolean';
+    chars: Result := 'char';
+    arrays: Result := 'array';
+    records: Result := 'record';
+    semafors: Result := 'semaphore';
+    channels: Result := 'channel';
+    monvars: Result := 'monvar';
+    protvars: Result := 'resource';
+    protq: Result := 'protq';
+    condvars: Result := 'condition';
+    synchros: Result := 'synch';
+    adrs: Result := 'address';
+    procs: Result := 'process';
+    entrys: Result := 'entry';
+    enums: Result := 'enum'
+  end;
+end;
+
 end.
-

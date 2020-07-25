@@ -47,7 +47,7 @@ type
 
   { A Pascal-FC process. }
   TProcess = class
-  { TODO(@MattWindsor91): make bits of TProcess private as and when possible. }
+    { TODO(@MattWindsor91): make bits of TProcess private as and when possible. }
   private
 
 
@@ -78,8 +78,9 @@ type
     clearresource: boolean;
 
     varptr: 0..tmax;
-  
-    constructor Create(stk: TStackZone; activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+
+    constructor Create(stk: TStackZone; activate, cr: boolean;
+      nsb, nss, nt, nb: TStackAddress);
 
     {#
     # Stack
@@ -170,7 +171,8 @@ type
 implementation
 
 
-constructor TProcess.Create(stk: TStackZone; activate, cr: boolean; nsb, nss, nt, nb: TStackAddress);
+constructor TProcess.Create(stk: TStackZone; activate, cr: boolean;
+  nsb, nss, nt, nb: TStackAddress);
 begin
   stack := stk;
   active := activate;
@@ -337,10 +339,9 @@ end;
  # Other
  #}
 
-function TProcess.DisplayAddress(level: integer; addr : TStackAddress): TStackAddress;
+function TProcess.DisplayAddress(level: integer; addr: TStackAddress): TStackAddress;
 begin
   Result := self.display[level] + addr;
 end;
 
 end.
-

@@ -31,53 +31,52 @@ uses GConsts, GTypes;
 
 type
 
-TTabRec =
-  packed record
-  Name: ShortString;
-  link: TIndex;
-  obj: TMyObject;
-  typ: TType;
-  ref: TIndex;
-  normal: boolean;
-  lev: 0..lmax;
-  taddr: integer;
-  auxref: TIndex
-end;
-TTabArray = array[0..tmax] of TTabRec;
+  TTabRec =
+    packed record
+    Name: ShortString;
+    link: TIndex;
+    obj: TMyObject;
+    typ: TType;
+    ref: TIndex;
+    normal: boolean;
+    lev: 0..lmax;
+    taddr: integer;
+    auxref: TIndex
+  end;
+  TTabArray = array[0..tmax] of TTabRec;
 
-{ Type of elements in the array table. }
-TATabRec =
-  packed record
-  inxtyp, eltyp: TType;
-  inxref, elref: TIndex;
-  low, high, elsize, size: TIndex;
-end;
-{ Type of array tables. }
-TATabArray = array[1..amax] of TATabRec;
+  { Type of elements in the array table. }
+  TATabRec =
+    packed record
+    inxtyp, eltyp: TType;
+    inxref, elref: TIndex;
+    low, high, elsize, size: TIndex;
+  end;
+  { Type of array tables. }
+  TATabArray = array[1..amax] of TATabRec;
 
-TBTabRec =
-  packed record
-  last, lastpar, psize, vsize: TIndex;
-  tabptr: 0..tmax
-end;
-TBTabArray = array[1..bmax] of TBTabRec;
+  TBTabRec =
+    packed record
+    last, lastpar, psize, vsize: TIndex;
+    tabptr: 0..tmax
+  end;
+  TBTabArray = array[1..bmax] of TBTabRec;
 
-{ Type of string tables. }
-TSTabArray = packed array[0..smax] of char;
-TRealArray = array[1..rmax] of real;
+  { Type of string tables. }
+  TSTabArray = packed array[0..smax] of char;
+  TRealArray = array[1..rmax] of real;
 
-TInTabRec =
-  packed record
-  tp: TType;
-  lv: 0..lmax;
-  rf: integer;
-  vector: integer;
-  off: integer;
-  tabref: integer
-end;
-TInTabArray = array[1..intermax] of TInTabRec;
+  TInTabRec =
+    packed record
+    tp: TType;
+    lv: 0..lmax;
+    rf: integer;
+    vector: integer;
+    off: integer;
+    tabref: integer
+  end;
+  TInTabArray = array[1..intermax] of TInTabRec;
 
 implementation
 
 end.
-

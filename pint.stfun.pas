@@ -169,7 +169,7 @@ begin
   x := p.PopReal;
   p.PushReal(Sin(x));
 end;
- 
+
 { Runs the 'cos' standard function on process 'p'.
 
   See the entry for 'sfCos' in 'Pcode.Stfun' for details. }
@@ -200,7 +200,8 @@ var
   x: real;
 begin
   x := p.PopReal;
-  if x <= 0.0 then raise EPfcMathOverflow.Create('overflow detected');
+  if x <= 0.0 then
+    raise EPfcMathOverflow.Create('overflow detected');
   p.PushReal(Ln(x));
 end;
 
@@ -212,7 +213,8 @@ var
   x: real;
 begin
   x := p.PopReal;
-  if x < 0.0 then raise EPfcMathOverflow.Create('overflow detected');
+  if x < 0.0 then
+    raise EPfcMathOverflow.Create('overflow detected');
   p.PushReal(Sqrt(x));
 end;
 
@@ -231,7 +233,7 @@ end;
 
   See the entry for 'sfRandom' in 'Pcode.Stfun' for details. }
 procedure RunRandom(p: TProcess);
-var 
+var
   max: integer;
 begin
   { NB: this is a different algorithm from that previously used by Pascal-FC. }

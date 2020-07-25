@@ -38,6 +38,7 @@ const
 
   minreal = 1e-37;       { smallest real (for division) }
   sfsize = 6;            { size of "frame" in a select statement }
+
 implementation
 
 end.

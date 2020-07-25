@@ -43,58 +43,60 @@ type
   { Type of bitsets. }
   TBitset = set of TBit;
 
-TBitsetHelper = type helper for TBitset
-  { Returns a string representation of the bitset 'bs'. }
-  function AsString: string;
+  TBitsetHelper = type helper for TBitset
+    { Returns a string representation of the bitset 'bs'. }
+    function AsString: string;
 
-  { Converts a bitset to an integer. }
-  function AsInteger: integer;
-end;
+    { Converts a bitset to an integer. }
+    function AsInteger: integer;
+  end;
 
 { Converts an integer to a bitset. }
 function Bits(x: integer): TBitset;
 
 implementation
 
-  function TBitsetHelper.AsString: string;
-  var
-    i: sizeint;
-  begin
-    Result := StringOfChar('0', bsmsb + 1);
-    for i := 0 to bsmsb do
-      if i in self then
-        Result[bsmsb - i + 1] := '1';
-  end;
+function TBitsetHelper.AsString: string;
+var
+  i: sizeint;
+begin
+  Result := StringOfChar('0', bsmsb + 1);
+  for i := 0 to bsmsb do
+    if i in self then
+      Result[bsmsb - i + 1] := '1';
+end;
 
-  function TBitsetHelper.AsInteger: integer;
-  var
-    place: integer;
-    i: 0..bsmsb;
+function TBitsetHelper.AsInteger: integer;
+var
+  place: integer;
+  i: 0..bsmsb;
+begin
+  Result := 0;
+  place := 1;
+  for i := 0 to bsmsb do
   begin
-    result := 0;
-    place := 1;
-    for i := 0 to bsmsb do
-    begin
-      if i in self then result := result + place;
-      place := place * 2;
-    end;
+    if i in self then
+      Result := Result + place;
+    place := place * 2;
   end;
+end;
 
-  function Bits(x: integer): TBitset;
-  var
-    i: TBit;
-  begin 
-    { TODO(@MattWindsor91): simplify this? }
-    Result := [];
-    if x < 0 then
-      raise EPfcSetBound.CreateFmt('cannot represent -ve number %D as bitset', [x]);
-    for i := 0 to bsmsb do
-    begin
-      if (x mod 2) = 1 then
-        Result := Result + [i];
-      x := x div 2;
-    end;
-    if x <> 0 then
-      raise EPfcSetBound.Create('number too big for bitset');
+function Bits(x: integer): TBitset;
+var
+  i: TBit;
+begin
+  { TODO(@MattWindsor91): simplify this? }
+  Result := [];
+  if x < 0 then
+    raise EPfcSetBound.CreateFmt('cannot represent -ve number %D as bitset', [x]);
+  for i := 0 to bsmsb do
+  begin
+    if (x mod 2) = 1 then
+      Result := Result + [i];
+    x := x div 2;
   end;
+  if x <> 0 then
+    raise EPfcSetBound.Create('number too big for bitset');
+end;
+
 end.

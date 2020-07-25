@@ -73,49 +73,54 @@ type
 
   end;
 
-  { Reads an P-code object from file 'fname' into variable 'o'. }
-  procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
+{ Reads an P-code object from file 'fname' into variable 'o'. }
+procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
 
-  { Writes a P-code object 'o' to file 'fname'. }
-  procedure WritePCode(var o: TPCodeObject; fname: shortstring);
+{ Writes a P-code object 'o' to file 'fname'. }
+procedure WritePCode(var o: TPCodeObject; fname: shortstring);
 
-  { Adds a P-code instruction into the code section of object 'o'. }
-  procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+{ Adds a P-code instruction into the code section of object 'o'. }
+procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo;
+  opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+
 implementation
-  procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
-  var
-    f: file of TPCodeObject;
-  begin
-    { TODO: Handle I/O errors gracefully. }
 
-    Assign(f, fname);
-    Reset(f);
-    Read(f, o);
-  end;
+procedure ReadPCode(out o: TPCodeObject; fname: shortstring);
+var
+  f: file of TPCodeObject;
+begin
+  { TODO: Handle I/O errors gracefully. }
 
-  procedure WritePCode(var o: TPCodeObject; fname: shortstring);
-  var
-    f: file of TPCodeObject;
-  begin
-    { TODO: Handle I/O errors gracefully. }
+  Assign(f, fname);
+  Reset(f);
+  Read(f, o);
+end;
 
-    Assign(f, fname);
-    Rewrite(f);
-    Write(f, o);
-  end;
+procedure WritePCode(var o: TPCodeObject; fname: shortstring);
+var
+  f: file of TPCodeObject;
+begin
+  { TODO: Handle I/O errors gracefully. }
 
-  procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo; opcode: TPCodeOp; x: TXArgument; y: TYArgument);
-  var
-    i: 0..cmax;
-  begin
-    { TODO: Error if we've hit cmax. }
-    i := o.ngencode;
+  Assign(f, fname);
+  Rewrite(f);
+  Write(f, o);
+end;
 
-    o.gencode[i].f := opcode;
-    o.gencode[i].x := x;
-    o.gencode[i].y := y;
-    o.gencode[i].l := line;
+procedure AddInstructionToPCode(var o: TPCodeObject; line: TLineNo;
+  opcode: TPCodeOp; x: TXArgument; y: TYArgument);
+var
+  i: 0..cmax;
+begin
+  { TODO: Error if we've hit cmax. }
+  i := o.ngencode;
 
-    o.ngencode := i + 1;
-  end;
+  o.gencode[i].f := opcode;
+  o.gencode[i].x := x;
+  o.gencode[i].y := y;
+  o.gencode[i].l := line;
+
+  o.ngencode := i + 1;
+end;
+
 end.

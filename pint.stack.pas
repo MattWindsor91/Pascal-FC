@@ -78,7 +78,7 @@ type
 
   { TODO: add segment tracking to TStackZone. }
 
-  
+
   { A single segment in the stack zone. }
   TStackSegment = class(TObject)
     { TODO: This isn't currently used }
@@ -137,47 +137,47 @@ type
 { Type helper for zones.
   (Eventually, the zone will become an object and these functions will become
    methods.) }
-TStackZoneHelper = type helper for TStackZone
-  { Reads a boolean from the stack zone at address 'a'. }
-  function LoadBoolean(a: TStackAddress): boolean;
+  TStackZoneHelper = type helper for TStackZone
+    { Reads a boolean from the stack zone at address 'a'. }
+    function LoadBoolean(a: TStackAddress): boolean;
 
-  { Reads an integer from the stack zone at address 'a'. }
-  function LoadInteger(a: TStackAddress): integer;
+    { Reads an integer from the stack zone at address 'a'. }
+    function LoadInteger(a: TStackAddress): integer;
 
-  { Reads an real from the stack zone at address 'a'. }
-  function LoadReal(a: TStackAddress): real;
+    { Reads an real from the stack zone at address 'a'. }
+    function LoadReal(a: TStackAddress): real;
 
-  { Reads a bitset from the stack zone at address 'a'. }
-  function LoadBitset(a: TStackAddress): TBitset;
+    { Reads a bitset from the stack zone at address 'a'. }
+    function LoadBitset(a: TStackAddress): TBitset;
 
-  { Reads a stack record from the stack zone at address 'a'. }
-  function LoadRecord(a: TStackAddress): TStackRecord;
+    { Reads a stack record from the stack zone at address 'a'. }
+    function LoadRecord(a: TStackAddress): TStackRecord;
 
-  { Writes an integer 'i' to the stack zone at address 'a'. }
-  procedure StoreInteger(a: TStackAddress; i: integer);
+    { Writes an integer 'i' to the stack zone at address 'a'. }
+    procedure StoreInteger(a: TStackAddress; i: integer);
 
-  { Writes an boolean 'b' to the stack zone at address 'a'. }
-  procedure StoreBoolean(a: TStackAddress; b: boolean);
+    { Writes an boolean 'b' to the stack zone at address 'a'. }
+    procedure StoreBoolean(a: TStackAddress; b: boolean);
 
-  { Writes a real 'r' to the stack zone at address 'a'. }
-  procedure StoreReal(a: TStackAddress; r: real);
+    { Writes a real 'r' to the stack zone at address 'a'. }
+    procedure StoreReal(a: TStackAddress; r: real);
 
-  { Writes a bitset 'bs' to the stack zone at address 'a'. }
-  procedure StoreBitset(a: TStackAddress; bs: TBitset);
+    { Writes a bitset 'bs' to the stack zone at address 'a'. }
+    procedure StoreBitset(a: TStackAddress; bs: TBitset);
 
-  { Writes a stack record 'r' to the stack zone at address 'a'. }
-  procedure StoreRecord(a: TStackAddress; r: TStackRecord);
+    { Writes a stack record 'r' to the stack zone at address 'a'. }
+    procedure StoreRecord(a: TStackAddress; r: TStackRecord);
 
   {#
   # Numeric functions
   #}
 
-  { Increments the integer in the stack zone at address 'a'. }
-  procedure IncInteger(a: TStackAddress);
+    { Increments the integer in the stack zone at address 'a'. }
+    procedure IncInteger(a: TStackAddress);
 
-  { Adds the integer 'delta' to the integer in the stack zone at address 'a'. }
-  procedure AddInteger(a: TStackAddress; delta: integer);
-end;
+    { Adds the integer 'delta' to the integer in the stack zone at address 'a'. }
+    procedure AddInteger(a: TStackAddress; delta: integer);
+  end;
 
 implementation
 
@@ -203,7 +203,8 @@ begin
     is to deal with, I think, uninitialised variables.  Ideally, these shouldn't
     exist/should be preallocated. }
   if got <> want then
-    raise EPfcStackType.CreateFmt('addr %D is type %S; want %S', [a, got.ToString, want.ToString]);
+    raise EPfcStackType.CreateFmt('addr %D is type %S; want %S',
+      [a, got.ToString, want.ToString]);
 end;
 
 function TStackZoneHelper.LoadRecord(a: TStackAddress): TStackRecord;
@@ -291,9 +292,9 @@ begin
   newFrameTop := frameTop + nItems;
 
   if newFrameTop < frameBot then
-     raise EPfcStackUnderflow.Create('stack underflow');
+    raise EPfcStackUnderflow.Create('stack underflow');
   if segTop < newFrameTop then
-     raise EPfcStackOverflow.Create('stack overflow');
+    raise EPfcStackOverflow.Create('stack overflow');
 end;
 
 procedure TStackSegment.CheckBounds;

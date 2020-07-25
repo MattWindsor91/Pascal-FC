@@ -61,42 +61,42 @@ type
  # Evaluation of operators
  #}
 
-{ Evaluation of arithmetic operators. }
-TArithOpHelper = type helper for TArithOp
+  { Evaluation of arithmetic operators. }
+  TArithOpHelper = type helper for TArithOp
   { Returns the result of an arithmetic operation on bitsets 'l' and 'r'.
     (Currently, only subtract is supported, and has the semantics of set
      difference.) }
-  function EvalBitset(l, r: TBitset): TBitset;
+    function EvalBitset(l, r: TBitset): TBitset;
 
   { Returns the result of an arithmetic operation on integers 'l' and 'r'.
     Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
-  function EvalInt(l, r: integer): integer;
+    function EvalInt(l, r: integer): integer;
 
   { Returns the result of an arithmetic operation on reals 'l' and 'r'.
     Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
-  function EvalReal(l, r: real): real;
-end;
+    function EvalReal(l, r: real): real;
+  end;
 
-{ Evaluation of logic operators. }
-TLogicOpHelper = type helper for TLogicOp
-  { Returns the result of a logical binary operation on bitsets 'l' and 'r'. }
-  function EvalBitset(l, r: TBitset): TBitset;
+  { Evaluation of logic operators. }
+  TLogicOpHelper = type helper for TLogicOp
+    { Returns the result of a logical binary operation on bitsets 'l' and 'r'. }
+    function EvalBitset(l, r: TBitset): TBitset;
 
-  { Returns the result of a logical binary operation on booleans 'l' and 'r'. }
-  function EvalBool(l, r: boolean): boolean;
-end;
+    { Returns the result of a logical binary operation on booleans 'l' and 'r'. }
+    function EvalBool(l, r: boolean): boolean;
+  end;
 
-{ Evaluation of relational operators. }
-TRelOpHelper = type helper for TRelOp
-  { Returns the result of a relational operation on bitsets 'l' and 'r'. }
-  function EvalBitset(l, r: TBitset): boolean;
+  { Evaluation of relational operators. }
+  TRelOpHelper = type helper for TRelOp
+    { Returns the result of a relational operation on bitsets 'l' and 'r'. }
+    function EvalBitset(l, r: TBitset): boolean;
 
-  { Returns the result of a relational operation on integers 'l' and 'r'. }
-  function EvalInt(l, r: integer): boolean;
+    { Returns the result of a relational operation on integers 'l' and 'r'. }
+    function EvalInt(l, r: integer): boolean;
 
-  { Returns the result of a relational operation on reals 'l' and 'r'. }
-  function EvalReal(l, r: real): boolean;
-end;
+    { Returns the result of a relational operation on reals 'l' and 'r'. }
+    function EvalReal(l, r: real): boolean;
+  end;
 
 implementation
 
@@ -106,13 +106,15 @@ begin
   case ao of
     aoAdd, aoSub:
       { TODO(@MattWindsor91): Are these supposed to be the same check? }
-      if (((l > 0) and (r > 0)) or ((l < 0) and (r < 0))) and ((maxint - abs(l)) < abs(r)) then
+      if (((l > 0) and (r > 0)) or ((l < 0) and (r < 0))) and
+        ((maxint - abs(l)) < abs(r)) then
         raise EPfcMathOverflow.Create('overflow detected');
     aoMul:
       if (l <> 0) and ((maxint div abs(l)) < abs(r)) then
         raise EPfcMathOverflow.Create('overflow detected');
     aoDiv, aoMod:
-      if r = 0 then raise EPfcMathDivZero.Create('division by zero');
+      if r = 0 then
+        raise EPfcMathDivZero.Create('division by zero');
   end;
 end;
 
@@ -122,13 +124,15 @@ begin
   case ao of
     aoAdd, aoSub:
       { TODO(@MattWindsor91): Are these supposed to be the same check? }
-      if (((l > 0.0) and (r > 0.0)) or ((l < 0.0) and (r < 0.0))) and ((realmax - abs(l)) < abs(r)) then
+      if (((l > 0.0) and (r > 0.0)) or ((l < 0.0) and (r < 0.0))) and
+        ((realmax - abs(l)) < abs(r)) then
         raise EPfcMathOverflow.Create('overflow detected');
     aoMul:
       if (abs(l) > 1.0) and (abs(r) > 1.0) and ((realmax / abs(l)) < abs(r)) then
         raise EPfcMathOverflow.Create('overflow detected');
     aoDiv:
-      if r < minreal then raise EPfcMathDivZero.Create('division by zero');
+      if r < minreal then
+        raise EPfcMathDivZero.Create('division by zero');
   end;
 end;
 
@@ -139,8 +143,8 @@ begin
   case self of
     { Only sub is supported so far, and it doesn't overflow }
     aoSub: Result := l - r;
-  else
-    raise EPfcBadOp.Create('unsupported arithmetic operand for bitsets')
+    else
+      raise EPfcBadOp.Create('unsupported arithmetic operand for bitsets')
   end;
 end;
 
@@ -153,8 +157,8 @@ begin
     aoMul: Result := l * r;
     aoDiv: Result := l div r;
     aoMod: Result := l mod r;
-  else
-    raise EPfcBadOp.Create('unsupported arithmetic operand for integers')
+    else
+      raise EPfcBadOp.Create('unsupported arithmetic operand for integers')
   end;
 end;
 
@@ -166,9 +170,9 @@ begin
     aoSub: Result := l - r;
     aoMul: Result := l * r;
     aoDiv: Result := l / r;
-    { No real modulus operator }
-  else
-    raise EPfcBadOp.Create('unsupported arithmetic operand for reals')
+      { No real modulus operator }
+    else
+      raise EPfcBadOp.Create('unsupported arithmetic operand for reals')
   end;
 end;
 
@@ -177,42 +181,42 @@ end;
 function TRelOpHelper.EvalBitset(l, r: TBitset): boolean;
 begin
   case self of
-    roEq: result := l = r;
-    roNe: result := l <> r;
-    roLt: result := (l <= r) and (l <> r);
-    roLe: result := l <= r;
-    roGe: result := l >= r;
-    roGt: result := (l >= r) and (l <> r);
-  else
-    raise EPfcBadOp.Create('unsupported relational operand for bitsets')
+    roEq: Result := l = r;
+    roNe: Result := l <> r;
+    roLt: Result := (l <= r) and (l <> r);
+    roLe: Result := l <= r;
+    roGe: Result := l >= r;
+    roGt: Result := (l >= r) and (l <> r);
+    else
+      raise EPfcBadOp.Create('unsupported relational operand for bitsets')
   end;
 end;
 
 function TRelOpHelper.EvalInt(l, r: integer): boolean;
 begin
   case self of
-    roEq: result := l = r;
-    roNe: result := l <> r;
-    roLt: result := l < r;
-    roLe: result := l <= r;
-    roGe: result := l >= r;
-    roGt: result := l > r;
-  else
-    raise EPfcBadOp.Create('unsupported relational operand for integers')
+    roEq: Result := l = r;
+    roNe: Result := l <> r;
+    roLt: Result := l < r;
+    roLe: Result := l <= r;
+    roGe: Result := l >= r;
+    roGt: Result := l > r;
+    else
+      raise EPfcBadOp.Create('unsupported relational operand for integers')
   end;
 end;
 
 function TRelOpHelper.EvalReal(l, r: real): boolean;
 begin
   case self of
-    roEq: result := l = r;
-    roNe: result := l <> r;
-    roLt: result := l < r;
-    roLe: result := l <= r;
-    roGe: result := l >= r;
-    roGt: result := l > r;
-  else
-    raise EPfcBadOp.Create('unsupported relational operand for reals')
+    roEq: Result := l = r;
+    roNe: Result := l <> r;
+    roLt: Result := l < r;
+    roLe: Result := l <= r;
+    roGe: Result := l >= r;
+    roGt: Result := l > r;
+    else
+      raise EPfcBadOp.Create('unsupported relational operand for reals')
   end;
 end;
 
@@ -221,20 +225,20 @@ end;
 function TLogicOpHelper.EvalBitset(l, r: TBitset): TBitset;
 begin
   case self of
-    loAnd: result := l * r;
-    loOr: result := l + r;
-  else
-    raise EPfcBadOp.Create('unsupported logic operand for bitsets')
+    loAnd: Result := l * r;
+    loOr: Result := l + r;
+    else
+      raise EPfcBadOp.Create('unsupported logic operand for bitsets')
   end;
 end;
 
 function TLogicOpHelper.EvalBool(l, r: boolean): boolean;
 begin
   case self of
-    loAnd: result := l and r;
-    loOr: result := l or r;
-  else
-    raise EPfcBadOp.Create('unsupported logic operand for booleans')
+    loAnd: Result := l and r;
+    loOr: Result := l or r;
+    else
+      raise EPfcBadOp.Create('unsupported logic operand for booleans')
   end;
 end;
 
