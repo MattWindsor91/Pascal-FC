@@ -304,6 +304,8 @@ begin
     sfBits: RunBits(p);
     sfInt: RunInt(p);
     sfClock: p.PushInteger(clock);
+    else
+      raise EPfcBadStfun.CreateFmt('Unknown stfun ID: %D', [Ord(f)]);
   end;
 end;
 

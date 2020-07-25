@@ -50,6 +50,10 @@ type
     that doesn't support it. }
   EPfcBadOp = class(EPfcInterpreter);
 
+  { Class of errors resulting from trying to run a standard function that
+    doesn't exist. }
+  EPfcBadStfun = class(EPfcInterpreter);
+
   {#
    # Bounds checking errors
    #}

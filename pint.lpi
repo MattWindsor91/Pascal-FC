@@ -59,6 +59,7 @@
       <Unit6>
         <Filename Value="pcode.stfun.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="PCode.Stfun"/>
       </Unit6>
       <Unit7>
         <Filename Value="pcodetyp.pas"/>
@@ -67,6 +68,7 @@
       <Unit8>
         <Filename Value="pint.bitset.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Bitset"/>
       </Unit8>
       <Unit9>
         <Filename Value="pint.consts.pas"/>
@@ -75,6 +77,7 @@
       <Unit10>
         <Filename Value="pint.errors.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="PInt.Errors"/>
       </Unit10>
       <Unit11>
         <Filename Value="pint.ops.pas"/>
@@ -83,6 +86,7 @@
       <Unit12>
         <Filename Value="pint.process.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Process"/>
       </Unit12>
       <Unit13>
         <Filename Value="pint.reader.pas"/>
@@ -95,6 +99,7 @@
       <Unit15>
         <Filename Value="pint.stfun.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Stfun"/>
       </Unit15>
     </Units>
   </ProjectOptions>
