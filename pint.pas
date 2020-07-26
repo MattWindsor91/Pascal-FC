@@ -1113,6 +1113,8 @@ var
 
     procedure RunStfun(p: TProcess; y: integer);
     begin
+      { TODO(@MattWindsor91): move to Stfun unit, once sysclock is referenced
+        by processes }
       { See unit 'Pint.Stfun'. }
       RunStandardFunction(p, TStfunId(y), sysclock);
     end;
@@ -1273,14 +1275,12 @@ var
     procedure RunLdblk(p: TProcess; y: TYArgument);
     var
       srcStart: TStackAddress;  { Start of block to copy. }
-      off: cardinal;            { Current offset in block to copy. }
     begin
-      { TODO(@MattWindsor91):
-        If we had a way of pre-allocating a space on a process's stack, then
-        we could implement this as a special case of Cpblk. }
       srcStart := p.PopInteger;
-      for off := 0 to y - 1 do
-        p.PushRecord(stack.LoadRecord(srcStart + off));
+
+      p.CheckStackOverflow(y);
+      stack.CopyRecords(p.t, srcStart, y);
+      p.IncStackPointer(y);
     end;
 
     { Executes a 'cpblk' instruction on process 'p', with Y-value 'y'.
@@ -1290,12 +1290,11 @@ var
     var
       srcStart: TStackAddress;  { Start of source block. }
       dstStart: TStackAddress;  { Start of destination block. }
-      off: cardinal;            { Current offset in block to copy. }
     begin
       dstStart := p.PopInteger;
       srcStart := p.PopInteger;
-      for off := 0 to y - 1 do
-        stack.StoreRecord(dstStart + off, stack.LoadRecord(srcStart + off));
+
+      stack.CopyRecords(dstStart, srcStart, y);
     end;
 
     { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
@@ -1595,7 +1594,8 @@ var
                     stack.StoreInteger(h4, stack.LoadInteger(h1 + 1))  (* shriek sleep *)
                   else
                     stack.StoreInteger(h4, -1);  (* entry sleep *)
-                  stack.StoreInteger(h4 + 1, stack.LoadInteger(h1 + 4));  (* wake address *)
+                  stack.StoreInteger(h4 + 1, stack.LoadInteger(h1 + 4));
+                  (* wake address *)
                   stack.StoreInteger(h4 + 2, curpr);
                 end; (* if h4 <> 0 *)
                 h1 := h1 + sfsize;
@@ -1621,16 +1621,19 @@ var
               begin  (* rendezvous *)
                 stack.StoreInteger(h1, abs(stack.LoadInteger(h1)));
                 if stack.LoadInteger(h4 + 2) = 0 then
-                  stack.StoreInteger(stack.LoadInteger(stack.LoadInteger(h1)), stack.LoadInteger(h4 + 1))
+                  stack.StoreInteger(stack.LoadInteger(stack.LoadInteger(h1)),
+                    stack.LoadInteger(h4 + 1))
                 else
                 begin  (* block copy *)
                   h3 := 0;
                   while h3 < stack.LoadInteger(h4 + 3) do
                   begin
                     if stack.LoadInteger(h4 + 2) = 1 then
-                      stack.StoreInteger(stack.LoadInteger(h1) + h3, stack.LoadInteger(stack.LoadInteger(h4 + 1) + h3))
+                      stack.StoreInteger(stack.LoadInteger(h1) + h3,
+                        stack.LoadInteger(stack.LoadInteger(h4 + 1) + h3))
                     else
-                      stack.StoreInteger(stack.LoadInteger(h4 + 1) + h3, stack.LoadInteger(stack.LoadInteger(h1) + h3));
+                      stack.StoreInteger(stack.LoadInteger(h4 + 1) +
+                        h3, stack.LoadInteger(stack.LoadInteger(h1) + h3));
                     h3 := h3 + 1;
                   end;  (* while *)
                 end;  (* block copy *)
@@ -1647,47 +1650,97 @@ var
       end;
     end;
 
+    { Suspends process 'p' (ID 'pid') awaiting a channel operation, writing the
+      context onto the stack at 'addr'. }
+    procedure ChanSuspend(p: TProcess; pid: TProcessID; addr: TStackAddress);
+    begin
+      stack.StoreInteger(addr + 1, p.pc);
+      stack.StoreInteger(addr + 2, pid);
+      p.chans := p.t + 1;
+      p.suspend := -1;
+      stepcount := 0;
+    end;
+
+    { Reads from 'addr' the address, if any, that the channel reader has
+      requested the writer write into.  If this address is 0, there is no
+      waiting reader, and the writer must specify the write destination. }
+    function ChanWriteAddress(const addr: TStackAddress): TStackAddress;
+    var
+      chanVal: integer;
+    begin
+      chanVal := stack.LoadInteger(addr);
+      { Writers leave positive addresses, so if we see a positive number then
+        a writer got here previously. }
+      if 0 < chanVal then
+        raise EPfcChannel.Create('multiple writers on channel');
+      Result := Abs(chanVal);
+    end;
+
+    procedure ChanWriteTryFirst(p: TProcess; const pid: TProcessID; srcAddr: TStackAddress; out chanAddr, dstAddr: TStackAddress);
+    begin
+      chanAddr := p.PopInteger;
+      dstAddr := ChanWriteAddress(chanAddr);
+      if dstAddr = 0 then
+      begin
+        { The writer has indeed gone first, so let the reader know where the
+          written element(s) is. }
+        stack.StoreInteger(chanAddr, srcAddr);
+        ChanSuspend(p, pid, chanAddr);
+      end;
+    end;
+
+    procedure ChanWriteSingle(p: TProcess; const pid: TProcessID);
+    var
+      srcAddr: TStackAddress;
+      src: TStackRecord;
+      chanAddr: TStackAddress;
+      dstAddr: TStackAddress;
+    begin
+      { In single mode, the item to write is a single record currently at the
+        top of the stack. }
+      srcAddr := p.t;
+      src := p.PopRecord;
+
+      ChanWriteTryFirst(p, pid, srcAddr, chanAddr, dstAddr);
+      if dstAddr <> 0 then
+      begin
+        { A reader is already waiting at 'dstAddr', so we need to copy the
+          source record there. }
+        stack.StoreRecord(dstAddr, src);
+        Wakenon(chanAddr);
+      end;
+    end;
+
+    procedure ChanWriteBlock(p: TProcess; const pid: TProcessID; len: integer);
+    var
+      srcAddr: TStackAddress;
+      chanAddr: TStackAddress;
+      dstAddr: TStackAddress;
+    begin
+      { In block mode, the items to write form a y-item block from an address
+        currently at the top of the stack. }
+      srcAddr := p.PopInteger;
+
+      ChanWriteTryFirst(p, pid, srcAddr, chanAddr, dstAddr);
+      if dstAddr <> 0 then
+      begin
+        { A reader is already waiting at 'dstAddr', so we need to copy the
+          whole source block there. }
+        stack.CopyRecords(dstAddr, srcAddr, len);
+        Wakenon(chanAddr);
+      end;
+    end;
+
     { Executes a 'chanwr' instruction on process 'p', with X-value 'x' and
       Y-value 'y'.
 
       See the entry for 'pChanwr' in the 'PCodeOps' unit for details. }
     procedure RunChanwr(p: TProcess; x: TXArgument; y: TYArgument);
     begin
-      { TODO(@MattWindsor91): refactor. }
-      h1 := stack.LoadInteger(p.t - 1);   (* h1 now points to channel *)
-      h2 := stack.LoadInteger(h1);   (* h2 now has value in channel[1] *)
-      h3 := stack.LoadInteger(p.t);   (* base address of source (for x=1) *)
-      if h2 > 0 then
-        raise EPfcChannel.Create('multiple writers on channel');
-      if h2 = 0 then
-      begin  (* first *)
-        if x = 0 then
-          stack.StoreInteger(h1, p.t)
-        else
-          stack.StoreInteger(h1, h3);
-        stack.StoreInteger(h1 + 1, p.pc);
-        stack.StoreInteger(h1 + 2, curpr);
-        p.chans := p.t - 1;
-        p.suspend := -1;
-        stepcount := 0;
-      end  (* first *)
+      if x = 0 then
+        ChanWriteSingle(p, curpr)
       else
-      begin  (* second *)
-        h2 := abs(h2);  (* readers leave negated address *)
-        if x = 0 then
-          stack.StoreRecord(h2, Stack.LoadRecord(p.t))
-        else
-        begin
-          h4 := 0;  (* loop control for block copy *)
-          while h4 < y do
-          begin
-            stack.StoreRecord(h2 + h4, stack.LoadRecord(h3 + h4));
-            h4 := h4 + 1;
-          end;  (* while *)
-        end;  (* x was 1 *)
-        wakenon(h1);
-      end;  (* second *)
-      p.t := p.t - 2;
+        ChanWriteBlock(p, curpr, y);
     end;
 
     { Executes a 'chanrd' instruction on process 'p', with Y-value 'y'.
@@ -1704,11 +1757,7 @@ var
       if h2 = 0 then
       begin  (* first *)
         stack.StoreInteger(h1, -h3);
-        stack.StoreInteger(h1 + 1, p.pc);
-        stack.StoreInteger(h1 + 2, curpr);
-        p.chans := p.t - 1;
-        p.suspend := -1;
-        stepcount := 0;
+        ChanSuspend(p, curpr, h1);;
       end  (* first *)
       else
       begin  (* second *)
@@ -1724,7 +1773,7 @@ var
     end;
 
     { Executes a 'delay' instruction on process 'p'.
-    
+
       See the entry for 'pDelay' in the 'PCodeOps' unit for details. }
     procedure RunDelay(p: TProcess);
     var
@@ -1744,7 +1793,7 @@ var
     end;
 
     { Executes a 'resum' instruction on process 'p'.
-    
+
       See the entry for 'pResum' in the 'PCodeOps' unit for details. }
     procedure RunResum(p: TProcess);
     var
@@ -1767,7 +1816,7 @@ var
     end;
 
     { Executes an 'enmon' instruction on process 'p'.
-    
+
       See the entry for 'pEnmon' in the 'PCodeOps' unit for details. }
     procedure RunEnmon(p: TProcess);
     begin
@@ -1780,7 +1829,7 @@ var
     end;
 
     { Executes an 'exmon' instruction on process 'p'.
-    
+
       See the entry for 'pExmon' in the 'PCodeOps' unit for details. }
     procedure RunExmon(p: TProcess);
     begin
@@ -1789,7 +1838,7 @@ var
     end;
 
     { Executes an 'mexec' instruction on process 'p', with Y-value 'y'.
-    
+
       See the entry for 'pMexec' in the 'PCodeOps' unit for details. }
     procedure RunMexec(p: TProcess; y: TYArgument);
     begin
@@ -1806,7 +1855,7 @@ var
     end;
 
     { Executes an 'lobnd' instruction on process 'p', with Y-value 'y'.
-    
+
       See the entry for 'pLobnd' in the 'PCodeOps' unit for details. }
     procedure RunLobnd(p: TProcess; y: TYArgument);
     begin
@@ -1814,7 +1863,7 @@ var
     end;
 
     { Executes an 'hibnd' instruction on process 'p', with Y-value 'y'.
-    
+
       See the entry for 'pHibnd' in the 'PCodeOps' unit for details. }
     procedure RunHibnd(p: TProcess; y: TYArgument);
     begin
@@ -1822,7 +1871,7 @@ var
     end;
 
     { Executes a 'sleap' instruction on process 'p'.
-    
+
       See the entry for 'pSleap' in the 'PCodeOps' unit for details. }
     procedure RunSleap(p: TProcess);
     var
@@ -1837,7 +1886,7 @@ var
     end;
 
     { Executes a 'procv' instruction on process 'p'.
-    
+
       See the entry for 'pProcv' in the 'PCodeOps' unit for details. }
     procedure RunProcv(p: TProcess);
     var
@@ -1852,7 +1901,7 @@ var
     end;
 
     { Executes an 'ecall' instruction on process 'p', with Y-argument 'y'.
-      
+
       See the entry for 'pEcall' in the 'PCodeOps' unit for details. }
     procedure RunEcall(p: TProcess; y: TYArgument);
     var
@@ -1893,7 +1942,7 @@ var
     end;
 
     { Executes an 'acpt1' instruction on process 'p', with Y-argument 'y'.
-      
+
       See the entry for 'pAcpt1' in the 'PCodeOps' unit for details. }
     procedure RunAcpt1(p: TProcess; y: TYArgument);
     begin
@@ -1920,7 +1969,7 @@ var
     end;
 
     { Executes an 'acpt2' instruction on process 'p'.
-      
+
       See the entry for 'pAcpt2' in the 'PCodeOps' unit for details. }
     procedure RunAcpt2(p: TProcess);
     var
@@ -1934,7 +1983,8 @@ var
 
       if stack.LoadInteger(entry) <> 0 then
       begin  (* queue non-empty *)
-        procID := procqueue.proclist[stack.LoadInteger(entry)].proc;  (* h2 has proc id *)
+        procID := procqueue.proclist[stack.LoadInteger(entry)].proc;
+        (* h2 has proc id *)
         stack.StoreInteger(entry + 1, processes[procID].pc);
         stack.StoreInteger(entry + 2, procID);
       end;

@@ -96,6 +96,7 @@
       <Unit14>
         <Filename Value="pint.stack.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Stack"/>
       </Unit14>
       <Unit15>
         <Filename Value="pint.stfun.pas"/>

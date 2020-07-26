@@ -168,9 +168,12 @@ type
     { Writes a stack record 'r' to the stack zone at address 'a'. }
     procedure StoreRecord(a: TStackAddress; r: TStackRecord);
 
+    { Copies a block of 'len' records from 'src' to 'dst'. }
+    procedure CopyRecords(const dst, src: TStackAddress; const len: integer);
+
   {#
-  # Numeric functions
-  #}
+   # Numeric functions
+   #}
 
     { Increments the integer in the stack zone at address 'a'. }
     procedure IncInteger(a: TStackAddress);
@@ -261,6 +264,16 @@ end;
 procedure TStackZoneHelper.StoreRecord(a: TStackAddress; r: TStackRecord);
 begin
   self[a] := r;
+end;
+
+procedure TStackZoneHelper.CopyRecords(const dst, src: TStackAddress;
+  const len: integer);
+var
+  i: cardinal;
+begin
+  { TODO(@MattWindsor91): maybe use Move()? }
+  for i := 0 to len - 1 do
+    self.StoreRecord(dst + i, self.LoadRecord(src + i));
 end;
 
 procedure TStackZoneHelper.IncInteger(a: TStackAddress);
