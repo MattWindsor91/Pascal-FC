@@ -2372,6 +2372,6 @@ begin  (* Main *)
 
   until not (ch in ['r', 'R']);
 
-  reader.Destroy;
+  FreeAndNil(reader);
 
 end.
