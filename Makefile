@@ -8,6 +8,8 @@ PINTUNITS := \
   pint.consts.pas \
   pint.errors.pas \
   pint.flow.pas \
+  pint.index.pas \
+  pint.loadstore.pas \
   pint.ops.pas \
   pint.process.pas \
   pint.stack.pas \

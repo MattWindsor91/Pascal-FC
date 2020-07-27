@@ -29,7 +29,7 @@ unit Pint.Ops;
 
 interface
 
-uses GConsts, Pint.Bitset, Pint.Consts, Pint.Errors, Pint.Process;
+uses GConsts, PCodeObj, Pint.Bitset, Pint.Consts, Pint.Errors, Pint.Process;
 
 type
   { Enumeratinon of arithmetic binary operators. }
@@ -66,40 +66,40 @@ type
   { Returns the result of an arithmetic operation on bitsets 'l' and 'r'.
     (Currently, only subtract is supported, and has the semantics of set
      difference.) }
-    function EvalBitset(l, r: TBitset): TBitset;
+    function EvalBitset(const l, r: TBitset): TBitset;
 
   { Returns the result of an arithmetic operation on integers 'l' and 'r'.
     Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
-    function EvalInt(l, r: integer): integer;
+    function EvalInt(const l, r: integer): integer;
 
   { Returns the result of an arithmetic operation on reals 'l' and 'r'.
     Can throw 'EPfcMathOverflow' on overflow and 'EPfcMathDivZero' on zero-division. }
-    function EvalReal(l, r: real): real;
+    function EvalReal(const l, r: real): real;
   end;
 
   { Evaluation of logic operators. }
   TLogicOpHelper = type helper for TLogicOp
     { Returns the result of a logical binary operation on bitsets 'l' and 'r'. }
-    function EvalBitset(l, r: TBitset): TBitset;
+    function EvalBitset(const l, r: TBitset): TBitset;
 
     { Returns the result of a logical binary operation on booleans 'l' and 'r'. }
-    function EvalBool(l, r: boolean): boolean;
+    function EvalBool(const l, r: boolean): boolean;
   end;
 
   { Evaluation of relational operators. }
   TRelOpHelper = type helper for TRelOp
     { Returns the result of a relational operation on bitsets 'l' and 'r'. }
-    function EvalBitset(l, r: TBitset): boolean;
+    function EvalBitset(const l, r: TBitset): boolean;
 
     { Returns the result of a relational operation on integers 'l' and 'r'. }
-    function EvalInt(l, r: integer): boolean;
+    function EvalInt(const l, r: integer): boolean;
 
     { Returns the result of a relational operation on reals 'l' and 'r'. }
-    function EvalReal(l, r: real): boolean;
+    function EvalReal(const l, r: real): boolean;
   end;
 
 {#
- # Instruction runners
+ # Binary operator instruction runners
  #}
 
 { All of these runners pop their arguments from the stack in reverse order
@@ -130,10 +130,29 @@ procedure RunBitsetLogicOp(p: TProcess; const lo: TLogicOp);
 { Runs a boolean logical operation 'lo'. }
 procedure RunBoolLogicOp(p: TProcess; const lo: TLogicOp);
 
+{#
+ # Other operator instructions
+ #}
+
+{ Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
+
+  See the entry for 'pIfloat' in the 'PCodeOps' unit for details. }
+procedure RunIfloat(p: TProcess; const y: TYArgument);
+
+{ Executes a 'notop' instruction on process 'p'.
+
+  See the entry for 'pNotop' in the 'PCodeOps' unit for details. }
+procedure RunNotop(p: TProcess);
+
+{ Executes a 'negate' instruction on process 'p'.
+
+  See the entry for 'pNegate' in the 'PCodeOps' unit for details. }
+procedure RunNegate(p: TProcess);
+
 implementation
 
 { Checks to see if an integer arithmetic operation will overflow or div-0. }
-procedure CheckIntArithOp(ao: TArithOp; l, r: integer);
+procedure CheckIntArithOp(const ao: TArithOp; const l, r: integer);
 begin
   case ao of
     aoAdd, aoSub:
@@ -153,7 +172,7 @@ begin
 end;
 
 { Checks to see if a real arithmetic operation will overflow or div-0. }
-procedure CheckRealArithOp(ao: TArithOp; l, r: real);
+procedure CheckRealArithOp(const ao: TArithOp; const l, r: real);
 begin
   case ao of
     aoAdd, aoSub:
@@ -174,7 +193,7 @@ end;
 
 {# TArithOpHelper #}
 
-function TArithOpHelper.EvalBitset(l, r: TBitset): TBitset;
+function TArithOpHelper.EvalBitset(const l, r: TBitset): TBitset;
 begin
   case self of
     { Only sub is supported so far, and it doesn't overflow }
@@ -184,7 +203,7 @@ begin
   end;
 end;
 
-function TArithOpHelper.EvalInt(l, r: integer): integer;
+function TArithOpHelper.EvalInt(const l, r: integer): integer;
 begin
   CheckIntArithOp(self, l, r);
   case self of
@@ -198,7 +217,7 @@ begin
   end;
 end;
 
-function TArithOpHelper.EvalReal(l, r: real): real;
+function TArithOpHelper.EvalReal(const l, r: real): real;
 begin
   CheckRealArithOp(self, l, r);
   case self of
@@ -214,7 +233,7 @@ end;
 
 {# TRelOpHelper #}
 
-function TRelOpHelper.EvalBitset(l, r: TBitset): boolean;
+function TRelOpHelper.EvalBitset(const l, r: TBitset): boolean;
 begin
   case self of
     roEq: Result := l = r;
@@ -228,7 +247,7 @@ begin
   end;
 end;
 
-function TRelOpHelper.EvalInt(l, r: integer): boolean;
+function TRelOpHelper.EvalInt(const l, r: integer): boolean;
 begin
   case self of
     roEq: Result := l = r;
@@ -242,7 +261,7 @@ begin
   end;
 end;
 
-function TRelOpHelper.EvalReal(l, r: real): boolean;
+function TRelOpHelper.EvalReal(const l, r: real): boolean;
 begin
   case self of
     roEq: Result := l = r;
@@ -258,7 +277,7 @@ end;
 
 {# TLogicOpHelper #}
 
-function TLogicOpHelper.EvalBitset(l, r: TBitset): TBitset;
+function TLogicOpHelper.EvalBitset(const l, r: TBitset): TBitset;
 begin
   case self of
     loAnd: Result := l * r;
@@ -268,7 +287,7 @@ begin
   end;
 end;
 
-function TLogicOpHelper.EvalBool(l, r: boolean): boolean;
+function TLogicOpHelper.EvalBool(const l, r: boolean): boolean;
 begin
   case self of
     loAnd: Result := l and r;
@@ -279,7 +298,7 @@ begin
 end;
 
 {#
- # Instruction runners
+ # Binary operation nstruction runners
  #}
 
 procedure RunBitsetArithOp(p: TProcess; const ao: TArithOp);
@@ -352,6 +371,36 @@ begin
   r := p.PopBoolean;
   l := p.PopBoolean;
   p.PushBoolean(lo.EvalBool(l, r));
+end;
+
+{#
+ # Other operator instructions
+ #}
+
+procedure RunIfloat(p: TProcess; const y: TYArgument);
+var
+  i: integer;
+begin
+  p.DecStackPointer(y);
+  i := p.PopInteger;
+  p.PushReal(i);
+  p.IncStackPointer(y);
+end;
+
+procedure RunNotop(p: TProcess);
+var
+  b: boolean;
+begin
+  b := p.PopBoolean;
+  p.PushBoolean(not b);
+end;
+
+procedure RunNegate(p: TProcess);
+var
+  i: integer;
+begin
+  i := p.PopInteger;
+  p.PushInteger(-i);
 end;
 
 end.

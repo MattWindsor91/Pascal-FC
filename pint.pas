@@ -37,6 +37,8 @@ uses
   Pint.Consts,
   Pint.Errors,
   Pint.Flow,
+  Pint.Index,
+  Pint.LoadStore,
   Pint.Ops,
   Pint.Reader,
   Pint.Process,
@@ -913,31 +915,6 @@ var
         stack.StoreInteger(curmon, 0);
     end;
 
-    procedure RunLdadr(p: TProcess; x, y: integer);
-    begin
-      p.PushInteger(p.DisplayAddress(x, y));
-    end;
-
-    procedure PushRecordAt(p: TProcess; addr: TStackAddress);
-    var
-      rec: TStackRecord;
-    begin
-      rec := stack.Load(addr);
-      p.PushRecord(rec);
-    end;
-
-    procedure RunLdval(p: TProcess; x, y: integer);
-    begin
-      PushRecordAt(p, p.DisplayAddress(x, y));
-    end;
-
-    procedure RunLdind(p: TProcess; x, y: integer);
-    var
-      addr: TStackAddress;
-    begin
-      addr := stack.LoadInteger(p.DisplayAddress(x, y));
-      PushRecordAt(p, addr);
-    end;
 
     procedure RunUpdis(p: TProcess; x: TXArgument; y: TYArgument);
     var
@@ -1024,19 +1001,6 @@ var
       { See unit 'Pint.Stfun'. }
       RunStandardFunction(p, TStfunId(y), sysclock);
     end;
-
-    { Executes an 'ixrec' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'ixrec' in the 'PCodeOps' unit for details. }
-    procedure RunIxrec(p: TProcess; y: TYArgument);
-    var
-      ix: integer; { Unsure what this actually is. }
-    begin
-      ix := p.PopInteger;
-      p.PushInteger(ix + y);
-    end;
-
-
 
     procedure MarkStack(p: TProcess; vsize: integer; tabAddr: TStackAddress);
     begin
@@ -1157,6 +1121,8 @@ var
       hbound: integer;
       elsize: integer;
     begin
+      { TODO(@MattWindsor91): move to Pint.Index once we find a way of
+        accessing the tables. }
       ix := p.PopInteger;
 
       arrTypeID := y;
@@ -1173,47 +1139,6 @@ var
       elsize := arrRec.elsize;
       arrbaseAddr := p.PopInteger;
       p.PushInteger(ArrayIndexPointer(arrBaseAddr, ix, lbound, elsize));
-    end;
-
-    { Executes a 'ldblk' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'pLdblk' in the 'PCodeOps' unit for details. }
-    procedure RunLdblk(p: TProcess; y: TYArgument);
-    var
-      srcStart: TStackAddress;  { Start of block to copy. }
-    begin
-      srcStart := p.PopInteger;
-
-      p.CheckStackOverflow(y);
-      stack.Copy(p.t, srcStart, y);
-      p.IncStackPointer(y);
-    end;
-
-    { Executes a 'cpblk' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'pCpblk' in the 'PCodeOps' unit for details. }
-    procedure RunCpblk(p: TProcess; y: TYArgument);
-    var
-      srcStart: TStackAddress;  { Start of source block. }
-      dstStart: TStackAddress;  { Start of destination block. }
-    begin
-      dstStart := p.PopInteger;
-      srcStart := p.PopInteger;
-
-      stack.Copy(dstStart, srcStart, y);
-    end;
-
-    { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'pIfloat' in the 'PCodeOps' unit for details. }
-    procedure RunIfloat(p: TProcess; y: TYArgument);
-    var
-      i: integer;          { The integer to convert. }
-    begin
-      p.DecStackPointer(y);
-      i := p.PopInteger;
-      p.PushReal(i);
-      p.IncStackPointer(y);
     end;
 
     { Executes a 'readip' instruction on process 'p', with Y-value 'y'.
@@ -1324,18 +1249,6 @@ var
       Write(val: Width: prec);
     end;
 
-    { Executes a 'store' instruction on process 'p'.
-
-      See the entry for 'pStore' in the 'PCodeOps' unit for details. }
-    procedure RunStore(p: TProcess);
-    var
-      rec: TStackRecord;
-      addr: TStackAddress;
-    begin
-      rec := p.PopRecord;
-      addr := p.PopInteger;
-      stack.Store(addr, rec);
-    end;
 
     { Deactivates the current process, and deactivates the main process if no
       further processes remain. }
@@ -1371,38 +1284,6 @@ var
         Deactivate(p);
     end;
 
-    { Executes a 'repadr' instruction on process 'p'.
-
-      See the entry for 'pRepadr' in the 'PCodeOps' unit for details. }
-    procedure RunRepadr(p: TProcess);
-    var
-      addr: TStackAddress;
-    begin
-      addr := p.PopInteger;
-      PushRecordAt(p, addr);
-    end;
-
-    { Executes a 'notop' instruction on process 'p'.
-
-      See the entry for 'pNotop' in the 'PCodeOps' unit for details. }
-    procedure RunNotop(p: TProcess);
-    var
-      b: boolean;
-    begin
-      b := p.PopBoolean;
-      p.PushBoolean(not b);
-    end;
-
-    { Executes a 'negate' instruction on process 'p'.
-
-      See the entry for 'pNegate' in the 'PCodeOps' unit for details. }
-    procedure RunNegate(p: TProcess);
-    var
-      i: integer;
-    begin
-      i := p.PopInteger;
-      p.PushInteger(-i);
-    end;
 
     { Executes a 'rdlin' instruction.
       
@@ -1756,28 +1637,6 @@ var
     end;
 
     { There is no RunMretn, as it is literally just a popjump. }
-
-    procedure CheckGe(x, y: integer);
-    begin
-      if x < y then
-        raise EPfcOrdinalBound.CreateFmt('%D < %D', [x, y]);
-    end;
-
-    { Executes an 'lobnd' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'pLobnd' in the 'PCodeOps' unit for details. }
-    procedure RunLobnd(p: TProcess; y: TYArgument);
-    begin
-      CheckGe(p.PeekInteger, y);
-    end;
-
-    { Executes an 'hibnd' instruction on process 'p', with Y-value 'y'.
-
-      See the entry for 'pHibnd' in the 'PCodeOps' unit for details. }
-    procedure RunHibnd(p: TProcess; y: TYArgument);
-    begin
-      CheckGe(y, p.PeekInteger);
-    end;
 
     { Executes a 'sleap' instruction on process 'p'.
 
