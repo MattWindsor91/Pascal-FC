@@ -1556,12 +1556,18 @@ var
       end;
     end;
 
+    { Stores process details in an entry? record starting at 'addr'. }
+    procedure SetEntryProcess(p: TProcess; pid: TProcessID; addr: TStackAddress);
+    begin
+      stack.StoreInteger(addr + 1, p.pc);
+      stack.StoreInteger(addr + 2, pid);
+    end;
+
     { Suspends process 'p' (ID 'pid') awaiting a channel operation, writing the
       context onto the stack at 'addr'. }
     procedure ChanSuspend(p: TProcess; pid: TProcessID; addr: TStackAddress);
     begin
-      stack.StoreInteger(addr + 1, p.pc);
-      stack.StoreInteger(addr + 2, pid);
+      SetEntryProcess(p, pid, addr);
       p.chans := p.t + 1;
       p.suspend := -1;
       stepcount := 0;
@@ -1595,6 +1601,7 @@ var
       end;
     end;
 
+    { Executes a channel write with a single data record. }
     procedure ChanWriteSingle(p: TProcess; const pid: TProcessID);
     var
       srcAddr: TStackAddress;
@@ -1617,6 +1624,7 @@ var
       end;
     end;
 
+    { Executes a channel write with a block of size 'len'. }
     procedure ChanWriteBlock(p: TProcess; const pid: TProcessID; len: integer);
     var
       srcAddr: TStackAddress;
@@ -1831,8 +1839,7 @@ var
             stack.Copy(h3 + entrysize, h1 - 1, y);
             wakenon(h3);
           end;
-          stack.StoreInteger(h3 + 1, pc);
-          stack.StoreInteger(h3 + 2, curpr);
+          SetEntryProcess(p, curpr, h3);
         end;
         joinqueue(h3);
         stack.StoreInteger(t + 1, h3);
@@ -1851,11 +1858,7 @@ var
       if stack.LoadInteger(h1) = 0 then
       begin  (* no calls - sleep *)
         stack.StoreInteger(h1, -1);
-        stack.StoreInteger(h1 + 1, p.pc);
-        stack.StoreInteger(h1 + 2, curpr);
-        p.suspend := -1;
-        p.chans := p.t + 1;
-        stepcount := 0;
+        ChanSuspend(p, curpr, h1);
       end
       else
       begin  (* another process has arrived *)
@@ -1881,9 +1884,7 @@ var
       if stack.LoadInteger(entry) <> 0 then
       begin  (* queue non-empty *)
         procID := procqueue.proclist[stack.LoadInteger(entry)].proc;
-        (* h2 has proc id *)
-        stack.StoreInteger(entry + 1, processes[procID].pc);
-        stack.StoreInteger(entry + 2, procID);
+        SetEntryProcess(processes[procID], procID, entry);
       end;
     end;
 
