@@ -1668,12 +1668,7 @@ var
       else
       begin  (* second *)
         h2 := abs(h2);
-        h4 := 0;
-        while h4 < y do
-        begin
-          stack.Store(h3 + h4, stack.Load(h2 + h4));
-          h4 := h4 + 1;
-        end;
+        stack.Copy(h3, h2, y);
         wakenon(h1);
       end;
     end;
@@ -1833,8 +1828,7 @@ var
         begin  (* empty queue on entry *)
           if stack.LoadInteger(h3) < 0 then
           begin  (* other process has arrived *)
-            for h4 := 1 to y do
-              stack.Store(h3 + h4 + (entrysize - 1), stack.Load(h1 + h4));
+            stack.Copy(h3 + entrysize, h1 - 1, y);
             wakenon(h3);
           end;
           stack.StoreInteger(h3 + 1, pc);
@@ -1867,10 +1861,7 @@ var
       begin  (* another process has arrived *)
         h2 := stack.LoadInteger(h1 + 2);  (* hs has proc number *)
         h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
-        for h4 := 0 to y - 1 do
-
-          stack.Store(h1 + h4 + entrysize, Stack.Load(h3 + h4));
-
+        stack.Copy(h1 + entrysize, h3, y);
       end;
     end;
 
