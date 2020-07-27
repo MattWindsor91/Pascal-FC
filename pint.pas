@@ -2208,7 +2208,7 @@ var
     writeln;
     writeln;
     initqueue;
-    SetLength(stack, stmax);
+    stack := TStackZone.Create;
     stack.StoreInteger(1, 0);
     stack.StoreInteger(2, 0);
     stack.StoreInteger(3, -1);

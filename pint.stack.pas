@@ -74,7 +74,56 @@ type
 
     This type is called 'TStackZone' to disambiguate from the Free Pascal/Delphi
     'TStack' type. }
-  TStackZone = array of TStackRecord;
+  TStackZone = class(TObject)
+  private
+    data: array[TStackAddress] of TStackRecord;
+
+    procedure CheckType(const a: TStackAddress; const want: TType);
+  public
+
+    { Reads a boolean from the stack zone at address 'a'. }
+    function LoadBoolean(const a: TStackAddress): boolean;
+
+    { Reads an integer from the stack zone at address 'a'. }
+    function LoadInteger(const a: TStackAddress): integer;
+
+    { Reads an real from the stack zone at address 'a'. }
+    function LoadReal(const a: TStackAddress): real;
+
+    { Reads a bitset from the stack zone at address 'a'. }
+    function LoadBitset(const a: TStackAddress): TBitset;
+
+    { Reads a stack record from the stack zone at address 'a'. }
+    function LoadRecord(const a: TStackAddress): TStackRecord;
+
+    { Writes an integer 'i' to the stack zone at address 'a'. }
+    procedure StoreInteger(const a: TStackAddress; const i: integer);
+
+    { Writes an boolean 'b' to the stack zone at address 'a'. }
+    procedure StoreBoolean(const a: TStackAddress; const b: boolean);
+
+    { Writes a real 'r' to the stack zone at address 'a'. }
+    procedure StoreReal(const a: TStackAddress; const r: real);
+
+    { Writes a bitset 'bs' to the stack zone at address 'a'. }
+    procedure StoreBitset(const a: TStackAddress; const bs: TBitset);
+
+    { Writes a stack record 'r' to the stack zone at address 'a'. }
+    procedure StoreRecord(const a: TStackAddress; const r: TStackRecord);
+
+    { Copies a block of 'len' records from 'src' to 'dst'. }
+    procedure CopyRecords(const dst, src: TStackAddress; const len: integer);
+
+    {#
+     # Numeric functions
+     #}
+
+    { Increments the integer in the stack zone at address 'a'. }
+    procedure IncInteger(const a: TStackAddress);
+
+    { Adds the integer 'delta' to the integer in the stack zone at address 'a'. }
+    procedure AddInteger(const a: TStackAddress; const delta: integer);
+  end;
 
   { TODO: add segment tracking to TStackZone. }
 
@@ -134,54 +183,6 @@ type
     function PopRecord: TStackRecord;
   end;
 
-{ Type helper for zones.
-  (Eventually, the zone will become an object and these functions will become
-   methods.) }
-  TStackZoneHelper = type helper for TStackZone
-    { Reads a boolean from the stack zone at address 'a'. }
-    function LoadBoolean(a: TStackAddress): boolean;
-
-    { Reads an integer from the stack zone at address 'a'. }
-    function LoadInteger(a: TStackAddress): integer;
-
-    { Reads an real from the stack zone at address 'a'. }
-    function LoadReal(a: TStackAddress): real;
-
-    { Reads a bitset from the stack zone at address 'a'. }
-    function LoadBitset(a: TStackAddress): TBitset;
-
-    { Reads a stack record from the stack zone at address 'a'. }
-    function LoadRecord(a: TStackAddress): TStackRecord;
-
-    { Writes an integer 'i' to the stack zone at address 'a'. }
-    procedure StoreInteger(a: TStackAddress; i: integer);
-
-    { Writes an boolean 'b' to the stack zone at address 'a'. }
-    procedure StoreBoolean(a: TStackAddress; b: boolean);
-
-    { Writes a real 'r' to the stack zone at address 'a'. }
-    procedure StoreReal(a: TStackAddress; r: real);
-
-    { Writes a bitset 'bs' to the stack zone at address 'a'. }
-    procedure StoreBitset(a: TStackAddress; bs: TBitset);
-
-    { Writes a stack record 'r' to the stack zone at address 'a'. }
-    procedure StoreRecord(a: TStackAddress; r: TStackRecord);
-
-    { Copies a block of 'len' records from 'src' to 'dst'. }
-    procedure CopyRecords(const dst, src: TStackAddress; const len: integer);
-
-  {#
-   # Numeric functions
-   #}
-
-    { Increments the integer in the stack zone at address 'a'. }
-    procedure IncInteger(a: TStackAddress);
-
-    { Adds the integer 'delta' to the integer in the stack zone at address 'a'. }
-    procedure AddInteger(a: TStackAddress; delta: integer);
-  end;
-
 implementation
 
 function Itob(i: integer): boolean;
@@ -197,76 +198,73 @@ begin
     Result := fals;
 end;
 
-procedure CheckType(var s: TStackZone; a: TStackAddress; want: TType);
+procedure TStackZone.CheckType(const a: TStackAddress; const want: TType);
 var
   got: TType;
 begin
-  got := s[a].tp;
-  { TODO(@MattWindsor91): the lack of check when the stack address is untyped
-    is to deal with, I think, uninitialised variables.  Ideally, these shouldn't
-    exist/should be preallocated. }
+  got := data[a].tp;
   if got <> want then
     raise EPfcStackType.CreateFmt('addr %D is type %S; want %S',
       [a, got.ToString, want.ToString]);
 end;
 
-function TStackZoneHelper.LoadRecord(a: TStackAddress): TStackRecord;
+function TStackZone.LoadRecord(const a: TStackAddress): TStackRecord;
 begin
-  Result := self[a];
+  Result := data[a];
 end;
 
-function TStackZoneHelper.LoadInteger(a: TStackAddress): integer;
+function TStackZone.LoadInteger(const a: TStackAddress): integer;
 begin
-  CheckType(self, a, ints);
-  Result := self[a].i;
+  CheckType(a, ints);
+  Result := data[a].i;
 end;
 
-function TStackZoneHelper.LoadBoolean(a: TStackAddress): boolean;
+function TStackZone.LoadBoolean(const a: TStackAddress): boolean;
 begin
-  Result := Itob(self.LoadInteger(a));
+  Result := Itob(LoadInteger(a));
 end;
 
-function TStackZoneHelper.LoadReal(a: TStackAddress): real;
+function TStackZone.LoadReal(const a: TStackAddress): real;
 begin
-  CheckType(self, a, reals);
-  Result := self[a].r;
+  CheckType(a, reals);
+  Result := data[a].r;
 end;
 
-function TStackZoneHelper.LoadBitset(a: TStackAddress): TBitset;
+function TStackZone.LoadBitset(const a: TStackAddress): TBitset;
 begin
-  CheckType(self, a, bitsets);
-  Result := self[a].bs;
+  CheckType(a, bitsets);
+  Result := data[a].bs;
 end;
 
-procedure TStackZoneHelper.StoreInteger(a: TStackAddress; i: integer);
+procedure TStackZone.StoreInteger(const a: TStackAddress; const i: integer);
 begin
-  self[a].tp := ints;
-  self[a].i := i;
+  data[a].tp := ints;
+  data[a].i := i;
 end;
 
-procedure TStackZoneHelper.StoreBoolean(a: TStackAddress; b: boolean);
+procedure TStackZone.StoreBoolean(const a: TStackAddress; const b: boolean);
 begin
   StoreInteger(a, Btoi(b));
 end;
 
-procedure TStackZoneHelper.StoreReal(a: TStackAddress; r: real);
+procedure TStackZone.StoreReal(const a: TStackAddress; const r: real);
 begin
-  self[a].tp := reals;
-  self[a].r := r;
+  data[a].tp := reals;
+  data[a].r := r;
 end;
 
-procedure TStackZoneHelper.StoreBitset(a: TStackAddress; bs: TBitset);
+procedure TStackZone.StoreBitset(const a: TStackAddress; const bs: TBitset);
 begin
-  self[a].tp := bitsets;
-  self[a].bs := bs;
+  data[a].tp := bitsets;
+  data[a].bs := bs;
 end;
 
-procedure TStackZoneHelper.StoreRecord(a: TStackAddress; r: TStackRecord);
+procedure TStackZone.StoreRecord(const a: TStackAddress; const r: TStackRecord);
 begin
-  self[a] := r;
+  data[a] := r;
 end;
 
-procedure TStackZoneHelper.CopyRecords(const dst, src: TStackAddress;
+procedure TStackZone.CopyRecords(const dst, src: TStackAddress;
   const len: integer);
 var
   i: cardinal;
@@ -276,16 +274,16 @@ begin
     self.StoreRecord(dst + i, self.LoadRecord(src + i));
 end;
 
-procedure TStackZoneHelper.IncInteger(a: TStackAddress);
+procedure TStackZone.IncInteger(const a: TStackAddress);
 begin
-  CheckType(self, a, ints);
-  Inc(self[a].i);
+  CheckType(a, ints);
+  Inc(data[a].i);
 end;
 
-procedure TStackZoneHelper.AddInteger(a: TStackAddress; delta: integer);
+procedure TStackZone.AddInteger(const a: TStackAddress; const delta: integer);
 begin
-  CheckType(self, a, ints);
-  self[a].i := self[a].i + delta;
+  CheckType(a, ints);
+  data[a].i := data[a].i + delta;
 end;
 
 constructor TStackSegment.Create(z: TStackZone; bot, top: TStackAddress);
