@@ -80,6 +80,8 @@ type
 
     procedure CheckType(const a: TStackAddress; const want: TType);
   public
+    { Reads a stack record from the stack zone at address 'a'. }
+    function Load(const a: TStackAddress): TStackRecord;
 
     { Reads a boolean from the stack zone at address 'a'. }
     function LoadBoolean(const a: TStackAddress): boolean;
@@ -93,8 +95,8 @@ type
     { Reads a bitset from the stack zone at address 'a'. }
     function LoadBitset(const a: TStackAddress): TBitset;
 
-    { Reads a stack record from the stack zone at address 'a'. }
-    function LoadRecord(const a: TStackAddress): TStackRecord;
+    { Writes a stack record 'r' to the stack zone at address 'a'. }
+    procedure Store(const a: TStackAddress; const r: TStackRecord);
 
     { Writes an integer 'i' to the stack zone at address 'a'. }
     procedure StoreInteger(const a: TStackAddress; const i: integer);
@@ -108,11 +110,8 @@ type
     { Writes a bitset 'bs' to the stack zone at address 'a'. }
     procedure StoreBitset(const a: TStackAddress; const bs: TBitset);
 
-    { Writes a stack record 'r' to the stack zone at address 'a'. }
-    procedure StoreRecord(const a: TStackAddress; const r: TStackRecord);
-
     { Copies a block of 'len' records from 'src' to 'dst'. }
-    procedure CopyRecords(const dst, src: TStackAddress; const len: integer);
+    procedure Copy(const dst, src: TStackAddress; const len: integer);
 
     {#
      # Numeric functions
@@ -208,7 +207,7 @@ begin
       [a, got.ToString, want.ToString]);
 end;
 
-function TStackZone.LoadRecord(const a: TStackAddress): TStackRecord;
+function TStackZone.Load(const a: TStackAddress): TStackRecord;
 begin
   Result := data[a];
 end;
@@ -259,19 +258,19 @@ begin
   data[a].bs := bs;
 end;
 
-procedure TStackZone.StoreRecord(const a: TStackAddress; const r: TStackRecord);
+procedure TStackZone.Store(const a: TStackAddress; const r: TStackRecord);
 begin
   data[a] := r;
 end;
 
-procedure TStackZone.CopyRecords(const dst, src: TStackAddress;
+procedure TStackZone.Copy(const dst, src: TStackAddress;
   const len: integer);
 var
   i: cardinal;
 begin
   { TODO(@MattWindsor91): maybe use Move()? }
   for i := 0 to len - 1 do
-    self.StoreRecord(dst + i, self.LoadRecord(src + i));
+    self.Store(dst + i, self.Load(src + i));
 end;
 
 procedure TStackZone.IncInteger(const a: TStackAddress);
@@ -340,7 +339,7 @@ end;
 procedure TStackSegment.PushRecord(s: TStackRecord);
 begin
   Advance;
-  zone.StoreRecord(frameTop, s);
+  zone.Store(frameTop, s);
 end;
 
 function TStackSegment.PopInteger: integer;
@@ -367,7 +366,7 @@ end;
 function TStackSegment.PopRecord: TStackRecord;
 begin
   CheckBounds;
-  Result := zone.LoadRecord(frameTop);
+  Result := zone.Load(frameTop);
   Dec(frameTop);
 end;
 

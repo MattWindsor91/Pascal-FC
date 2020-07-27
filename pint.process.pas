@@ -258,7 +258,7 @@ end;
 procedure TProcess.PushRecord(r: TStackRecord);
 begin
   IncStackPointer;
-  stack.StoreRecord(t, r);
+  stack.Store(t, r);
 end;
 
 function TProcess.PeekInteger: integer;
@@ -287,7 +287,7 @@ end;
 
 function TProcess.PopRecord: TStackRecord;
 begin
-  Result := stack.LoadRecord(t);
+  Result := stack.Load(t);
   DecStackPointer;
 end;
 

@@ -922,7 +922,7 @@ var
     var
       rec: TStackRecord;
     begin
-      rec := stack.LoadRecord(addr);
+      rec := stack.Load(addr);
       p.PushRecord(rec);
     end;
 
@@ -951,7 +951,7 @@ var
         { TODO(@MattWindsor91):
           This is another situation where we can end up in uninitialised
           stack. }
-        base := stack.LoadRecord(base + offCallLastDisplay).i;
+        base := stack.Load(base + offCallLastDisplay).i;
       end;
     end;
 
@@ -1185,7 +1185,7 @@ var
       srcStart := p.PopInteger;
 
       p.CheckStackOverflow(y);
-      stack.CopyRecords(p.t, srcStart, y);
+      stack.Copy(p.t, srcStart, y);
       p.IncStackPointer(y);
     end;
 
@@ -1200,7 +1200,7 @@ var
       dstStart := p.PopInteger;
       srcStart := p.PopInteger;
 
-      stack.CopyRecords(dstStart, srcStart, y);
+      stack.Copy(dstStart, srcStart, y);
     end;
 
     { Executes a 'ifloat' instruction on process 'p', with Y-value 'y'.
@@ -1334,7 +1334,7 @@ var
     begin
       rec := p.PopRecord;
       addr := p.PopInteger;
-      stack.StoreRecord(addr, rec);
+      stack.Store(addr, rec);
     end;
 
     { Deactivates the current process, and deactivates the main process if no
@@ -1612,7 +1612,7 @@ var
       begin
         { A reader is already waiting at 'dstAddr', so we need to copy the
           source record there. }
-        stack.StoreRecord(dstAddr, src);
+        stack.Store(dstAddr, src);
         Wakenon(chanAddr);
       end;
     end;
@@ -1632,7 +1632,7 @@ var
       begin
         { A reader is already waiting at 'dstAddr', so we need to copy the
           whole source block there. }
-        stack.CopyRecords(dstAddr, srcAddr, len);
+        stack.Copy(dstAddr, srcAddr, len);
         Wakenon(chanAddr);
       end;
     end;
@@ -1671,7 +1671,7 @@ var
         h4 := 0;
         while h4 < y do
         begin
-          stack.StoreRecord(h3 + h4, stack.LoadRecord(h2 + h4));
+          stack.Store(h3 + h4, stack.Load(h2 + h4));
           h4 := h4 + 1;
         end;
         wakenon(h1);
@@ -1834,7 +1834,7 @@ var
           if stack.LoadInteger(h3) < 0 then
           begin  (* other process has arrived *)
             for h4 := 1 to y do
-              stack.StoreRecord(h3 + h4 + (entrysize - 1), stack.LoadRecord(h1 + h4));
+              stack.Store(h3 + h4 + (entrysize - 1), stack.Load(h1 + h4));
             wakenon(h3);
           end;
           stack.StoreInteger(h3 + 1, pc);
@@ -1869,7 +1869,7 @@ var
         h3 := processes[h2].t + 3;  (* h3 points to first parameter *)
         for h4 := 0 to y - 1 do
 
-          stack.StoreRecord(h1 + h4 + entrysize, Stack.LoadRecord(h3 + h4));
+          stack.Store(h1 + h4 + entrysize, Stack.Load(h3 + h4));
 
       end;
     end;
