@@ -29,7 +29,7 @@ unit Pint.Ops;
 
 interface
 
-uses GConsts, Pint.Bitset, Pint.Consts, Pint.Errors;
+uses GConsts, Pint.Bitset, Pint.Consts, Pint.Errors, Pint.Process;
 
 type
   { Enumeratinon of arithmetic binary operators. }
@@ -98,6 +98,38 @@ type
     function EvalReal(l, r: real): boolean;
   end;
 
+{#
+ # Instruction runners
+ #}
+
+{ All of these runners pop their arguments from the stack in reverse order
+  (right first, then left), and then push the result of evaluating the operator
+  on those operands. }
+
+{ Runs a bitset arith operation 'ao'. }
+procedure RunBitsetArithOp(p: TProcess; const ao: TArithOp);
+
+{ Runs an integer arith operation 'ao'. }
+procedure RunIntArithOp(p: TProcess; const ao: TArithOp);
+
+{ Runs an real arith operation 'ao'. }
+procedure RunRealArithOp(p: TProcess; const ao: TArithOp);
+
+{ Runs a bitset relational operation 'ro'. }
+procedure RunBitsetRelOp(p: TProcess; const ro: TRelOp);
+
+{ Runs an integer relational operation 'ro'. }
+procedure RunIntRelOp(p: TProcess; const ro: TRelOp);
+
+{ Runs an real relational operation 'ro'. }
+procedure RunRealRelOp(p: TProcess; const ro: TRelOp);
+
+{ Runs a bitset logical operation 'lo'. }
+procedure RunBitsetLogicOp(p: TProcess; const lo: TLogicOp);
+
+{ Runs a boolean logical operation 'lo'. }
+procedure RunBoolLogicOp(p: TProcess; const lo: TLogicOp);
+
 implementation
 
 { Checks to see if an integer arithmetic operation will overflow or div-0. }
@@ -115,6 +147,8 @@ begin
     aoDiv, aoMod:
       if r = 0 then
         raise EPfcMathDivZero.Create('division by zero');
+    else
+      { No check needed };
   end;
 end;
 
@@ -133,6 +167,8 @@ begin
     aoDiv:
       if r < minreal then
         raise EPfcMathDivZero.Create('division by zero');
+    else
+      { No check needed };
   end;
 end;
 
@@ -240,6 +276,82 @@ begin
     else
       raise EPfcBadOp.Create('unsupported logic operand for booleans')
   end;
+end;
+
+{#
+ # Instruction runners
+ #}
+
+procedure RunBitsetArithOp(p: TProcess; const ao: TArithOp);
+var
+  l, r: TBitset;
+begin
+  r := p.PopBitset;
+  l := p.PopBitset;
+  p.PushBitset(ao.EvalBitset(l, r));
+end;
+
+procedure RunIntArithOp(p: TProcess; const ao: TArithOp);
+var
+  l, r: integer;
+begin
+  r := p.PopInteger;
+  l := p.PopInteger;
+  p.PushInteger(ao.EvalInt(l, r));
+end;
+
+procedure RunRealArithOp(p: TProcess; const ao: TArithOp);
+var
+  l, r: real;
+begin
+  r := p.PopReal;
+  l := p.PopReal;
+  p.PushReal(ao.EvalReal(l, r));
+end;
+
+procedure RunBitsetRelOp(p: TProcess; const ro: TRelOp);
+var
+  l, r: TBitset;
+begin
+  r := p.PopBitset;
+  l := p.PopBitset;
+  p.PushBoolean(ro.EvalBitset(l, r));
+end;
+
+procedure RunIntRelOp(p: TProcess; const ro: TRelOp);
+var
+  l, r: integer;
+begin
+  r := p.PopInteger;
+  l := p.PopInteger;
+  p.PushBoolean(ro.EvalInt(l, r));
+end;
+
+procedure RunRealRelOp(p: TProcess; const ro: TRelOp);
+var
+  l, r: real;
+begin
+  r := p.PopReal;
+  l := p.PopReal;
+  p.PushBoolean(ro.EvalReal(l, r));
+end;
+
+procedure RunBitsetLogicOp(p: TProcess; const lo: TLogicOp);
+var
+  l, r: TBitset;
+begin
+  r := p.PopBitset;
+  l := p.PopBitset;
+  p.PushBitset(lo.EvalBitset(l, r));
+end;
+
+procedure RunBoolLogicOp(p: TProcess; const lo: TLogicOp);
+var
+  l, r: boolean;
+begin
+  r := p.PopBoolean;
+  l := p.PopBoolean;
+  p.PushBoolean(lo.EvalBool(l, r));
 end;
 
 end.
