@@ -161,12 +161,8 @@ type
     function DisplayAddress(level: integer; addr: TStackAddress): TStackAddress;
   end;
 
-  { Pointer to a TProcess. }
+  { Pointer to a TProcess. (TODO(@MattWindsor91): replace with TProcess.) }
   PProcess = ^TProcess;
-
-
-  (* This type is declared within the GCP Run Time System *)
-  UnixTimeType = longint;
 
 implementation
 

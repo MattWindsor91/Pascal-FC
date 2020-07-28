@@ -24,6 +24,7 @@ program pint;
 {$mode objfpc}
 
 uses
+  DateUtils,
   SysUtils,
   StrUtils,
   PCodeOps,
@@ -68,8 +69,7 @@ var
   sysclock: 0..maxint;
 
 
-  (* I declare them to be UnixTimeType (lognints) *)
-  now, last: UnixTimeType;
+  last: TDateTime;
 
   procqueue: record
     proclist: array [1..pmax] of record
@@ -544,35 +544,21 @@ var
 
   (* real-time clock management module *)
 
-
-  { Get the real time. MicroSecond can be Null and is ignored then. }
-  //function  GetUnixTime (var MicroSecond: Integer): UnixTimeType;
-  //  asmname '_p_GetUnixTime';
-
-  function GetUnixTime(var MicroSecond: integer): UnixTimeType;
-  begin
-    MicroSecond := 1;
-  end;
-
-
   procedure initclock;
-  var
-    microsecs: integer;
   begin
-    microsecs := 0;
     sysclock := 0;
-    last := GetUnixTime(microsecs);
+    last := Now;
   end;
 
 
   procedure checkclock;
   var
-    microsecs: integer;
+    n: TDateTime;
   begin
-    now := GetUnixTime(microsecs);
-    if now <> last then
+    n := Now;
+    if 0 < SecondsBetween(n, last) then
     begin
-      last := now;
+      last := n;
       sysclock := sysclock + 1;
     end;
   end;
