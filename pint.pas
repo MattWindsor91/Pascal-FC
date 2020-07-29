@@ -554,20 +554,23 @@ var
   procedure checkclock;
   var
     n: TDateTime;
+    delta: integer;
   begin
     n := Now;
-    if 0 < SecondsBetween(n, last) then
+    delta := SecondsBetween(n, last);
+    if 0 < delta then
     begin
       last := n;
-      sysclock := sysclock + 1;
+      sysclock := sysclock + delta;
     end;
   end;
 
 
-  procedure doze(n: integer);
+  procedure Doze(const til: Int64);
   begin
-    while eventqueue.time > sysclock do
-      checkclock;
+    Sleep((til - sysclock) * 1000);
+    last := sysclock;
+    sysclock := til;
   end;
 
 
@@ -699,8 +702,8 @@ var
           if procwaiting then
             if eventqueue.First <> nil then
             begin
-              doze(eventqueue.time - sysclock);
-              alarmclock;
+              Doze(eventqueue.time);
+              Alarmclock;
             end
             else
             begin
