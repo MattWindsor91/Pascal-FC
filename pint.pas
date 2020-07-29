@@ -1494,9 +1494,7 @@ var
     { Executes a channel write with a block of size 'len'. }
     procedure ChanWriteBlock(p: TProcess; const pid: TProcessID; len: integer);
     var
-      srcAddr: TStackAddress;
-      chanAddr: TStackAddress;
-      dstAddr: TStackAddress;
+      srcAddr, chanAddr, dstAddr: TStackAddress;
     begin
       { In block mode, the items to write form a y-item block from an address
         currently at the top of the stack. }
@@ -1528,23 +1526,30 @@ var
 
       See the entry for 'pChanrd' in the 'PCodeOps' unit for details. }
     procedure RunChanrd(p: TProcess; y: TYArgument);
+    var
+      dstAddr, chanAddr: TStackAddress;
+      srcAddr: integer;
     begin
       { TODO(@MattWindsor91): refactor. }
-      h3 := p.PopInteger;
-      h1 := p.PopInteger;
-      h2 := stack.LoadInteger(h1);
-      if h2 < 0 then
+      dstAddr := p.PopInteger;
+      chanAddr := p.PopInteger;
+      srcAddr := stack.LoadInteger(chanAddr);
+      { Readers leave negative addresses, so if we see a negative number then
+        a reader got here previously. }
+      if srcAddr < 0 then
         raise EPfcChannel.Create('multiple readers on channel');
-      if h2 = 0 then
-      begin  (* first *)
-        stack.StoreInteger(h1, -h3);
-        ChanSuspend(p, curpr, h1);;
-      end  (* first *)
+      if srcAddr = 0 then
+      begin
+        { This reader got here before any writers, so we leave the address to
+          which the next writer should write in the channel record and wait. }
+        stack.StoreInteger(chanAddr, -dstAddr);
+        ChanSuspend(p, curpr, chanAddr);;
+      end
       else
-      begin  (* second *)
-        h2 := abs(h2);
-        stack.Copy(h3, h2, y);
-        wakenon(h1);
+      begin
+        { A writer wrote something to 'srcAddr', so we just need to read it. }
+        stack.Copy(dstAddr, srcAddr, y);
+        Wakenon(chanAddr);
       end;
     end;
 
