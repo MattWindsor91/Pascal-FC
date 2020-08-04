@@ -35,29 +35,30 @@ uses
   GConsts,
   Pcode.Stfun,
   Pint.Bitset,
+  Pint.Clock,
   Pint.Errors,
   Pint.Process,
   Pint.Stack;
 
-{ Tries to interpret an integer 'x' as a char.
+{ Tries to interpret an integer 'X' as a char.
 
   This is exposed as it is used elsewhere in 'pint'; this may change eventually. }
-function AsChar(x: integer): char;
+function AsChar(const X: integer): char;
 
-{ Runs the standard function with ID 'f' on the stack of process 'p'.
+{ Runs the standard function with ID 'Fun' on the stack of process 'P'.
 
   This procedure also, currently, takes in the current value of the system
-  clock, for use if 'f' is 'sfClock'.  This may change in future.
+  clock, for use if 'Fun' is 'sfClock'.  This may change in future.
 }
-procedure RunStandardFunction(p: TProcess; f: TStfunId; clock: integer);
+procedure RunStandardFunction(P: TProcess; const Fun: TStfunId; const Clk: TSysClock);
 
 implementation
 
-function AsChar(x: integer): char;
+function AsChar(const X: integer): char;
 begin
-  if not (x in [charl..charh]) then
-    raise EPfcCharBound.CreateFmt('expected char, but got out-of-bounds %D', [x]);
-  Result := Chr(x);
+  if not (X in [charl..charh]) then
+    raise EPfcCharBound.CreateFmt('expected char, but got out-of-bounds %D', [X]);
+  Result := Chr(X);
 end;
 
 {#
@@ -277,35 +278,35 @@ end;
  # Main table
  #}
 
-procedure RunStandardFunction(p: TProcess; f: TStfunId; clock: integer);
+procedure RunStandardFunction(P: TProcess; const Fun: TStfunId; const Clk: TSysClock);
 begin
-  case f of
-    sfAbs: RunAbsI(p);
-    sfAbsR: RunAbsR(p);
-    sfSqr: RunSqrI(p);
-    sfSqrR: RunSqrR(p);
-    sfOdd: RunOdd(p);
-    sfChr: RunChr(p);
+  case Fun of
+    sfAbs: RunAbsI(P);
+    sfAbsR: RunAbsR(P);
+    sfSqr: RunSqrI(P);
+    sfSqrR: RunSqrR(P);
+    sfOdd: RunOdd(P);
+    sfChr: RunChr(P);
     sfOrd: ; { Nop, since we store characters as integers. }
-    sfSucc: p.IncInteger;
-    sfPred: p.DecInteger;
-    sfRound: RunRound(p);
-    sfTrunc: RunTrunc(p);
-    sfSin: RunSin(p);
-    sfCos: RunCos(p);
-    sfExp: RunExp(p);
-    sfLn: RunLn(p);
-    sfSqrt: RunSqrt(p);
-    sfArctan: RunArctan(p);
-    sfEof: p.PushBoolean(EOF(input));
-    sfEoln: p.PushBoolean(eoln(input));
-    sfRandom: RunRandom(p);
-    sfEmpty: RunEmpty(p);
-    sfBits: RunBits(p);
-    sfInt: RunInt(p);
-    sfClock: p.PushInteger(clock);
+    sfSucc: P.IncInteger;
+    sfPred: P.DecInteger;
+    sfRound: RunRound(P);
+    sfTrunc: RunTrunc(P);
+    sfSin: RunSin(P);
+    sfCos: RunCos(P);
+    sfExp: RunExp(P);
+    sfLn: RunLn(P);
+    sfSqrt: RunSqrt(P);
+    sfArctan: RunArctan(P);
+    sfEof: p.PushBoolean(Eof(Input));
+    sfEoln: p.PushBoolean(Eoln(Input));
+    sfRandom: RunRandom(P);
+    sfEmpty: RunEmpty(P);
+    sfBits: RunBits(P);
+    sfInt: RunInt(P);
+    sfClock: P.PushInteger(Clk.Clock);
     else
-      raise EPfcBadStfun.CreateFmt('Unknown stfun ID: %D', [Ord(f)]);
+      raise EPfcBadStfun.CreateFmt('Unknown stfun ID: %D', [Ord(Fun)]);
   end;
 end;
 

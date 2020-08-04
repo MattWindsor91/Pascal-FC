@@ -5,6 +5,7 @@ cunits := cconsts.pas
 # Interpreter units
 PINTUNITS := \
   pint.bitset.pas \
+  pint.clock.pas \
   pint.consts.pas \
   pint.errors.pas \
   pint.flow.pas \

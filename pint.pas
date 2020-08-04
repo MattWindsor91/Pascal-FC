@@ -35,6 +35,7 @@ uses
   GTypes,
   GTables,
   Pint.Bitset,
+  Pint.Clock,
   Pint.Consts,
   Pint.Errors,
   Pint.Flow,
@@ -66,7 +67,7 @@ var
   stepcount: integer;
   concflag: boolean;
   statcounter: 0..maxint;
-  sysclock: 0..maxint;
+  sysclock: TSysClock;
 
 
   last: TDateTime;
@@ -542,38 +543,6 @@ var
 
 
 
-  (* real-time clock management module *)
-
-  procedure initclock;
-  begin
-    sysclock := 0;
-    last := Now;
-  end;
-
-
-  procedure checkclock;
-  var
-    n: TDateTime;
-    delta: integer;
-  begin
-    n := Now;
-    delta := SecondsBetween(n, last);
-    if 0 < delta then
-    begin
-      last := n;
-      sysclock := sysclock + delta;
-    end;
-  end;
-
-
-  procedure Doze(const til: Int64);
-  begin
-    Sleep((til - sysclock) * 1000);
-    last := sysclock;
-    sysclock := til;
-  end;
-
-
   procedure runprog;
   (* place pnum in a dynamic queue node *)
     procedure getqueuenode(pnum: TProcessID; var ptr: qpointer);
@@ -702,7 +671,7 @@ var
           if procwaiting then
             if eventqueue.First <> nil then
             begin
-              Doze(eventqueue.time);
+              Sysclock.Doze(eventqueue.time);
               Alarmclock;
             end
             else
@@ -988,7 +957,7 @@ var
       { TODO(@MattWindsor91): move to Stfun unit, once sysclock is referenced
         by processes }
       { See unit 'Pint.Stfun'. }
-      RunStandardFunction(p, TStfunId(y), sysclock);
+      RunStandardFunction(p, TStfunId(y), Sysclock);
     end;
 
     procedure MarkStack(p: TProcess; vsize: integer; tabAddr: TStackAddress);
@@ -1325,9 +1294,9 @@ var
             if stack.LoadInteger(h4) = 0 then
             begin  (* timeout alternative *)
               if stack.LoadInteger(h4 + 3) < 0 then
-                stack.StoreInteger(h4 + 3, sysclock)
+                stack.StoreInteger(h4 + 3, Sysclock.Clock)
               else
-                stack.StoreInteger(h4 + 3, stack.LoadInteger(h4 + 3) + sysclock);
+                stack.StoreInteger(h4 + 3, stack.LoadInteger(h4 + 3) + Sysclock.Clock);
               if (wakeup = 0) or (stack.LoadInteger(h4 + 3) < wakeup) then
               begin
                 wakeup := stack.LoadInteger(h4 + 3);
@@ -1644,7 +1613,7 @@ var
       if time <= 0 then
         stepcount := 0
       else
-        joineventq(p, time + sysclock);
+        joineventq(p, time + SysClock.Clock);
     end;
 
     { Executes a 'procv' instruction on process 'p'.
@@ -2034,10 +2003,10 @@ var
 
       RunInstruction(processes[curpr], ir);
 
-      checkclock;
+      SysClock.Check;
 
       if eventqueue.First <> nil then
-        if eventqueue.time <= sysclock then
+        if eventqueue.time <= SysClock.Clock then
           alarmclock;
 
       statcounter := statcounter + 1;
@@ -2090,7 +2059,7 @@ var
       ps := run;
       concflag := False;
       statcounter := 0;
-      initclock;
+      SysClock := TSysClock.Create;
 
       with eventqueue do
       begin

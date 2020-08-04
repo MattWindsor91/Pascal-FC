@@ -26,7 +26,7 @@
         <Mode0 Name="default"/>
       </Modes>
     </RunParams>
-    <Units Count="19">
+    <Units Count="20">
       <Unit0>
         <Filename Value="pint.pas"/>
         <IsPartOfProject Value="True"/>
@@ -119,6 +119,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Pint.Index"/>
       </Unit18>
+      <Unit19>
+        <Filename Value="pint.clock.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Pint.Clock"/>
+      </Unit19>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
