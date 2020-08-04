@@ -1,23 +1,21 @@
-{
-Copyright 1990      Alan Burns and Geoff Davies
-          2018-2020 Matt Windsor
+{ Pascal-FC: a teaching language for concurrency
+  Copyright (C) 1990 Alan Burns and Geoff Davies
+                2018 Daniel Bailey
+                2018, 2020 Matt Windsor
 
-This file is part of Pascal-FC.
+  This program is free software; you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free Software
+  Foundation; either version 2 of the License, or (at your option) any later
+  version.
 
-Pascal-FC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
+  This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+  details.
 
-Pascal-FC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Pascal-FC; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-}
+  You should have received a copy of the GNU General Public License along with
+  this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+  Street, Fifth Floor, Boston, MA 02110-1301 USA. }
 
 { P-Code: Opcodes used in Pascal-FC }
 unit PCodeOps;
@@ -38,7 +36,7 @@ const
   pLdind = 2;
 
   { 003 Update display
-    
+
     This appears to be issued when returning from a subroutine at a lower level
     than the calling subroutine, and brings the display back in line with the
     base pointers stored in the stack.
@@ -274,7 +272,7 @@ const
   pStore = 38;
 
   {#
-   # 039 - 044:  Relational operators (Real) 
+   # 039 - 044:  Relational operators (Real)
    #}
 
   { 039 Equal (Real) }
@@ -291,7 +289,7 @@ const
   pRelgeR = 44;
 
   {#
-   # 045 - 050:  Relational operators (Integer) 
+   # 045 - 050:  Relational operators (Integer)
    #}
 
   { 045 Equal (Integer) }
