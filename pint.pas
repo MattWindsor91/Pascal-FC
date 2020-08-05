@@ -68,9 +68,6 @@ var
   statcounter: 0..maxint;
   sysclock: TSysClock;
 
-
-  last: TDateTime;
-
   procqueue: record
     proclist: array [1..pmax] of record
       proc: TProcessID;
@@ -2117,7 +2114,7 @@ begin  (* Main *)
 
   ReadPCode(objrec, ParamStr(1));
 
-  reader := TNumReader.Create;
+  reader := TNumReader.Create(TBufferedReader.Create(TStdinCharReader.Create));
 
   repeat
 

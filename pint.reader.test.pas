@@ -38,85 +38,41 @@ type
 
 implementation
 
-type
-  TStringCharReader = class(TInterfacedObject, ICharReader)
-  private
-    fString: ansistring;
-    fPos: integer;
-    fLen: cardinal;
-  public
-    constructor Create(s: ansistring);
-
-    procedure NextCh;
-    function GetCh: char;
-    function HasNextCh: boolean;
-
-    function RemainingString: string;
-  end;
-
-{
-  TStringCharReader
-}
-
-constructor TStringCharReader.Create(s: ansistring);
-begin
-  fString := s;
-  fPos := 0;
-  fLen := Length(s);
-end;
-
-procedure TStringCharReader.NextCh;
-begin
-  if fPos <= fLen then
-    Inc(fPos);
-end;
-
-function TStringCharReader.GetCh: char;
-begin
-  if fPos = 0 then
-    Result := #0
-  else
-    Result := fString[fPos];
-end;
-
-function TStringCharReader.HasNextCh: boolean;
-begin
-  Result := fPos <= fLen;
-end;
-
-function TStringCharReader.RemainingString: string;
-begin
-  Result := RightStr(fString, fLen - fPos);
-end;
-
 procedure TNumReaderTestCase.TestReadUnsignedDecimalIntZero;
 var
-  c: TStringCharReader;
-  r: TNumReader;
+  C: TStringCharReader;
+  B: TBufferedReader;
+  R: TNumReader;
 begin
   { TODO(@MattWindsor91): PFC's handling of this sort of case is somewhat
     strange, and needs further investigation. }
-  c := TStringCharReader.Create('0');
-  r := TNumReader.Create(c);
-  AssertEquals('incorrect resulting number', 0, r.ReadInt);
+  C := TStringCharReader.Create('0');
+  B := TBufferedReader.Create(C);
+  R := TNumReader.Create(B);
+  AssertEquals('incorrect resulting number', 0, R.ReadInt);
   { We should have ended the number due to EOF, without eating another char. }
-  AssertEquals('incorrect last char', #0, c.GetCh);
-  AssertEquals('incorrect remainder string', '', c.RemainingString);
-  FreeAndNil(r);
+  AssertEquals('incorrect last char', #0, C.LastChar);
+  AssertEquals('incorrect remainder string', '', C.RemainingString);
+  AssertFalse('should have exhausted characters', B.HasNext);
+  FreeAndNil(R);
+  FreeAndNil(B);
 end;
 
 procedure TNumReaderTestCase.TestReadUnsignedDecimalIntZeroNl;
 var
-  c: TStringCharReader;
-  r: TNumReader;
+  C: TStringCharReader;
+  B: TBufferedReader;
+  R: TNumReader;
 begin
-  c := TStringCharReader.Create('0' + #10);
-  r := TNumReader.Create(c);
-  AssertEquals('incorrect resulting number', 0, r.ReadInt);
+  C := TStringCharReader.Create('0' + #10);
+  B := TBufferedReader.Create(C);
+  R := TNumReader.Create(B);
+  AssertEquals('incorrect resulting number', 0, R.ReadInt);
   { We should have consumed the linefeed while ending the number. }
-  AssertEquals('incorrect last char', #10, c.GetCh);
-  AssertEquals('incorrect remainder string', '', c.RemainingString);
-  FreeAndNil(r);
+  AssertEquals('incorrect last char', #10, C.LastChar);
+  AssertEquals('incorrect remainder string', '', C.RemainingString);
+  FreeAndNil(R);
+  FreeAndNil(B);
 end;
 
 initialization

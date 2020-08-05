@@ -29,6 +29,7 @@ unit Pint.Reader;
 interface
 
 uses
+  FGL,
   Classes,
   GConsts,
   IError,
@@ -39,19 +40,22 @@ type
   { Type of sign coefficients. }
   TSign = -1..1;
 
+  { Type of character lists used to back TBufferedReader. }
+  TCharList = specialize TFPGList<char>;
+
   { ICharReader is an interface for objects that read characters from input.
 
-    It exists so that we can hook TReader up to, for example, strings for
+    It exists so that we can hook TNumReader up to, for example, strings for
     testing. }
   ICharReader = interface
     { Reads in the next character. }
-    procedure NextCh;
+    procedure Next;
 
     { Gets the last character read. }
-    function GetCh: char;
+    function LastChar: char;
 
     { Returns true if there are characters left. }
-    function HasNextCh: boolean;
+    function HasNext: boolean;
   end;
 
   { TStdinCharReader is an ICharReader that reads from input. }
@@ -61,22 +65,61 @@ type
   public
     constructor Create;
 
-    procedure NextCh;
-    function GetCh: char;
-    function HasNextCh: boolean;
+    procedure Next;
+    function LastChar: char;
+    function HasNext: boolean;
+  end;
+
+  { TStringCharReader is an ICharReader that reads from a string. }
+  TStringCharReader = class(TInterfacedObject, ICharReader)
+  private
+    FString: string;
+    FPos: integer;
+    FLen: cardinal;
+  public
+    constructor Create(S: string);
+
+    procedure Next;
+    function LastChar: char;
+    function HasNext: boolean;
+
+    { Gets the remaining string. }
+    function RemainingString: string;
+  end;
+
+  { TBufferedReader adds backtracking buffering to an ICharReader. }
+  TBufferedReader = class(TInterfacedObject, ICharReader)
+  private
+    FCh: char; // The last character read.
+    FCReader: ICharReader; // The reader backing this buffered reader.
+    FBuffer: TCharList; // The buffer used for returned characters.
+
+  public
+    { Constructs a TBufferedReader with the given backing ICharReader. }
+    constructor Create(Ch: ICharReader);
+
+    procedure Next;
+    function LastChar: char;
+    function HasNext: boolean;
+
+    { Pushes a character back onto the reader. }
+    procedure Back(C: char);
+
+    { Reads all characters until a newline is consumed. }
+    procedure Line;
   end;
 
   { TNumReader reads integers and reals from an input source. }
   TNumReader = class(TObject)
   private
-    FChar: ICharReader;
+    FReader: TBufferedReader; // The reader backing this number reader.
 
     { Skips to the next non-whitespace character. }
     procedure SkipBlanks;
 
-      { If the current character is a sign (+/-), consume it.
+    { If the current character is a sign (+/-), consume it.
 
-        Returns the sign as a coefficient: 1 if missing or '+'; -1 if '-'. }
+      Returns the sign as a coefficient: 1 if missing or '+'; -1 if '-'. }
     function ReadSign: TSign;
 
     { Reads an unsigned integer. }
@@ -89,11 +132,8 @@ type
     procedure ReadScale(var e: integer);
 
   public
-    { Constructs a TNumReader with a standard input-reading ICharReader. }
-    constructor Create;
-
-    { Constructs a TNumReader with a given ICharReader. }
-    constructor Create(cr: ICharReader);
+    { Constructs a TNumReader on top of a TBufferedReader. }
+    constructor Create(Reader: TBufferedReader);
 
     { Reads an integer. }
     function ReadInt: integer;
@@ -104,45 +144,133 @@ type
 
 implementation
 
-  { Should 'c' be skipped if reading a number?
+//
+// Top
+//
 
-    We skip 'c' blank if it is null (#0), or it's an
-    (ASCII) whitespace character. }
-function ShouldSkip(const c: char): boolean;
+{ Should 'C' be skipped if reading a number?
+
+  We skip 'C' if it is null (#0), or it's an (ASCII) whitespace character. }
+function ShouldSkip(const C: char): boolean;
 begin
-  Result := c in [#0, #9, #10, ' '];
+  Result := C in [#0, #9, #10, ' '];
 end;
+
+//
+// TStdinCharReader
+//
 
 constructor TStdinCharReader.Create;
 begin
   FCh := #0;
 end;
 
-procedure TStdinCharReader.NextCh;
+procedure TStdinCharReader.Next;
 begin
   if EOF then
     raise EPfcEof.Create('reading past end of file');
   Read(FCh);
 end;
 
-function TStdinCharReader.GetCh: char;
+function TStdinCharReader.LastChar: char;
 begin
   Result := FCh;
 end;
 
-function TStdinCharReader.HasNextCh: boolean;
+function TStdinCharReader.HasNext: boolean;
 begin
   Result := not EOF;
 end;
 
-constructor TNumReader.Create;
+
+//
+// TStringCharReader
+//
+
+constructor TStringCharReader.Create(S: string);
 begin
-  FChar := TStdinCharReader.Create;
+  FString := S;
+  FPos := 0;
+  FLen := Length(S);
 end;
 
-constructor TNumReader.Create(cr: ICharReader);
+procedure TStringCharReader.Next;
 begin
-  FChar := cr;
+  if FPos <= FLen then
+    Inc(FPos);
+end;
+
+function TStringCharReader.LastChar: char;
+begin
+  if FPos = 0 then
+    Result := #0
+  else
+    Result := FString[FPos];
+end;
+
+function TStringCharReader.HasNext: boolean;
+begin
+  Result := FPos <= FLen;
+end;
+
+function TStringCharReader.RemainingString: string;
+begin
+  Result := RightStr(FString, FLen - FPos);
+end;
+
+//
+// TBufferedReader
+//
+
+constructor TBufferedReader.Create(Ch: ICharReader);
+begin
+  FCh := #0;
+  FCReader := Ch;
+  FBuffer := TCharList.Create;
+end;
+
+procedure TBufferedReader.Next;
+begin
+  if FBuffer.Count <> 0 then
+  begin
+    FCh := FBuffer.First;
+    FBuffer.Delete(0);
+  end
+  else
+  begin
+    FCReader.Next;
+    FCh := FCReader.LastChar;
+  end;
+end;
+
+function TBufferedReader.LastChar: char;
+begin
+  Result := FCh;
+end;
+
+function TBufferedReader.HasNext: boolean;
+begin
+  Result := (FBuffer.Count <> 0) or FCReader.HasNext;
+end;
+
+procedure TBufferedReader.Back(C: char);
+begin
+  FBuffer.Insert(FBuffer.Count - 1, C);
+end;
+
+procedure TBufferedReader.Line;
+begin
+  while FCh <> #10 do
+    Next;
+end;
+
+//
+// TNumReader
+//
+
+constructor TNumReader.Create(Reader: TBufferedReader);
+begin
+  FReader := Reader;
 end;
 
 function TNumReader.ReadSign: TSign;
@@ -151,11 +279,11 @@ var
 begin
   sign := 1;
 
-  if FChar.GetCh = '+' then
-    FChar.NextCh
-  else if FChar.GetCh = '-' then
+  if FReader.LastChar = '+' then
+    FReader.Next
+  else if FReader.LastChar = '-' then
   begin
-    FChar.NextCh;
+    FReader.Next;
     sign := -1;
   end;
 
@@ -164,8 +292,8 @@ end;
 
 procedure TNumReader.SkipBlanks;
 begin
-  while FChar.HasNextCh and ShouldSkip(FChar.GetCh) do
-    FChar.NextCh;
+  while FReader.HasNext and ShouldSkip(FReader.LastChar) do
+    FReader.Next;
 end;
 
 procedure TNumReader.ReadUnsignedInt(var inum: integer);
@@ -180,15 +308,15 @@ begin
         raise EPfcInput.Create('error in unsigned integer input: number too big');
 
       inum := inum * 10;
-      digit := Ord(FChar.GetCh) - Ord('0');
+      digit := Ord(FReader.LastChar) - Ord('0');
 
       if digit > (intmax - inum) then
         raise EPfcInput.Create('error in unsigned integer input: number too big');
 
       inum := inum + digit;
     end;
-    FChar.NextCh;
-  until not (FChar.GetCh in ['0'..'9']);
+    FReader.Next;
+  until not (FReader.LastChar in ['0'..'9']);
 end;
 
 procedure TNumReader.ReadBasedInt(var inum: integer);
@@ -197,7 +325,7 @@ var
   negative: boolean;
 begin
   { TODO(@MattWindsor91): refactor to remove 'var' }
-  FChar.NextCh;
+  FReader.Next;
   if not (inum in [2, 8, 16]) then
     raise EPfcInput.Create('error in based integer input: invalid base');
 
@@ -218,14 +346,14 @@ begin
         inum := inum mod (intmax div base + 1);
       end;
       inum := inum * base;
-      if FChar.GetCh in ['0'..'9'] then
-        digit := Ord(FChar.GetCh) - Ord('0')
+      if FReader.LastChar in ['0'..'9'] then
+        digit := Ord(FReader.LastChar) - Ord('0')
       else
-      if FChar.GetCh in ['A'..'Z'] then
-        digit := Ord(FChar.GetCh) - Ord('A') + 10
+      if FReader.LastChar in ['A'..'Z'] then
+        digit := Ord(FReader.LastChar) - Ord('A') + 10
       else
-      if FChar.GetCh in ['a'..'z'] then
-        digit := Ord(FChar.GetCh) - Ord('a') + 10
+      if FReader.LastChar in ['a'..'z'] then
+        digit := Ord(FReader.LastChar) - Ord('a') + 10
       else
         raise EPfcInput.Create('error in based integer input: invalid digit');
       if digit >= base then
@@ -233,15 +361,15 @@ begin
           'error in based integer input: digit not allowed in base');
       inum := inum + digit;
     end;
-    FChar.NextCh
-  until not (FChar.GetCh in ['0'..'9', 'A'..'Z', 'a'..'z']);
+    FReader.Next
+  until not (FReader.LastChar in ['0'..'9', 'A'..'Z', 'a'..'z']);
   if negative then
   begin
     if inum = 0 then
       raise EPfcInput.Create('error in based integer input: read negative zero');
     inum := (-maxint + inum) - 1;
   end;
-end;  (* readbasedint *)
+end;
 
 function TNumReader.ReadInt: integer;
 var
@@ -251,16 +379,16 @@ begin
   sign := ReadSign;
 
   Result := 0;
-  if FChar.HasNextCh then
+  if FReader.HasNext then
   begin
-    if not (FChar.GetCh in ['0'..'9']) then
+    if not (FReader.LastChar in ['0'..'9']) then
       raise EPfcInput.CreateFmt(
         'error reading integer: unexpected character ''%S'' (#%D)',
-        [FChar.GetCh, Ord(FChar.GetCh)]);
+        [FReader.LastChar, Ord(FReader.LastChar)]);
 
     ReadUnsignedInt(Result);
     Result := Result * sign;
-    if FChar.GetCh = '#' then
+    if FReader.LastChar = '#' then
       ReadBasedInt(Result);
   end;
 end;
@@ -272,10 +400,10 @@ var
 begin
   { TODO(@MattWindsor91): refactor to remove 'var' }
 
-  FChar.NextCh;
+  FReader.Next;
   sign := ReadSign;
 
-  if not (FChar.GetCh in ['0'..'9']) then
+  if not (FReader.LastChar in ['0'..'9']) then
     raise EPfcInput.Create('error in numeric input');
 
   s := 0;
@@ -285,15 +413,15 @@ begin
       if s > (intmax div 10) then
         raise EPfcInput.Create('error in numeric input');
       s := 10 * s;
-      digit := Ord(FChar.GetCh) - Ord('0');
+      digit := Ord(FReader.LastChar) - Ord('0');
 
       if digit > (intmax - s) then
         raise EPfcInput.Create('error in numeric input');
 
       s := s + digit;
     end;
-    FChar.NextCh
-  until not (FChar.GetCh in ['0'..'9']);
+    FReader.Next
+  until not (FReader.LastChar in ['0'..'9']);
 
   e := s * sign + e;
 end;
@@ -343,21 +471,21 @@ begin
   SkipBlanks;
   sign := ReadSign;
 
-  if FChar.HasNextCh then
+  if FReader.HasNext then
   begin
-    if not (FChar.GetCh in ['0'..'9']) then
+    if not (FReader.LastChar in ['0'..'9']) then
       raise EPfcInput.CreateFmt(
         'error reading real: unexpected character ''%S'' (#%D)',
-        [FChar.GetCh, Ord(FChar.GetCh)]);
+        [FReader.LastChar, Ord(FReader.LastChar)]);
 
-    while FChar.GetCh = '0' do
-      FChar.NextCh;
+    while FReader.LastChar = '0' do
+      FReader.Next;
 
     Result := 0.0;
 
     k := 0;
     e := 0;
-    while FChar.GetCh in ['0'..'9'] do
+    while FReader.LastChar in ['0'..'9'] do
     begin
       if Result > (realmax / 10.0) then
         e := e + 1
@@ -365,42 +493,42 @@ begin
       begin
         k := k + 1;
         Result := Result * 10.0;
-        digit := Ord(FChar.GetCh) - Ord('0');
+        digit := Ord(FReader.LastChar) - Ord('0');
         if digit <= (realmax - Result) then
           Result := Result + digit;
       end;
-      FChar.NextCh;
+      FReader.Next;
     end;
-    if FChar.GetCh = '.' then
+    if FReader.LastChar = '.' then
     begin  (* fractional part *)
-      FChar.NextCh;
+      FReader.Next;
       repeat
-        if FChar.GetCh in ['0'..'9'] then
+        if FReader.LastChar in ['0'..'9'] then
         begin
           if Result <= (realmax / 10.0) then
           begin
             e := e - 1;
             Result := 10.0 * Result;
-            digit := Ord(FChar.GetCh) - Ord('0');
+            digit := Ord(FReader.LastChar) - Ord('0');
             if digit <= (realmax - Result) then
               Result := Result + digit;
           end;
-          FChar.NextCh;
+          FReader.Next;
         end
         else
           raise EPfcInput.Create('error in numeric input');
-      until not (FChar.GetCh in ['0'..'9']);
-      if FChar.GetCh in ['e', 'E'] then
-        readscale(e);
+      until not (FReader.LastChar in ['0'..'9']);
+      if FReader.LastChar in ['e', 'E'] then
+        ReadScale(e);
       if e <> 0 then
-        adjustscale(Result, k, e);
+        AdjustScale(Result, k, e);
     end  (* fractional part *)
     else
-    if FChar.GetCh in ['e', 'E'] then
+    if FReader.LastChar in ['e', 'E'] then
     begin
-      readscale(e);
+      ReadScale(e);
       if e <> 0 then
-        adjustscale(Result, k, e);
+        AdjustScale(Result, k, e);
     end
     else
     if e <> 0 then

@@ -46,7 +46,7 @@ procedure TStackTestCase.TestStoreInteger;
 var
   readback: integer;
 begin
-  SetLength(s, 10);
+  s := TStackZone.Create;
 
   s.StoreInteger(1, 42);
   readback := s.LoadInteger(1);
@@ -68,7 +68,7 @@ var
   i: integer;
   readback: integer;
 begin
-  SetLength(s, 10);
+  s := TStackZone.Create;
   s.StoreInteger(1, 0);
 
   s.IncInteger(1);
@@ -90,7 +90,7 @@ procedure TStackTestCase.TestPushIntegerPopInteger;
 var
   seg: TStackSegment;
 begin
-  SetLength(s, 10);
+  s := TStackZone.Create;
 
   seg := TStackSegment.Create(s, 1, 100);
 
@@ -107,7 +107,7 @@ procedure TStackTestCase.TestPopEmptyInteger;
 var
   seg: TStackSegment;
 begin
-  SetLength(s, 10);
+  s := TStackZone.Create;
 
   seg := TStackSegment.Create(s, 1, 100);
 
@@ -128,7 +128,7 @@ procedure TStackTestCase.TestPushRealPopInteger;
 var
   seg: TStackSegment;
 begin
-  SetLength(s, 10);
+  s := TStackZone.Create;
 
   seg := TStackSegment.Create(s, 1, 100);
   seg.PushReal(2.5);

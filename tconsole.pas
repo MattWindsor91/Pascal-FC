@@ -27,6 +27,7 @@ uses
   ConsoleTestRunner,
   Pint.Bitset.Test,
   Pint.Ops.Test,
+  Pint.Reader.Test,
   Pint.Stack.Test,
   TStrUtil;
 
