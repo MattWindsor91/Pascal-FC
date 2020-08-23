@@ -81,8 +81,11 @@ var
     time: integer
   end;
 
+  { The TReader used to read characters and lines. }
+  Reader: TReader;
+
   { The TNumReader used to read integers and reals. }
-  reader: TNumReader;
+  NumReader: TNumReader;
 
   procedure DumpExceptionCallStack(E: Exception);
   var
@@ -1111,16 +1114,13 @@ var
 
       case y of
         ptyInt:
-          stack.StoreInteger(dest, reader.ReadInt);
+          stack.StoreInteger(dest, NumReader.ReadInt);
         ptyChar:
         begin
-          if EOF then
-            raise EPfcEOF.Create('reading past end of file');
-          Read(ch);
-          stack.StoreInteger(dest, Ord(ch));
+          stack.StoreInteger(dest, Ord(Reader.ReadChar));
         end;
         ptyReal:
-          stack.StoreReal(dest, reader.ReadReal);
+          stack.StoreReal(dest, NumReader.ReadReal);
       end;
     end;
 
@@ -1244,9 +1244,7 @@ var
       See the entry for 'pRdlin' in the 'PCodeOps' unit for details. }
     procedure RunRdlin;
     begin
-      if EOF(input) then
-        raise EPfcEOF.Create('reading past end of file');
-      readln;
+      Reader.SkipLine;
     end;
 
     { Executes a 'selec0' instruction on process 'p', with X-value 'x' and
@@ -2114,7 +2112,8 @@ begin  (* Main *)
 
   ReadPCode(objrec, ParamStr(1));
 
-  reader := TNumReader.Create(TBufferedReader.Create(TStdinCharReader.Create));
+  Reader := TReader.Create(TStdinCharReader.Create);
+  NumReader := TNumReader.Create(Reader);
 
   repeat
 

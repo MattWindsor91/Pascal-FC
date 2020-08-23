@@ -29,23 +29,24 @@ unit Pint.Reader;
 interface
 
 uses
-  FGL,
   Classes,
   GConsts,
   IError,
-  ITypes,
   SysUtils;
 
 type
-  { Type of sign coefficients. }
-  TSign = -1..1;
+  { Type of bases. }
+  TBase = (bBin = 2, bOct = 8, bDec = 10, bHex=16);
 
-  { Type of character lists used to back TBufferedReader. }
-  TCharList = specialize TFPGList<char>;
+  { Type of signs. }
+  TSign = (sNegative, sPositive);
+
+  { Type of hexadecimal digits. }
+  TDigit = $0..$F;
 
   { ICharReader is an interface for objects that read characters from input.
 
-    It exists so that we can hook TNumReader up to, for example, strings for
+    It exists so that we can hook TReader up to, for example, strings for
     testing. }
   ICharReader = interface
     { Reads in the next character. }
@@ -77,22 +78,26 @@ type
     FPos: integer;
     FLen: cardinal;
   public
+    { Constructs a TStringCharReader with the given initial string. }
     constructor Create(S: string);
 
     procedure Next;
     function LastChar: char;
     function HasNext: boolean;
 
+    { Replaces the string with S, and resets the position. }
+    procedure ResetString(S: string);
+
     { Gets the remaining string. }
     function RemainingString: string;
   end;
 
-  { TBufferedReader adds backtracking buffering to an ICharReader. }
-  TBufferedReader = class(TInterfacedObject, ICharReader)
+  { TReader performs various reading services on top of an ICharReader. }
+  TReader = class(TInterfacedObject, ICharReader)
   private
     FCh: char; // The last character read.
     FCReader: ICharReader; // The reader backing this buffered reader.
-    FBuffer: TCharList; // The buffer used for returned characters.
+    FPushedBack: boolean; // Whether the last character has been pushed back.
 
   public
     { Constructs a TBufferedReader with the given backing ICharReader. }
@@ -102,38 +107,115 @@ type
     function LastChar: char;
     function HasNext: boolean;
 
-    { Pushes a character back onto the reader. }
-    procedure Back(C: char);
+    { Pushes the last character back onto the reader. }
+    procedure PushBack;
+
+    { Returns true if the last character is a valid digit in the given base. }
+    function LastCharIsDigit(Base: TBase): boolean;
+
+    { Tries to interpret the last character as a digit in the given base. }
+    function Digit(Base: TBase): TDigit;
+
+    { Skips to the next non-whitespace character.
+      Pushes that character back onto the reader, so that the next call to
+      Next will read it. }
+    procedure SkipBlanks;
 
     { Reads all characters until a newline is consumed. }
-    procedure Line;
+    procedure SkipLine;
+
+    { Convenience shorthand for Next followed by LastChar. }
+    function ReadChar: char;
   end;
 
   { TNumReader reads integers and reals from an input source. }
   TNumReader = class(TObject)
   private
-    FReader: TBufferedReader; // The reader backing this number reader.
+    FReader: TReader; // The low-level reader backing this number reader.
+    FSign: TSign; // The current sign.
+    FReal: real; // The real being produced, if any.
 
-    { Skips to the next non-whitespace character. }
-    procedure SkipBlanks;
+    FBase: TBase; // The current base.
+    FInSignBit: boolean; // Whether an integer literal has entered the sign bit.
+    FInt: integer; // The integer being produced, if any.
 
-    { If the current character is a sign (+/-), consume it.
+    //
+    // Handling signs
+    //
 
-      Returns the sign as a coefficient: 1 if missing or '+'; -1 if '-'. }
-    function ReadSign: TSign;
+    { If the next character is a sign (+/-), consume it.
 
-    { Reads an unsigned integer. }
-    procedure ReadUnsignedInt(var inum: integer);
+      Sets the reader's sign to pNegative if '-' was consumed, and pPositive
+      otherwise. }
+    procedure ReadSign;
 
-    { Reads a based integer. }
-    procedure ReadBasedInt(var inum: integer);
+    { Applies the last-read sign to FReal. }
+    procedure ApplySignReal;
+
+    //
+    // Reading digits
+    //
+
+    { Checks to see if we can shift 'over' the maximum integer into the sign
+      bit, effectively turning the literal into a twos-complement negative.
+      
+      Pascal-FC presently only supports doing this in 'based' literals (ordinary
+      decimal literals must be negated through FSign); as such, this is
+      effectively equivalent to 'is this a based literal?'. }
+    function CanEnterSignBit: boolean;
+
+    { Adds FInt to the minimum integer, replacing FInt with the result and 
+      thereby completing an integer read that has spilled into the sign bit. }
+    procedure ResolveSignBit;
+
+    { Checks to see if shifting FInt leftwards by ShiftBy will overflow. }
+    function WillOverflowOnShift(ShiftBy: integer): boolean;
+
+    { Handles the overflow from shifting FInt leftwards by the int-converted
+      base BaseInt. }
+    procedure HandleShiftOverflow(BaseInt: integer);
+
+    { Tries to shift FInt leftwards by FBase.
+      In bases over 10, this performs two's-complement negation if the shift
+      enters the sign bit.
+      Fails if this would overflow. }
+    procedure ShiftPlace;
+
+    { Tries to add Digit to FInt using FBase.
+      Fails if this would overflow. }
+    procedure AddDigit(Digit: TDigit);
+
+    { Interprets the reader's last char as a digit in the current base,
+      and shifts it onto FInt. }
+    procedure ShiftDigit;
+
+    //
+    // Reading integers
+    //
+
+    { Reads a series of digits (according to FBase) into FInt. }
+    procedure ReadDigits;
+
+    { Reads a signed decimal integer into FInt. }
+    procedure ReadSignedDecimalInt;
+
+    { Clears FInt, interprets it as a base, and stores that base in FBase. }
+    procedure TakeIntAsBase;
+
+    { Reads a based integer into FInt, using the current value of FInt as base.
+      Supported bases are binary, octal, and hexadecimal. }
+    procedure ReadBasedInt;
+
+    //
+    // Reading reals
+    //
 
     { Reads a scale. }
     procedure ReadScale(var e: integer);
 
   public
-    { Constructs a TNumReader on top of a TBufferedReader. }
-    constructor Create(Reader: TBufferedReader);
+    { Constructs a TNumReader on top of a TReader. }
+    constructor Create(Reader: TReader);
 
     { Reads an integer. }
     function ReadInt: integer;
@@ -148,13 +230,24 @@ implementation
 // Top
 //
 
-{ Should 'C' be skipped if reading a number?
+const
+  { All characters considered whitespace by Pascal-FC. }
+  Blanks : set of char = [#0, #9, #10, ' '];
 
-  We skip 'C' if it is null (#0), or it's an (ASCII) whitespace character. }
-function ShouldSkip(const C: char): boolean;
-begin
-  Result := C in [#0, #9, #10, ' '];
-end;
+  { All characters considered binary digits by Pascal-FC. }
+  BinDigits : set of char = ['0'..'1'];
+
+  { All characters considered octal digits by Pascal-FC. }
+  OctDigits : set of char = ['0'..'7'];
+
+  { All characters considered decimal digits by Pascal-FC. }
+  DecDigits : set of char = ['0'..'9'];
+
+  { Lowercase-letter hexadecimal digits. }
+  LoHexDigits : set of char = ['a'..'f'];
+
+  { Uppercase-letter hexadecimal digits. }
+  UpHexDigits : set of char = ['A'..'F'];
 
 //
 // TStdinCharReader
@@ -189,6 +282,11 @@ end;
 
 constructor TStringCharReader.Create(S: string);
 begin
+  ResetString(S);
+end;
+
+procedure TStringCharReader.ResetString(S: string);
+begin
   FString := S;
   FPos := 0;
   FLen := Length(S);
@@ -196,7 +294,9 @@ end;
 
 procedure TStringCharReader.Next;
 begin
-  if FPos <= FLen then
+  if not HasNext then
+    raise EPfcEof.Create('reading past end of string')
+  else
     Inc(FPos);
 end;
 
@@ -210,7 +310,7 @@ end;
 
 function TStringCharReader.HasNext: boolean;
 begin
-  Result := FPos <= FLen;
+  Result := FPos < FLen;
 end;
 
 function TStringCharReader.RemainingString: string;
@@ -219,23 +319,20 @@ begin
 end;
 
 //
-// TBufferedReader
+// TReader
 //
 
-constructor TBufferedReader.Create(Ch: ICharReader);
+constructor TReader.Create(Ch: ICharReader);
 begin
   FCh := #0;
   FCReader := Ch;
-  FBuffer := TCharList.Create;
+  FPushedBack := false;
 end;
 
-procedure TBufferedReader.Next;
+procedure TReader.Next;
 begin
-  if FBuffer.Count <> 0 then
-  begin
-    FCh := FBuffer.First;
-    FBuffer.Delete(0);
-  end
+  if FPushedBack then
+    FPushedBack := false
   else
   begin
     FCReader.Next;
@@ -243,187 +340,279 @@ begin
   end;
 end;
 
-function TBufferedReader.LastChar: char;
+function TReader.LastChar: char;
 begin
   Result := FCh;
 end;
 
-function TBufferedReader.HasNext: boolean;
+function TReader.HasNext: boolean;
 begin
-  Result := (FBuffer.Count <> 0) or FCReader.HasNext;
+  Result := FPushedBack or FCReader.HasNext;
 end;
 
-procedure TBufferedReader.Back(C: char);
+function TReader.LastCharIsDigit(Base: TBase): boolean;
+var
+  CSet : set of char;
 begin
-  FBuffer.Insert(FBuffer.Count - 1, C);
+  case Base of
+    bBin: CSet := BinDigits;
+    bOct: CSet := OctDigits;
+    bDec: CSet := DecDigits;
+    bHex: CSet := DecDigits + LoHexDigits + UpHexDigits;
+  end;
+  Result := LastChar in CSet;
 end;
 
-procedure TBufferedReader.Line;
+function TReader.Digit(Base: TBase): TDigit;
+var
+  OrdC : integer; // Ordinal of reader's current character
 begin
-  while FCh <> #10 do
-    Next;
+  OrdC := Ord(LastChar);
+
+  if (Base = bBin) and (LastChar in BinDigits) then
+    Result := OrdC - Ord('0')
+  else
+  if (Base = bOct) and (LastChar in OctDigits) then
+    Result := OrdC - Ord('0')
+  else
+  if (Base in [bDec, bHex]) and (LastChar in DecDigits) then
+    Result := OrdC - Ord('0')
+  else
+  if (Base = bHex) and (LastChar in UpHexDigits) then
+    Result := OrdC - Ord('A') + 10
+  else
+  if (Base = bHex) and (LastChar in LoHexDigits) then
+    Result := OrdC - Ord('a') + 10
+  else
+    raise EPfcInput.CreateFmt('malformed digit: %S (base %D)', ['' + LastChar, Base]);
+end;
+
+procedure TReader.PushBack;
+begin
+  FPushedBack := true;
+end;
+
+procedure TReader.SkipBlanks;
+begin
+  repeat
+    Next
+  until not (HasNext and (FCh in Blanks));
+  PushBack;
+end;
+
+procedure TReader.SkipLine;
+begin
+  repeat
+    Next
+  until FCh = #10;
+end;
+
+function TReader.ReadChar: char;
+begin
+  Next;
+  Result := LastChar;
 end;
 
 //
 // TNumReader
 //
 
-constructor TNumReader.Create(Reader: TBufferedReader);
+constructor TNumReader.Create(Reader: TReader);
 begin
   FReader := Reader;
+  FSign := sPositive;
 end;
 
-function TNumReader.ReadSign: TSign;
-var
-  sign: TSign;
+procedure TNumReader.ReadSign;
 begin
-  sign := 1;
+  FSign := sPositive;
 
-  if FReader.LastChar = '+' then
-    FReader.Next
-  else if FReader.LastChar = '-' then
-  begin
-    FReader.Next;
-    sign := -1;
-  end;
-
-  Result := sign;
-end;
-
-procedure TNumReader.SkipBlanks;
-begin
-  while FReader.HasNext and ShouldSkip(FReader.LastChar) do
-    FReader.Next;
-end;
-
-procedure TNumReader.ReadUnsignedInt(var inum: integer);
-var
-  digit: integer;
-begin
-  { TODO(@MattWindsor91): refactor to remove 'var' }
-  inum := 0;
-  repeat
-    begin
-      if inum > (intmax div 10) then
-        raise EPfcInput.Create('error in unsigned integer input: number too big');
-
-      inum := inum * 10;
-      digit := Ord(FReader.LastChar) - Ord('0');
-
-      if digit > (intmax - inum) then
-        raise EPfcInput.Create('error in unsigned integer input: number too big');
-
-      inum := inum + digit;
-    end;
-    FReader.Next;
-  until not (FReader.LastChar in ['0'..'9']);
-end;
-
-procedure TNumReader.ReadBasedInt(var inum: integer);
-var
-  digit, base: integer;
-  negative: boolean;
-begin
-  { TODO(@MattWindsor91): refactor to remove 'var' }
   FReader.Next;
-  if not (inum in [2, 8, 16]) then
+
+  if FReader.LastChar = '-' then
+    FSign := sNegative
+  else if FReader.LastChar <> '+' then
+    FReader.PushBack;
+end;
+
+procedure TNumReader.ApplySignReal;
+begin
+  if FSign = sNegative then
+    FReal := FReal * -1.0;
+end;
+
+function TNumReader.WillOverflowOnShift(ShiftBy: integer): boolean;
+begin
+  if FSign = sNegative then
+    Result := FInt < (smallint.MinValue div ShiftBy)
+  else
+    Result := (smallint.MaxValue div ShiftBy) < Fint
+end;
+
+function TNumReader.CanEnterSignBit: boolean;
+begin
+  { The way the reader is currently set up means that the sign bit can only
+    be entered-into in a 'based' (non-decimal) literal. }
+  Result := FBase <> bDec;
+end;
+
+procedure TNumReader.HandleShiftOverflow(BaseInt: integer);
+begin
+  if (not CanEnterSignBit) or WillOverflowOnShift(BaseInt div 2) then
+    raise EPfcInput.Create('error in unsigned integer input: number too big');
+  { We can't enter the sign bit on numbers that are already negative, so this
+    code doesn't accommodate for that. }
+  FInt := FInt mod (smallint.MaxValue div BaseInt + 1);
+  FInSignBit := True
+end;
+
+procedure TNumReader.ShiftPlace;
+var
+  BaseInt: integer;
+begin
+  BaseInt := Ord(FBase);
+  if WillOverflowOnShift(BaseInt) then
+    HandleShiftOverflow(BaseInt);
+  FInt := FInt * BaseInt;
+end;
+
+procedure TNumReader.AddDigit(Digit: TDigit);
+var
+  Delta: integer;
+begin
+  if FSign = sNegative then
+  begin
+    Delta := -Digit;
+    if Delta < (smallint.MinValue + FInt) then
+      raise EPfcInput.Create('error in unsigned integer input: number too small');
+  end
+  else
+  begin
+    Delta := Digit;
+    if (smallint.MaxValue - FInt) < Delta then
+      raise EPfcInput.Create('error in unsigned integer input: number too big');
+  end;
+  FInt := FInt + Delta;
+end;
+
+procedure TNumReader.ShiftDigit;
+begin
+  ShiftPlace;
+  AddDigit(FReader.Digit(FBase));
+end;
+
+procedure TNumReader.ResolveSignBit;
+begin
+  { TODO(@MattWindsor91): why? }
+  if FInt = 0 then
+    raise EPfcInput.Create('error in based integer input: read negative zero');
+  { We can't enter the sign bit on numbers that are already negative, so this
+    code doesn't accommodate for that. }
+  FInt := (smallint.MinValue + FInt);
+end;
+
+procedure TNumReader.ReadDigits;
+var
+  SeenADigit, SeenNonDigit: boolean;
+begin
+  FInt := 0;
+  FInSignBit := false;
+  SeenADigit := false;
+  SeenNonDigit := false;
+
+  while FReader.HasNext and (not SeenNonDigit) do
+  begin
+    { The sign bit should only have been entered into during the last digit of
+      the loop. }
+    if FInSignBit then
+      raise EPfcInput.Create('error in based integer input');
+
+    FReader.Next;
+    if FReader.LastCharIsDigit(FBase) then
+    begin
+      ShiftDigit;
+      SeenADigit := true;
+    end
+    { If we get down here, we've stopped reading digits; we need to push back
+      the non-digit character we just consumed so it's available for the next
+      read. }
+    else
+    begin
+      { If the first character we see is a non-digit, we're not reading a valid
+        number. }
+      if not SeenADigit then
+        raise EPfcInput.CreateFmt(
+          'error reading integer: unexpected character ''%S'' (#%D)',
+          [FReader.LastChar, Ord(FReader.LastChar)]);
+      SeenNonDigit := true;
+      FReader.PushBack;
+    end;
+  end;
+end;
+
+procedure TNumReader.TakeIntAsBase;
+begin
+  { We don't support decimal as an explicit base. }
+  if not (FInt in [2, 8, 16]) then
     raise EPfcInput.Create('error in based integer input: invalid base');
 
-  base := inum;
-  inum := 0;
-  negative := False;
+  FBase := TBase(FInt);
 
-  repeat
-    begin
-      if negative then
-        raise EPfcInput.Create('error in based integer input');
-      if inum > (intmax div base) then
-      begin
-        if inum <= (intmax div (base div 2)) then
-          negative := True
-        else
-          raise EPfcInput.Create('error in based integer input');
-        inum := inum mod (intmax div base + 1);
-      end;
-      inum := inum * base;
-      if FReader.LastChar in ['0'..'9'] then
-        digit := Ord(FReader.LastChar) - Ord('0')
-      else
-      if FReader.LastChar in ['A'..'Z'] then
-        digit := Ord(FReader.LastChar) - Ord('A') + 10
-      else
-      if FReader.LastChar in ['a'..'z'] then
-        digit := Ord(FReader.LastChar) - Ord('a') + 10
-      else
-        raise EPfcInput.Create('error in based integer input: invalid digit');
-      if digit >= base then
-        raise EPfcInput.Create(
-          'error in based integer input: digit not allowed in base');
-      inum := inum + digit;
-    end;
-    FReader.Next
-  until not (FReader.LastChar in ['0'..'9', 'A'..'Z', 'a'..'z']);
-  if negative then
-  begin
-    if inum = 0 then
-      raise EPfcInput.Create('error in based integer input: read negative zero');
-    inum := (-maxint + inum) - 1;
-  end;
+  { Clean up ready to take the based part of the integer literal, which is
+    always positive until and unless it overflows into the sign bit. }
+  FInt := 0;
+  FSign := sPositive;
+end;
+
+procedure TNumReader.ReadBasedInt;
+begin
+  TakeIntAsBase;
+  { Negation in a based integer literal comes from a literal overflowing into
+    the sign bit; if we read a '-' sign as part of the literal, it gets
+    interpreted as a(n invalid) negative base. }
+  ReadDigits;
+  if FInSignBit then
+    ResolveSignBit;
+end;
+
+procedure TNumReader.ReadSignedDecimalInt;
+begin
+  FBase := bDec;
+  { Negation in an unsigned integer literal comes from an explicit sign, and
+    trying to overflow the literal to produce negative numbers is an error. }
+  ReadSign;
+  ReadDigits;
 end;
 
 function TNumReader.ReadInt: integer;
-var
-  sign: TSign;
 begin
-  SkipBlanks;
-  sign := ReadSign;
+  FReader.SkipBlanks;
 
-  Result := 0;
-  if FReader.HasNext then
-  begin
-    if not (FReader.LastChar in ['0'..'9']) then
-      raise EPfcInput.CreateFmt(
-        'error reading integer: unexpected character ''%S'' (#%D)',
-        [FReader.LastChar, Ord(FReader.LastChar)]);
+  ReadSignedDecimalInt;
 
-    ReadUnsignedInt(Result);
-    Result := Result * sign;
-    if FReader.LastChar = '#' then
-      ReadBasedInt(Result);
-  end;
+  { The first integer is either the whole (decimal) literal, or the base part
+    of a based literal. }
+  if FReader.LastChar = '#' then
+    ReadBasedInt;
+
+  { If we stopped reading digits, we either hit EOF or a non-digit character.
+    In the latter case, we need to make that character available for the next
+    read. }
+  if not FReader.LastCharIsDigit(FBase) then
+    FReader.PushBack;
+
+  Result := FInt;
 end;
 
+{ TODO(@MattWindsor91): real reading is likely broken, and needs both
+  refactoring and testing. }
+
 procedure TNumReader.ReadScale(var e: integer);
-var
-  sign: TSign;
-  s, digit: integer;
 begin
-  { TODO(@MattWindsor91): refactor to remove 'var' }
-
   FReader.Next;
-  sign := ReadSign;
+  ReadSignedDecimalInt;
 
-  if not (FReader.LastChar in ['0'..'9']) then
-    raise EPfcInput.Create('error in numeric input');
-
-  s := 0;
-
-  repeat
-    begin
-      if s > (intmax div 10) then
-        raise EPfcInput.Create('error in numeric input');
-      s := 10 * s;
-      digit := Ord(FReader.LastChar) - Ord('0');
-
-      if digit > (intmax - s) then
-        raise EPfcInput.Create('error in numeric input');
-
-      s := s + digit;
-    end;
-    FReader.Next
-  until not (FReader.LastChar in ['0'..'9']);
-
-  e := s * sign + e;
+  e := FInt + e;
 end;
 
 procedure AdjustScale(var rnum: real; k, e: integer);
@@ -465,11 +654,10 @@ end;
 
 function TNumReader.ReadReal: real;
 var
-  sign: TSign;
   k, e, digit: integer;
 begin
-  SkipBlanks;
-  sign := ReadSign;
+  FReader.SkipBlanks;
+  ReadSign;
 
   if FReader.HasNext then
   begin
@@ -481,21 +669,21 @@ begin
     while FReader.LastChar = '0' do
       FReader.Next;
 
-    Result := 0.0;
+    FReal := 0.0;
 
     k := 0;
     e := 0;
     while FReader.LastChar in ['0'..'9'] do
     begin
-      if Result > (realmax / 10.0) then
+      if FReal > (realmax / 10.0) then
         e := e + 1
       else
       begin
         k := k + 1;
-        Result := Result * 10.0;
+        FReal := FReal * 10.0;
         digit := Ord(FReader.LastChar) - Ord('0');
-        if digit <= (realmax - Result) then
-          Result := Result + digit;
+        if digit <= (realmax - FReal) then
+          FReal := FReal + digit;
       end;
       FReader.Next;
     end;
@@ -505,13 +693,13 @@ begin
       repeat
         if FReader.LastChar in ['0'..'9'] then
         begin
-          if Result <= (realmax / 10.0) then
+          if FReal <= (realmax / 10.0) then
           begin
             e := e - 1;
-            Result := 10.0 * Result;
+            FReal := 10.0 * FReal;
             digit := Ord(FReader.LastChar) - Ord('0');
-            if digit <= (realmax - Result) then
-              Result := Result + digit;
+            if digit <= (realmax - FReal) then
+              FReal := FReal + digit;
           end;
           FReader.Next;
         end
@@ -521,19 +709,20 @@ begin
       if FReader.LastChar in ['e', 'E'] then
         ReadScale(e);
       if e <> 0 then
-        AdjustScale(Result, k, e);
+        AdjustScale(FReal, k, e);
     end  (* fractional part *)
     else
     if FReader.LastChar in ['e', 'E'] then
     begin
       ReadScale(e);
       if e <> 0 then
-        AdjustScale(Result, k, e);
+        AdjustScale(FReal, k, e);
     end
     else
     if e <> 0 then
       raise EPfcInput.Create('error in numeric input');
-    Result := Result * sign;
+    ApplySignReal;
+    Result := FReal;
   end;
 end;
 

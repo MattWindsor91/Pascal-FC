@@ -13,6 +13,7 @@ PINTUNITS := \
   pint.loadstore.pas \
   pint.ops.pas \
   pint.process.pas \
+  pint.reader.pas \
   pint.stack.pas \
   pint.stfun.pas
 PINTTESTUNITS := \

@@ -14,7 +14,7 @@
   details.
 
   You should have received a copy of the GNU General Public License along with
-  this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+  this program; if not, write to the Free Software Foundation, InFCh., 51 Franklin
   Street, Fifth Floor, Boston, MA 02110-1301 USA. }
 
 { Test cases: Pint.Reader }
@@ -31,48 +31,89 @@ uses
 type
 
   TNumReaderTestCase = class(TTestCase)
+  private
+    FCh: TStringCharReader;
+    FRd: TReader;
+    FNum: TNumReader;
+  protected
+    procedure Setup; override;
+    procedure TearDown; override;
   published
-    procedure TestReadUnsignedDecimalIntZero;
-    procedure TestReadUnsignedDecimalIntZeroNl;
+    { Tests that reading '0' returns the integer 0. }
+    procedure TestReadDecimalIntZero;
+    { Tests that reading '0', followed by a newline, returns the integer 0 and
+      does not consume the newline. }
+    procedure TestReadDecimalIntZeroNl;
+    { Tests that reading '-1' returns the integer -1. }
+    procedure TestReadDecimalIntNegative;
+    { Tests that reading '  24' returns the integer 24. }
+    procedure TestReadDecimalIntLeadingSpace;
+
+    { Tests that reading '2#0' returns the integer 0. }
+    procedure TestReadBinaryIntZero;
   end;
 
 implementation
 
-procedure TNumReaderTestCase.TestReadUnsignedDecimalIntZero;
-var
-  C: TStringCharReader;
-  B: TBufferedReader;
-  R: TNumReader;
+procedure TNumReaderTestCase.Setup;
 begin
-  { TODO(@MattWindsor91): PFC's handling of this sort of case is somewhat
-    strange, and needs further investigation. }
-  C := TStringCharReader.Create('0');
-  B := TBufferedReader.Create(C);
-  R := TNumReader.Create(B);
-  AssertEquals('incorrect resulting number', 0, R.ReadInt);
-  { We should have ended the number due to EOF, without eating another char. }
-  AssertEquals('incorrect last char', #0, C.LastChar);
-  AssertEquals('incorrect remainder string', '', C.RemainingString);
-  AssertFalse('should have exhausted characters', B.HasNext);
-  FreeAndNil(R);
-  FreeAndNil(B);
+  FCh := TStringCharReader.Create('');
+  FRd := TReader.Create(FCh);
+  FNum := TNumReader.Create(FRd);
 end;
 
-procedure TNumReaderTestCase.TestReadUnsignedDecimalIntZeroNl;
-var
-  C: TStringCharReader;
-  B: TBufferedReader;
-  R: TNumReader;
+procedure TNumReaderTestCase.TearDown;
 begin
-  C := TStringCharReader.Create('0' + #10);
-  B := TBufferedReader.Create(C);
-  R := TNumReader.Create(B);
-  AssertEquals('incorrect resulting number', 0, R.ReadInt);
-  { We should have consumed the linefeed while ending the number. }
-  AssertEquals('incorrect last char', #10, C.LastChar);
-  AssertEquals('incorrect remainder string', '', C.RemainingString);
-  FreeAndNil(R);
-  FreeAndNil(B);
+  FreeAndNil(FNum);
+  FreeAndNil(FRd);
+  // Freeing FCh causes an exception?
+end;
+
+procedure TNumReaderTestCase.TestReadDecimalIntZero;
+begin
+  FCh.ResetString('0');
+  AssertEquals('incorrect resulting number', 0, FNum.ReadInt);
+  AssertEquals('incorrect last char', '0', FCh.LastChar);
+  AssertEquals('incorrect remainder string', '', FCh.RemainingString);
+  AssertFalse('should have exhausted characters', FRd.HasNext);
+end;
+
+procedure TNumReaderTestCase.TestReadDecimalIntZeroNl;
+begin
+  FCh.ResetString('0' + #10);
+  AssertEquals('incorrect resulting number', 0, FNum.ReadInt);
+  AssertEquals('incorrect remainder string', '', FCh.RemainingString);
+
+  { We shouldn't have consumed the linefeed while ending the number. }
+  FRd.Next;
+  AssertEquals('incorrect last char', #10, FRd.LastChar);
+end;
+
+procedure TNumReaderTestCase.TestReadDecimalIntNegative;
+begin
+  FCh.ResetString('-1');
+  AssertEquals('incorrect resulting number', -1, FNum.ReadInt);
+  AssertEquals('incorrect last char', '1', FCh.LastChar);
+  AssertEquals('incorrect remainder string', '', FCh.RemainingString);
+  AssertFalse('should have exhausted characters', FRd.HasNext);
+end;
+
+procedure TNumReaderTestCase.TestReadDecimalIntLeadingSpace;
+begin
+  FCh.ResetString('  24');
+  AssertEquals('incorrect resulting number', 24, FNum.ReadInt);
+  AssertEquals('incorrect last char', '4', FCh.LastChar);
+  AssertEquals('incorrect remainder string', '', FCh.RemainingString);
+  AssertFalse('should have exhausted characters', FRd.HasNext);
+end;
+
+procedure TNumReaderTestCase.TestReadBinaryIntZero;
+begin
+  FCh.ResetString('2#0');
+  AssertEquals('incorrect resulting number', 0, FNum.ReadInt);
+  AssertEquals('incorrect last char', '0', FCh.LastChar);
+  AssertEquals('incorrect remainder string', '', FCh.RemainingString);
+  AssertFalse('should have exhausted characters', FRd.HasNext);
 end;
 
 initialization
