@@ -26,9 +26,15 @@ unit GTypes;
 
 interface
 
-uses GConsts;
+uses GConsts, SysUtils;
 
 type
+  { Type of integers supported by PFC. }
+  TPfcInt = smallint;
+
+  { Type of reals supported by PFC. }
+  TPfcReal = real; // temporary
+
   TIndex = -xmax .. xmax;
 
   { Enumeration of top-level objects. }

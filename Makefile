@@ -11,6 +11,7 @@ PINTUNITS := \
   pint.flow.pas \
   pint.index.pas \
   pint.loadstore.pas \
+  pint.numreader.pas \
   pint.ops.pas \
   pint.process.pas \
   pint.reader.pas \
@@ -19,7 +20,7 @@ PINTUNITS := \
 PINTTESTUNITS := \
   pint.bitset.test.pas \
   pint.ops.test.pas \
-  pint.reader.test.pas \
+  pint.numreader.test.pas \
   pint.stack.test.pas \
 
 gunits := gconsts.pas gtypes.pas gtables.pas gstrutil.pas
