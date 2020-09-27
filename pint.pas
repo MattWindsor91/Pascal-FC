@@ -40,6 +40,7 @@ uses
   Pint.Flow,
   Pint.Index,
   Pint.LoadStore,
+  Pint.NumReader,
   Pint.Ops,
   Pint.Reader,
   Pint.Process,

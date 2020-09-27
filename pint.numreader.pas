@@ -36,9 +36,6 @@ uses
   SysUtils;
 
 type
-  { Type of signs. }
-  TSign = (sNegative, sPositive);
-
   { Type of internal last-read states used in the digit reader. }
   TLastReadState = (lrNothingYet, lrDigit, lrNotDigit);
 
@@ -126,10 +123,10 @@ type
     procedure Read(Base: TBase; Sign: ISign);
 
     { Gets the last character seen before parsing. }
-    property LastChar : char read FLastChar;
+    property LastChar: char read FLastChar;
 
     { Gets the last-read integer. }
-    property Int : TPfcInt read FInt;
+    property Int: TPfcInt read FInt;
   end;
 
   { TNumReader reads integers and reals from an input source. }
@@ -150,7 +147,7 @@ type
 
     { If the next character is a sign (+/-), consume it.
 
-      Sets the reader's sign to pNegative if '-' was consumed, and pPositive
+      Sets the reader's sign to negative if '-' was consumed, and positive
       otherwise. }
     procedure ReadSign;
 
